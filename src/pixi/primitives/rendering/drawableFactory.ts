@@ -1,0 +1,256 @@
+import * as PIXI from "pixi.js";
+import type { VamsObject } from "@/types";
+import { toNumColor } from "../utils/colorUtils";
+import {
+  pxToWorld,
+  bboxRadii,
+  hasUniformColor,
+  createPaddedHitArea,
+  getGroupLocalBounds
+} from "../utils/geometryUtils";
+import { drawWithGraphics } from "./graphicsRenderer";
+import { createMesh } from "./meshRenderer";
+
+export interface CreateDrawableOptions {
+  groupChildren?: VamsObject[];
+  isSelected?: boolean;
+  worldScaleY?: number;
+}
+
+export function createDrawable(
+  o: VamsObject,
+  worldScaleX?: number,
+  options?: CreateDrawableOptions
+): PIXI.Container {
+  const container = new PIXI.Container();
+  container.label = o.id;
+  container.sortableChildren = true;
+
+  const hitPadding = worldScaleX ? 10 / Math.abs(worldScaleX) : 0.5;
+  const worldScaleY = options?.worldScaleY;
+
+  if (o.type === 'GROUP') {
+    return createGroupDrawable(o, worldScaleX, options, container);
+  }
+
+  if (o.type === 'TEXT') {
+    return createTextDrawable(o, hitPadding, container);
+  }
+
+  const shouldUseGraphics =
+    (hasUniformColor(o) && o.type !== 'TRIANGLE_STRIP') ||
+    o.type === "POINT" ||
+    o.type === "POINTS";
+
+  if (shouldUseGraphics) {
+    return createGraphicsDrawable(o, worldScaleX, worldScaleY, hitPadding, container);
+  }
+
+  return createMeshDrawable(o, worldScaleX, hitPadding, container);
+}
+
+function createGroupDrawable(
+  o: VamsObject,
+  worldScaleX: number | undefined,
+  options: CreateDrawableOptions | undefined,
+  container: PIXI.Container
+): PIXI.Container {
+  container.position.set(o.transform.translateX, o.transform.translateY);
+  container.rotation = (o.transform.rotate * Math.PI) / 180;
+  container.scale.set(o.transform.scale);
+  container.visible = o.isVisible;
+
+  const bounds = getGroupLocalBounds(options?.groupChildren || []);
+  const padding = pxToWorld(4, worldScaleX);
+
+  const drawX = bounds.minX - padding;
+  const drawY = bounds.minY - padding;
+  const drawW = bounds.width + (padding * 2);
+  const drawH = bounds.height + (padding * 2);
+
+  const groupGraphics = new PIXI.Graphics();
+  if (options?.isSelected) {
+      groupGraphics.setStrokeStyle({
+        width: pxToWorld(1, worldScaleX),
+        color: 0x0099ff,
+        alpha: 0.3,
+        alignment: 0.5
+      });
+      drawDashedRectangle(groupGraphics, drawX, drawY, drawW, drawH);
+      groupGraphics.stroke();
+  }
+
+  const centerDot = createGroupAnchor(worldScaleX, options?.isSelected);
+  centerDot.zIndex = 100;
+
+  container.addChild(groupGraphics);
+  container.addChild(centerDot);
+
+  container.hitArea = new PIXI.Rectangle(drawX, drawY, drawW, drawH);
+
+  return container;
+}
+
+function drawDashedRectangle(
+  graphics: PIXI.Graphics,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+): void {
+  const dashLength = 0.2;
+  const gapLength = 0.15;
+
+  const points = [
+    { x, y },
+    { x: x + width, y },
+    { x: x + width, y: y + height },
+    { x, y: y + height },
+    { x, y }
+  ];
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const start = points[i];
+    const end = points[i + 1];
+
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const sideLength = Math.sqrt(dx * dx + dy * dy);
+    const steps = Math.ceil(sideLength / (dashLength + gapLength));
+
+    for (let j = 0; j < steps; j++) {
+      const t1 = j / steps;
+      const t2 = Math.min((j + 0.6) / steps, 1);
+
+      const x1 = start.x + dx * t1;
+      const y1 = start.y + dy * t1;
+      const x2 = start.x + dx * t2;
+      const y2 = start.y + dy * t2;
+
+      graphics.moveTo(x1, y1);
+      graphics.lineTo(x2, y2);
+    }
+  }
+}
+
+function createGroupAnchor(
+  worldScaleX: number | undefined,
+  isSelected?: boolean
+): PIXI.Graphics {
+  const centerDot = new PIXI.Graphics();
+  const dotRadius = pxToWorld(4, worldScaleX);
+
+  centerDot.moveTo(0, -dotRadius * 1.5);
+  centerDot.lineTo(dotRadius * 1.5, 0);
+  centerDot.lineTo(0, dotRadius * 1.5);
+  centerDot.lineTo(-dotRadius * 1.5, 0);
+  centerDot.closePath();
+
+  centerDot.fill({ color: 0x0099ff, alpha: 0.8 });
+  centerDot.stroke({ width: pxToWorld(1, worldScaleX), color: 0xffffff, alpha: 1.0 });
+  centerDot.visible = !!isSelected;
+
+  return centerDot;
+}
+
+function createTextDrawable(
+  o: VamsObject,
+  hitPadding: number,
+  container: PIXI.Container
+): PIXI.Container {
+  const color = toNumColor(o.vertices[0]?.color, 0xffffff);
+  
+  const textStyle = new PIXI.TextStyle({
+    fontFamily: "monospace",
+    fontSize: 64,
+    fill: color,
+    align: 'center',
+    fontWeight: 'normal',
+  });
+
+  const text = new PIXI.Text({
+    text: o.textContent || '',
+    style: textStyle,
+    resolution: 2,
+  });
+
+  text.anchor.set(0.5);
+  const textScale = 0.003;
+  text.scale.set(textScale, -textScale);
+
+  container.position.set(o.transform.translateX, o.transform.translateY);
+  container.rotation = (o.transform.rotate * Math.PI) / 180;
+  container.scale.set(o.transform.scale);
+  container.visible = o.isVisible;
+  container.zIndex = 10;
+  
+  container.addChild(text);
+
+  const w = text.width;
+  const h = text.height;
+  container.hitArea = createPaddedHitArea(-w/2, -h/2, w, h, hitPadding);
+
+  return container;
+}
+
+function createGraphicsDrawable(
+  o: VamsObject,
+  worldScaleX: number | undefined,
+  worldScaleY: number | undefined,
+  hitPadding: number,
+  container: PIXI.Container
+): PIXI.Container {
+  const g = new PIXI.Graphics();
+  drawWithGraphics(g, o, worldScaleX, worldScaleY);
+  
+  container.addChild(g);
+  container.position.set(o.transform.translateX, o.transform.translateY);
+  container.rotation = (o.transform.rotate * Math.PI) / 180;
+  container.scale.set(o.transform.scale);
+  container.visible = o.isVisible;
+
+  if (!g.hitArea) {
+    const { cx, cy, rx, ry } = bboxRadii(o);
+    container.hitArea = createPaddedHitArea(cx - rx, cy - ry, rx * 2, ry * 2, hitPadding);
+  }
+
+  return container;
+}
+
+function createMeshDrawable(
+  o: VamsObject,
+  worldScaleX: number | undefined,
+  hitPadding: number,
+  container: PIXI.Container
+): PIXI.Container {
+  const meshResult = createMesh(o);
+
+  if (!meshResult) {
+    const g = new PIXI.Graphics();
+    drawWithGraphics(g, o, worldScaleX);
+    container.addChild(g);
+
+    container.position.set(o.transform.translateX, o.transform.translateY);
+    container.rotation = (o.transform.rotate * Math.PI) / 180;
+    container.scale.set(o.transform.scale);
+    container.visible = o.isVisible;
+
+    if (!g.hitArea) {
+      const { cx, cy, rx, ry } = bboxRadii(o);
+      container.hitArea = createPaddedHitArea(cx - rx, cy - ry, rx * 2, ry * 2, hitPadding);
+    }
+    return container;
+  }
+
+  container.addChild(meshResult.mesh);
+
+  container.position.set(o.transform.translateX, o.transform.translateY);
+  container.rotation = (o.transform.rotate * Math.PI) / 180;
+  container.scale.set(o.transform.scale);
+  container.visible = o.isVisible;
+
+  const { cx, cy, rx, ry } = bboxRadii(o);
+  container.hitArea = createPaddedHitArea(cx - rx, cy - ry, rx * 2, ry * 2, hitPadding);
+
+  return container;
+}

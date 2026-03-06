@@ -1,0 +1,125 @@
+@use '../../../../styles/variables' as *;
+
+.left-sidebar {
+  width: $left-sidebar-width;
+  background-color: $bg-panel;
+  border-right: 1px solid $border-color;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden; // Prevent outer scrolling
+}
+
+// Tab Navigation Bar
+.sidebar-tabs {
+  display: flex;
+  flex-direction: row;
+  background-color: rgba(0, 0, 0, 0.2); // Subtle contrast from panel bg
+  border-bottom: 1px solid $border-color;
+  flex-shrink: 0; // Prevent tabs from shrinking
+
+  .tab-button {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 0.25rem;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: $text-muted;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    gap: 0.35rem;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.03);
+      color: $text-main;
+    }
+
+    &.active {
+      color: $accent-blue;
+      border-bottom-color: $accent-blue;
+      background-color: rgba(var(--accent-blue-rgb), 0.08);
+
+      .tab-icon {
+        color: $accent-blue;
+      }
+    }
+
+    .tab-icon {
+      color: $text-muted;
+      transition: color 0.2s ease;
+    }
+
+    .tab-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+  }
+}
+
+// Scrollable Content Area
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 2rem;
+  
+  // Apply the original scrollbar mixin here for consistency
+  @include scrollbar; 
+
+  .tab-pane {
+    display: flex;
+    flex-direction: column;
+    // Fade in animation for smoother tab switching
+    animation: tabFadeIn 0.25s ease-out;
+  }
+}
+
+// Empty State for Edit Tab
+.empty-selection-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem 1.5rem;
+  text-align: center;
+  color: $text-dim;
+
+  .empty-icon {
+    margin-bottom: 1rem;
+    opacity: 0.4;
+    color: $text-muted;
+  }
+
+  h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    color: $text-muted;
+    font-weight: 600;
+  }
+
+  p {
+    margin: 0 0 1.5rem 0;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: $text-dim;
+  }
+
+  .separator {
+    width: 100%;
+    height: 1px;
+    background-color: $border-color;
+    opacity: 0.5;
+    margin: 1.5rem 0;
+  }
+}
+
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

@@ -1,0 +1,102 @@
+@use '../../../../styles/variables' as *;
+
+.group-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid $border-color;
+
+  .control-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.5rem;
+    background-color: $border-color;
+    color: $text-main;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 400;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+
+    &:hover {
+      background-color: var(--border-highlight);
+      border-color: rgba(var(--accent-blue-rgb), 0.3);
+    }
+
+    &.active {
+      background-color: rgba(var(--accent-blue-rgb), 0.15);
+      color: var(--accent-blue-light);
+      border-color: rgba(var(--accent-blue-rgb), 0.5);
+    }
+
+    &.group-btn {
+      background-color: rgba(var(--accent-blue-rgb), 0.1);
+      color: var(--accent-blue-light);
+      border-color: rgba(var(--accent-blue-rgb), 0.3);
+
+      &:hover {
+        background-color: rgba(var(--accent-blue-rgb), 0.2);
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        &:hover {
+          background-color: rgba(var(--accent-blue-rgb), 0.1);
+        }
+      }
+    }
+
+    svg {
+      flex-shrink: 0;
+    }
+
+    span {
+      white-space: nowrap;
+    }
+  }
+}
+
+// Tree item variations for groups (Extension of _hierarchy.scss concepts)
+.tree-item {
+  &.group-item {
+    background-color: rgba(var(--accent-blue-rgb), 0.05);
+    border-left: 3px solid rgba(var(--accent-blue-rgb), 0.3);
+
+    .label {
+      svg { color: rgba(var(--accent-blue-rgb), 1); }
+      .child-count {
+        margin-left: 0.3rem;
+        font-size: 0.7rem;
+        color: $text-dim;
+        font-weight: 600;
+        background-color: rgba(var(--accent-blue-rgb), 0.1);
+        padding: 0.1rem 0.4rem;
+        border-radius: 10px;
+      }
+    }
+
+    &:hover {
+      background-color: rgba(var(--accent-blue-rgb), 0.1);
+    }
+
+    &.selected {
+      background-color: rgba(var(--accent-blue-rgb), 0.2);
+      border-color: rgba(var(--accent-blue-rgb), 0.8);
+    }
+  }
+}
+
+// Nested children styling fix
+.tree-list {
+  .tree-list {
+    margin-left: 1rem;
+    margin-top: 0.25rem;
+    padding-left: 0.5rem;
+    border-left: 2px solid rgba(var(--border-rgb), 0.3);
+  }
+}

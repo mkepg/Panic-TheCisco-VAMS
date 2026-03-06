@@ -1,0 +1,132 @@
+// The Font Declaration
+@font-face {
+  font-family: 'Minecrafter';
+  src: url('/fonts/Minecrafter.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+$logo-font: 'Minecrafter', sans-serif;
+$font-mono: 'Menlo', 'Monaco', 'Courier New', monospace;
+
+// Layout
+$header-height: 3.7rem;
+$left-sidebar-width: 20rem;
+$right-sidebar-width: 27rem;
+
+// --- CSS VARIABLES FOR THEME ---
+:root {
+  // --- Dark Theme (Standard UI) ---
+  --bg-dark-rgb: 17, 24, 39;       // #111827
+  
+  --bg-panel-rgb: 31, 41, 55;      // #1f2937
+  --bg-bar-rgb: 31, 41, 55;        // #1f2937
+  
+  --bg-input-rgb: 17, 24, 39;      // #111827
+  --border-rgb: 55, 65, 81;        // #374151
+  
+  --text-main: #f3f4f6;
+  --text-muted: #9ca3af;
+  --text-dim: #6b7280;
+
+  --accent-blue-rgb: 37, 99, 235;  // #2563eb
+  --accent-green-rgb: 21, 128, 61; // #15803d
+  --accent-red-rgb: 185, 28, 28;   // #b91c1c
+  
+  // --- LOGO SPECIFIC VARIABLES (Dark Mode - Cyberpunk) ---
+  --logo-color: #fcee0a;           // Cyber Yellow Face
+  --logo-stroke: #000000;          // Black Stroke
+  --logo-depth: #00f0ff;           // Cyan 3D Extrusion
+  --logo-glow: 0 0 15px rgba(0, 240, 255, 0.4); 
+  
+  // Derived variations (Dark)
+  --bg-panel-hover: #2d3748;
+  --accent-blue-light: #60a5fa;
+  --accent-red-light: #f87171;
+  --accent-green-light: #4ade80;
+  --border-highlight: #4b5563;
+
+  // Custom Color
+  --panel-tab: #00000033;
+  --keyword-fallback: #d1d5db;
+  --code-content: #82A6F4;
+}
+
+[data-theme='light'] {
+  // --- Light Theme (Standard UI) ---
+  --bg-dark-rgb: 226, 232, 240;    // #e2e8f0
+  --bg-panel-rgb: 248, 250, 252;   // #f8fafc
+  --bg-bar-rgb: 229, 231, 235;
+  --bg-input-rgb: 241, 245, 249;   // #f1f5f9
+  --border-rgb: 203, 213, 225;     // #cbd5e1
+
+  --text-main: #050505;            
+  --text-muted: #4b5563;           
+  --text-dim: #6b7280;             
+
+  --accent-blue-rgb: 15, 76, 117;  // #0f4c75
+  --accent-green-rgb: 21, 128, 61; // #15803d
+  --accent-red-rgb: 220, 38, 38;   // #dc2626
+
+  // --- LOGO SPECIFIC VARIABLES (Light Mode - Original Style) ---
+  // White face, Black Stroke, Black Depth (Matches reference image)
+  --logo-color: #ffffff;           
+  --logo-stroke: #000000;          
+  --logo-depth: #000000;           
+  --logo-glow: none; 
+
+  // Derived variations (Light)
+  --bg-panel-hover: #e2e8f0;       
+  --accent-blue-light: #0ea5e9;
+  --accent-red-light: #ef4444;
+  --accent-green-light: #22c55e;
+  --border-highlight: #94a3b8;
+
+  // Custom Color
+  --panel-tab: #CBD5E1;
+  --keyword-fallback: #374151;
+  --code-content: #0f4c75;
+}
+
+// SCSS Variables mapped to CSS Vars
+$bg-dark: rgb(var(--bg-dark-rgb));
+$bg-panel: rgb(var(--bg-panel-rgb));
+$bg-bar: rgb(var(--bg-bar-rgb)); 
+$bg-input: rgb(var(--bg-input-rgb));
+$border-color: rgb(var(--border-rgb));
+
+$text-main: var(--text-main);
+$text-muted: var(--text-muted);
+$text-dim: var(--text-dim);
+
+$accent-blue: rgb(var(--accent-blue-rgb));
+$accent-green: rgb(var(--accent-green-rgb));
+$accent-red: rgb(var(--accent-red-rgb));
+
+// Helper mixins
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin scrollbar {
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(var(--border-rgb), 0.8);
+    border-radius: 4px;
+    border: 2px solid transparent; 
+    background-clip: content-box;
+    
+    &:hover { 
+      background-color: var(--text-muted); 
+    }
+  }
+}
