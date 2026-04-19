@@ -69,6 +69,7 @@ function createGroupDrawable(
   const drawH = bounds.height + (padding * 2);
 
   const groupGraphics = new PIXI.Graphics();
+
   if (options?.isSelected) {
       groupGraphics.setStrokeStyle({
         width: pxToWorld(1, worldScaleX),
@@ -80,14 +81,10 @@ function createGroupDrawable(
       groupGraphics.stroke();
   }
 
-  const centerDot = createGroupAnchor(worldScaleX, options?.isSelected);
-  centerDot.zIndex = 100;
-
+  // centerDot logic has been removed here
   container.addChild(groupGraphics);
-  container.addChild(centerDot);
 
   container.hitArea = new PIXI.Rectangle(drawX, drawY, drawW, drawH);
-
   return container;
 }
 
@@ -131,26 +128,6 @@ function drawDashedRectangle(
       graphics.lineTo(x2, y2);
     }
   }
-}
-
-function createGroupAnchor(
-  worldScaleX: number | undefined,
-  isSelected?: boolean
-): PIXI.Graphics {
-  const centerDot = new PIXI.Graphics();
-  const dotRadius = pxToWorld(4, worldScaleX);
-
-  centerDot.moveTo(0, -dotRadius * 1.5);
-  centerDot.lineTo(dotRadius * 1.5, 0);
-  centerDot.lineTo(0, dotRadius * 1.5);
-  centerDot.lineTo(-dotRadius * 1.5, 0);
-  centerDot.closePath();
-
-  centerDot.fill({ color: 0x0099ff, alpha: 0.8 });
-  centerDot.stroke({ width: pxToWorld(1, worldScaleX), color: 0xffffff, alpha: 1.0 });
-  centerDot.visible = !!isSelected;
-
-  return centerDot;
 }
 
 function createTextDrawable(

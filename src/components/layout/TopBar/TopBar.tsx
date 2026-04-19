@@ -357,33 +357,17 @@ const handleProjectFileSelected = async (event: Event) => {
 
         {/* View Settings Menu */}
         <div className="dropdown-container" ref={viewMenuRef}>
-          <button 
-            className="icon-btn" 
+          <button
+            className="icon-btn"
             onClick={() => setShowViewMenu(!showViewMenu)}
             title="View Settings">
             <Eye size={16} />
           </button>
-          
           {showViewMenu && (
             <div className="dropdown-menu">
               <div className="menu-header">View Options</div>
-              <button 
-                className="menu-item"
-                onClick={() => {
-                  setAxisVisibility({ ...axisVisibility, showGlobalAxes: !axisVisibility.showGlobalAxes });
-                }}>
-                {axisVisibility.showGlobalAxes ? <Eye size={14} /> : <EyeOff size={14} />}
-                Global Axes
-              </button>
-              <button 
-                className="menu-item"
-                onClick={() => {
-                  setAxisVisibility({ ...axisVisibility, showLocalAxes: !axisVisibility.showLocalAxes });
-                }}>
-                {axisVisibility.showLocalAxes ? <Eye size={14} /> : <EyeOff size={14} />}
-                Local Axes
-              </button>
-              <button 
+              {/* Global Axes and Local Axes buttons removed */}
+              <button
                 className="menu-item"
                 onClick={() => {
                   setAxisVisibility({ ...axisVisibility, showOriginMarker: !axisVisibility.showOriginMarker });
@@ -391,7 +375,7 @@ const handleProjectFileSelected = async (event: Event) => {
                 {axisVisibility.showOriginMarker ? <Eye size={14} /> : <EyeOff size={14} />}
                 Coordinate Axes
               </button>
-              <button 
+              <button
                 className="menu-item"
                 onClick={() => {
                   setAxisVisibility({ ...axisVisibility, showGridlines: !axisVisibility.showGridlines });
@@ -399,10 +383,8 @@ const handleProjectFileSelected = async (event: Event) => {
                 {axisVisibility.showGridlines ? <Eye size={14} /> : <EyeOff size={14} />}
                 Gridlines
               </button>
-              
               <div className="menu-separator"></div>
-              
-              <button 
+              <button
                 className="menu-item"
                 onClick={() => {
                   setShowCoordinateTracker(!showCoordinateTracker);
