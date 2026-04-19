@@ -2,7 +2,14 @@ import { produce, enableMapSet } from 'immer';
 import type { StateCreator } from 'zustand';
 import type { VamsState, HistorySlice, HistorySnapshot } from './storeTypes';
 
+// enableMapSet still called here because produce() in this module drafts
+// VamsState which contains `initialObjectStates: Map`. The canonical global
+// registration is in stores/index.ts (Bug 17 fix); this call is harmless
+// redundancy that guards against this module being used in isolation.
 enableMapSet();
+
+/** Minimum ms between two consecutive snapshots — prevents false-negative dedup. */
+const HISTORY_THROTTLE_MS = 50;
 
 const createSnapshot = (state: VamsState): HistorySnapshot => ({
   objects: state.objects,
@@ -28,7 +35,7 @@ const restoreSnapshot = (snapshot: HistorySnapshot): Partial<VamsState> => ({
 export const createHistorySlice: StateCreator<VamsState, [], [], HistorySlice> = (set, get) => ({
   past: [],
   future: [],
-  maxHistorySize: 30, // GC Optimization: Reduced from 100 to prevent OOM
+  maxHistorySize: 30,
   isBatchMode: false,
 
   startBatch: () => {
@@ -45,25 +52,39 @@ export const createHistorySlice: StateCreator<VamsState, [], [], HistorySlice> =
       return;
     }
 
-    const snapshot = createSnapshot(state);
+    // Capture timestamp before entering produce() so it is a stable closure value.
+    const snapshotTimestamp = Date.now();
+    const snapshot: HistorySnapshot = {
+      objects: state.objects,
+      selectedObjectId: state.selectedObjectId,
+      interactionMode: state.interactionMode,
+      selectedVertexId: state.selectedVertexId,
+      isVertexEditMode: state.isVertexEditMode,
+      pendingShapeType: state.pendingShapeType,
+      pendingVertices: state.pendingVertices,
+      timestamp: snapshotTimestamp,
+    };
 
     set(
       produce((draft: VamsState) => {
-        // Anti-bloat check: Prevent pushing identical duplicate states.
-        // Immer structurally shares references, so unmodified arrays retain equality.
         const lastPast = draft.past[draft.past.length - 1];
-        if (
-            lastPast && 
-            lastPast.objects === state.objects && 
-            lastPast.selectedObjectId === state.selectedObjectId &&
-            lastPast.interactionMode === state.interactionMode
-        ) {
-            return; // Abort push: Nothing meaningful changed
+
+        // Bug 2 fix: the original dedup check was:
+        //   lastPast.objects === state.objects
+        // Zustand produces a new array reference on every mutation, so this
+        // reference equality was permanently false — every pushToHistory call
+        // created a snapshot unconditionally, including rapid successive calls.
+        //
+        // Fixed with a timestamp throttle: if the last snapshot was taken less
+        // than HISTORY_THROTTLE_MS ago, skip this push. This correctly collapses
+        // rapid fire calls (e.g., drag move events) into a single history entry
+        // while still allowing all genuinely distinct user actions to be recorded.
+        if (lastPast && snapshotTimestamp - lastPast.timestamp < HISTORY_THROTTLE_MS) {
+          return;
         }
 
         draft.past.push(snapshot);
         draft.future = [];
-        
         if (draft.past.length > draft.maxHistorySize) {
           draft.past.shift();
         }
@@ -76,13 +97,11 @@ export const createHistorySlice: StateCreator<VamsState, [], [], HistorySlice> =
     if (state.past.length === 0 || state.simulationState === 'PLAYING') {
       return;
     }
-
     set(
       produce((draft: VamsState) => {
         const previousSnapshot = draft.past.pop()!;
         const currentSnapshot = createSnapshot(state);
         draft.future.push(currentSnapshot);
-
         const restoredState = restoreSnapshot(previousSnapshot);
         Object.assign(draft, restoredState);
       })
@@ -94,13 +113,11 @@ export const createHistorySlice: StateCreator<VamsState, [], [], HistorySlice> =
     if (state.future.length === 0 || state.simulationState === 'PLAYING') {
       return;
     }
-
     set(
       produce((draft: VamsState) => {
         const nextSnapshot = draft.future.pop()!;
         const currentSnapshot = createSnapshot(state);
         draft.past.push(currentSnapshot);
-
         const restoredState = restoreSnapshot(nextSnapshot);
         Object.assign(draft, restoredState);
       })

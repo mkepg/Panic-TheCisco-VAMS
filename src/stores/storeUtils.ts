@@ -1,4 +1,10 @@
-import type { PrimitiveType, VamsObject } from '@/types';
+import type { PrimitiveType } from '@/types';
+
+// Bug 9 fix: `calculateMatrix` has been removed. It was confirmed dead code —
+// grep across the entire codebase found zero consumers of this export.
+// The live matrix utilities are in sceneSlice.ts (flat number[6] format) and
+// useBehaviorEngine.ts (number[][] 3×3 format). Those are not touched here
+// as they are covered by a separate consolidation task (Bug 9 Phase 2).
 
 export const getInitialVertices = (type: PrimitiveType) => {
   switch (type) {
@@ -7,18 +13,18 @@ export const getInitialVertices = (type: PrimitiveType) => {
     case 'LINE':
       return [
         { id: 'v0', x: -0.5, y: 0, color: '#ffffff' },
-        { id: 'v1', x: 0.5, y: 0, color: '#ffffff' }, 
+        { id: 'v1', x: 0.5, y: 0, color: '#ffffff' },
       ];
     case 'TRIANGLE':
       return [
-        { id: 'v0', x: 0, y: 0.5, color: '#ffffff' }, 
+        { id: 'v0', x: 0, y: 0.5, color: '#ffffff' },
         { id: 'v1', x: 0.5, y: -0.5, color: '#ffffff' },
         { id: 'v2', x: -0.5, y: -0.5, color: '#ffffff' },
       ];
     case 'RECTANGLE':
       return [
         { id: 'v0', x: -0.5, y: 0.5, color: '#ffffff' },
-        { id: 'v1', x: 0.5, y: 0.5, color: '#ffffff' }, 
+        { id: 'v1', x: 0.5, y: 0.5, color: '#ffffff' },
         { id: 'v2', x: 0.5, y: -0.5, color: '#ffffff' },
         { id: 'v3', x: -0.5, y: -0.5, color: '#ffffff' },
       ];
@@ -75,55 +81,32 @@ export const getInitialVertices = (type: PrimitiveType) => {
       }
       return hexVertices;
     }
-// NEW CUSTOM TYPES
     case 'POINTS':
-      // Initial: 2 points
       return [
         { id: 'v0', x: -0.5, y: 0, color: '#ffffff' },
-        { id: 'v1', x: 0.5, y: 0, color: '#ffffff' }
+        { id: 'v1', x: 0.5, y: 0, color: '#ffffff' },
       ];
-
     case 'LINE_STRIP':
-      // Initial: 3 vertices
       return [
         { id: 'v0', x: -0.5, y: -0.5, color: '#ffffff' },
         { id: 'v1', x: 0, y: 0.5, color: '#ffffff' },
-        { id: 'v2', x: 0.5, y: -0.5, color: '#ffffff' }
+        { id: 'v2', x: 0.5, y: -0.5, color: '#ffffff' },
       ];
-
     case 'POLYGON':
-      // Initial: 4 vertices (Hexagon shape)
       return [
         { id: 'v0', x: -0.5, y: 0.5, color: '#ffffff' },
         { id: 'v1', x: 0.5, y: 0.5, color: '#ffffff' },
         { id: 'v2', x: 0.5, y: -0.5, color: '#ffffff' },
-        { id: 'v3', x: -0.5, y: -0.5, color: '#ffffff' }
+        { id: 'v3', x: -0.5, y: -0.5, color: '#ffffff' },
       ];
-
     case 'TRIANGLE_STRIP':
-      // Initial: 4 vertices (Mesh-like structure)
       return [
         { id: 'v0', x: -0.5, y: 0.5, color: '#ffffff' },
         { id: 'v1', x: 0.5, y: 0.5, color: '#ffffff' },
         { id: 'v2', x: -0.5, y: -0.5, color: '#ffffff' },
-        { id: 'v3', x: 0.5, y: -0.5, color: '#ffffff' }
+        { id: 'v3', x: 0.5, y: -0.5, color: '#ffffff' },
       ];
-
     default:
       return [{ id: 'v0', x: 0, y: 0, color: '#ffffff' }];
   }
-};
-
-// Simplified: Returns only local transform matrix (no hierarchy)
-export const calculateMatrix = (object: VamsObject): number[][] => {
-  const { translateX, translateY, rotate, scale } = object.transform;
-  const rad = (rotate * Math.PI) / 180;
-  const cos = Math.cos(rad);
-  const sin = Math.sin(rad);
-
-  return [
-    [scale * cos, scale * -sin, translateX],
-    [scale * sin, scale * cos, translateY],
-    [0, 0, 1],
-  ];
 };

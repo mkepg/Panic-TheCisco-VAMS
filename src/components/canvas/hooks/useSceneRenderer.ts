@@ -32,29 +32,25 @@ export function useSceneRenderer({
   const dragRef = useRef<DragInfo | null>(null);
   const interactionModeRef = useRef<string>("SELECT");
   const pushToHistoryRef = useRef<() => void>(() => {});
-  
   const containersRef = useRef<Map<string, Container>>(new Map());
   const objectsRef = useRef<VamsObject[]>([]);
   const transformCacheRef = useRef<Map<string, TransformState>>(new Map());
-  
-  // GC Optimization Refs
   const prevObjectsRef = useRef<Map<string, VamsObject>>(new Map());
   const prevSelectedObjectIdRef = useRef<string | null>(null);
-  const prevWorldScaleRef = useRef<{x: number, y: number}>({ x: 0, y: 0 });
+  const prevWorldScaleRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const objects = useVamsStore((s) => s.objects);
   const selectedObjectId = useVamsStore((s) => s.selectedObjectId);
   const interactionMode = useVamsStore((s) => s.interactionMode);
   const simulationState = useVamsStore((s) => s.simulationState);
-  
   const selectObject = useVamsStore((s) => s.selectObject);
   const updateObjectTransform = useVamsStore((s) => s.updateObjectTransform);
   const pushToHistory = useVamsStore((s) => s.pushToHistory);
 
   useEffect(() => {
-      if (simulationState === "STOPPED") {
-          transformCacheRef.current.clear();
-      }
+    if (simulationState === "STOPPED") {
+      transformCacheRef.current.clear();
+    }
   }, [simulationState]);
 
   useEffect(() => {
@@ -82,18 +78,16 @@ export function useSceneRenderer({
     pixiReady,
     appRef,
     transformCacheRef,
-    containersRef
+    containersRef,
   });
 
   useEffect(() => {
     const app = appRef.current;
     const overlay = overlayRef.current;
     if (!app || !overlay || !pixiReady) return;
-
     const tickerFn = () => {
       if (overlay) overlay.update();
     };
-
     app.ticker.add(tickerFn);
     return () => {
       app.ticker.remove(tickerFn);
@@ -108,50 +102,72 @@ export function useSceneRenderer({
 
     const onStageMove = (e: FederatedPointerEvent) => {
       const drag = dragRef.current;
-      if (drag && world) {
-        if (app.canvas.style.cursor !== "grabbing") {
-            app.canvas.style.cursor = "grabbing";
-        }
-        
-        const p = world.toLocal(e.global);
-        const newX = p.x - drag.offsetX;
-        const newY = p.y - drag.offsetY;
+      if (!drag || !world) return;
 
-        const container = containersRef.current.get(drag.id);
-        if (container) {
-          container.position.set(newX, newY);
-        }
-        if (overlay) overlay.update();
+      if (app.canvas.style.cursor !== "grabbing") {
+        app.canvas.style.cursor = "grabbing";
+      }
 
-        if (simulationState === "PLAYING") {
-           const obj = objectsRef.current.find(o => o.id === drag.id);
-           if (obj) {
-               const cached = transformCacheRef.current.get(drag.id) || { ...obj.transform };
-               cached.translateX = newX;
-               cached.translateY = newY;
-               transformCacheRef.current.set(drag.id, cached);
-           }
-        } else {
-           if (!drag.historyPushed) {
-              pushToHistoryRef.current();
-              drag.historyPushed = true;
-           }
-           updateObjectTransform(drag.id, {
-             translateX: newX,
-             translateY: newY,
-           });
+      const p = world.toLocal(e.global);
+      const newX = p.x - drag.offsetX;
+      const newY = p.y - drag.offsetY;
+
+      // Update the PixiJS container position directly for smooth visual feedback.
+      const container = containersRef.current.get(drag.id);
+      if (container) {
+        container.position.set(newX, newY);
+      }
+      if (overlay) overlay.update();
+
+      if (simulationState === "PLAYING") {
+        // During simulation, write only to the transform cache — never to the store.
+        // The store holds the original (pre-simulation) positions and must not be
+        // mutated during playback.
+        const obj = objectsRef.current.find((o) => o.id === drag.id);
+        if (obj) {
+          const cached = transformCacheRef.current.get(drag.id) || { ...obj.transform };
+          cached.translateX = newX;
+          cached.translateY = newY;
+          transformCacheRef.current.set(drag.id, cached);
         }
+      } else {
+        // Bug 7 fix: the original code called `updateObjectTransform` on every
+        // globalpointermove event — up to 60 times per second during a drag.
+        // Each call wrote to the Zustand store, triggering React reconciliation and
+        // re-running the scene renderer effect on every frame. The store write is
+        // only needed once at pointerup to persist the final resting position.
+        //
+        // During drag: update only the PixiJS container (done above). The store is
+        // NOT written here. History is pushed once at the start of the drag.
+        // At pointerup (endDrag below): write the final position to the store once.
+        if (!drag.historyPushed) {
+          pushToHistoryRef.current();
+          drag.historyPushed = true;
+        }
+        // No updateObjectTransform here — deferred to endDrag.
       }
     };
 
     const endDrag = () => {
-      if (dragRef.current) {
-        dragRef.current = null;
-        if (simulationState === "PLAYING") {
-           app.canvas.style.cursor = "default";
-        } else {
-           app.canvas.style.cursor = "grab";
+      const drag = dragRef.current;
+      if (!drag) return;
+
+      if (simulationState !== "PLAYING") {
+        // Bug 7 fix: single store write at drag end, instead of 60/s during move.
+        const container = containersRef.current.get(drag.id);
+        if (container) {
+          updateObjectTransform(drag.id, {
+            translateX: container.position.x,
+            translateY: container.position.y,
+          });
         }
+      }
+
+      dragRef.current = null;
+      if (simulationState === "PLAYING") {
+        app.canvas.style.cursor = "default";
+      } else {
+        app.canvas.style.cursor = "grab";
       }
     };
 
@@ -159,7 +175,6 @@ export function useSceneRenderer({
     app.stage.on("pointerup", endDrag);
     app.stage.on("pointerupoutside", endDrag);
     app.stage.on("pointercancel", endDrag);
-
     return () => {
       app.stage.off("globalpointermove", onStageMove);
       app.stage.off("pointerup", endDrag);
@@ -179,228 +194,226 @@ export function useSceneRenderer({
     const unusedIds = new Set(containersRef.current.keys());
     const nextContainers = new Map<string, Container>();
     const nextObjectsMap = new Map<string, VamsObject>();
-
     const worldScaleX = world.scale.x;
     const worldScaleY = world.scale.y;
-    const worldScaleChanged = prevWorldScaleRef.current.x !== worldScaleX || prevWorldScaleRef.current.y !== worldScaleY;
+    const worldScaleChanged =
+      prevWorldScaleRef.current.x !== worldScaleX ||
+      prevWorldScaleRef.current.y !== worldScaleY;
 
     objects.forEach((obj, index) => {
-        nextObjectsMap.set(obj.id, obj);
+      nextObjectsMap.set(obj.id, obj);
+      if (simulationState === "PLAYING" && !transformCacheRef.current.has(obj.id)) {
+        transformCacheRef.current.set(obj.id, { ...obj.transform });
+      }
 
-        if (simulationState === "PLAYING" && !transformCacheRef.current.has(obj.id)) {
-            transformCacheRef.current.set(obj.id, { ...obj.transform });
+      let container = containersRef.current.get(obj.id);
+      const prevObj = prevObjectsRef.current.get(obj.id);
+      const isSelected = obj.id === selectedObjectId;
+      const wasSelected = prevSelectedObjectIdRef.current === obj.id;
+
+      let needsRebuild =
+        !container ||
+        !prevObj ||
+        worldScaleChanged ||
+        prevObj.type !== obj.type ||
+        prevObj.vertices !== obj.vertices ||
+        prevObj.textContent !== obj.textContent ||
+        prevObj.shading !== obj.shading;
+
+      if (
+        obj.type === "GROUP" &&
+        (isSelected !== wasSelected || prevObj?.childIds !== obj.childIds || isSelected)
+      ) {
+        needsRebuild = true;
+      }
+
+      if (needsRebuild) {
+        if (container) {
+          container.removeChildren();
+          let groupChildren: VamsObject[] | undefined;
+          if (obj.type === "GROUP") {
+            groupChildren = objects.filter((c) => c.parentId === obj.id);
+          }
+          const newContent = createDrawable(obj, worldScaleX, {
+            groupChildren,
+            isSelected,
+            worldScaleY,
+          });
+          while (newContent.children.length > 0) {
+            container.addChild(newContent.children[0]);
+          }
+          container.hitArea = newContent.hitArea;
+          newContent.destroy();
+        } else {
+          let groupChildren: VamsObject[] | undefined;
+          if (obj.type === "GROUP") {
+            groupChildren = objects.filter((c) => c.parentId === obj.id);
+          }
+          container = createDrawable(obj, worldScaleX, {
+            groupChildren,
+            isSelected,
+            worldScaleY,
+          });
         }
+      }
 
-        let container = containersRef.current.get(obj.id);
-        const prevObj = prevObjectsRef.current.get(obj.id);
-        const isSelected = obj.id === selectedObjectId;
-        const wasSelected = prevSelectedObjectIdRef.current === obj.id;
+      unusedIds.delete(obj.id);
 
-        // GC Optimization: Only rebuild geometry if topology or styling changed natively
-        let needsRebuild = !container || !prevObj || worldScaleChanged ||
-                           prevObj.type !== obj.type ||
-                           prevObj.vertices !== obj.vertices ||
-                           prevObj.textContent !== obj.textContent ||
-                           prevObj.shading !== obj.shading;
+      // During simulation, read position from the transform cache so behavior-driven
+      // movement is not overwritten by the store's original position values.
+      const t =
+        simulationState === "PLAYING" && transformCacheRef.current.get(obj.id)
+          ? transformCacheRef.current.get(obj.id)!
+          : obj.transform;
 
-        // Force rebuild dashed selection box for groups
-        if (obj.type === "GROUP" && (isSelected !== wasSelected || prevObj?.childIds !== obj.childIds || isSelected)) {
-            needsRebuild = true;
-        }
+      container!.position.set(t.translateX, t.translateY);
+      container!.rotation = (t.rotate * Math.PI) / 180;
+      container!.scale.set(t.scale);
+      container!.visible = obj.isVisible;
+      container!.zIndex = objects.length - index;
+      container!.label = obj.id;
+      container!.sortableChildren = true;
 
-        if (needsRebuild) {
-            if (container) {
-                container.removeChildren();
-                let groupChildren: VamsObject[] | undefined = undefined;
-                if (obj.type === "GROUP") {
-                    groupChildren = objects.filter((c) => c.parentId === obj.id);
-                }
-                const newContent = createDrawable(obj, worldScaleX, {
-                    groupChildren,
-                    isSelected,
-                    worldScaleY: worldScaleY
-                });
-                while (newContent.children.length > 0) {
-                    container.addChild(newContent.children[0]);
-                }
-                container.hitArea = newContent.hitArea;
-                newContent.destroy();
-            } else {
-                let groupChildren: VamsObject[] | undefined = undefined;
-                if (obj.type === "GROUP") {
-                    groupChildren = objects.filter((c) => c.parentId === obj.id);
-                }
-                container = createDrawable(obj, worldScaleX, {
-                    groupChildren,
-                    isSelected,
-                    worldScaleY: worldScaleY
-                });
+      if (needsRebuild || !prevObj) {
+        container!.removeAllListeners();
+
+        if (simulationState !== "PLAYING") {
+          container!.eventMode = "static";
+          container!.on("pointerover", () => {
+            if (!dragRef.current) {
+              const mode = interactionModeRef.current;
+              if (mode === "CUSTOM_SHAPE_PLACE") {
+                app.canvas.style.cursor = "crosshair";
+              } else if (mode === "VERTEX_EDIT") {
+                app.canvas.style.cursor = "default";
+              } else {
+                app.canvas.style.cursor = "grab";
+              }
             }
-        }
-        
-        unusedIds.delete(obj.id);
-
-        const t = (simulationState === "PLAYING" && transformCacheRef.current.get(obj.id)) 
-            ? transformCacheRef.current.get(obj.id)! 
-            : obj.transform;
-
-        container!.position.set(t.translateX, t.translateY);
-        container!.rotation = (t.rotate * Math.PI) / 180;
-        container!.scale.set(t.scale);
-        
-        container!.visible = obj.isVisible;
-        container!.zIndex = objects.length - index;
-        container!.label = obj.id;
-        container!.sortableChildren = true;
-
-        if (needsRebuild || !prevObj) {
-            container!.removeAllListeners();
-
-            if (simulationState !== "PLAYING") {
-                container!.eventMode = "static";
-                container!.on("pointerover", () => {
-                    if (!dragRef.current) {
-                        const mode = interactionModeRef.current;
-                        if (mode === "CUSTOM_SHAPE_PLACE") {
-                            app.canvas.style.cursor = "crosshair";
-                        } else if (mode === "VERTEX_EDIT") {
-                            app.canvas.style.cursor = "default";
-                        } else {
-                            app.canvas.style.cursor = "grab";
-                        }
-                    }
-                });
-                container!.on("pointerout", () => {
-                    if (!dragRef.current) {
-                        const mode = interactionModeRef.current;
-                        if (mode === "CUSTOM_SHAPE_PLACE") {
-                            app.canvas.style.cursor = "crosshair";
-                        } else {
-                            app.canvas.style.cursor = "default";
-                        }
-                    }
-                });
-
-                container!.on("pointerdown", (e: FederatedPointerEvent) => {
-                    if (interactionModeRef.current === "CUSTOM_SHAPE_PLACE") return;
-                    e.stopPropagation();
-                    
-                    selectObject(obj.id);
-
-                    if (e.button === 0 && interactionModeRef.current !== "VERTEX_EDIT") {
-                        const p = world.toLocal(e.global);
-                        const currentObj = objectsRef.current.find(o => o.id === obj.id);
-                        if (currentObj) {
-                            dragRef.current = {
-                                id: currentObj.id,
-                                offsetX: p.x - currentObj.transform.translateX,
-                                offsetY: p.y - currentObj.transform.translateY,
-                                historyPushed: false,
-                            };
-                            app.canvas.style.cursor = "grabbing";
-                        }
-                    }
-                });
+          });
+          container!.on("pointerout", () => {
+            if (!dragRef.current) {
+              const mode = interactionModeRef.current;
+              if (mode === "CUSTOM_SHAPE_PLACE") {
+                app.canvas.style.cursor = "crosshair";
+              } else {
+                app.canvas.style.cursor = "default";
+              }
             }
-            else {
-                container!.eventMode = "static";
-                
-                const isThinShape = ['LINE', 'LINE_STRIP', 'POINT', 'POINTS', 'TEXT'].includes(obj.type);
-                if (!isThinShape && !container!.hitArea) {
-                    if (obj.type === 'CIRCLE') {
-                        const { cx, cy, rx, ry } = bboxRadii(obj);
-                        const r = (rx + ry) / 2;
-                        container!.hitArea = new Circle(cx, cy, r);
-                    } else if (obj.type === 'ELLIPSE') {
-                        const { cx, cy, rx, ry } = bboxRadii(obj);
-                        container!.hitArea = new Ellipse(cx, cy, rx, ry);
-                    } else if (obj.vertices.length >= 3) {
-                         const points: number[] = [];
-                         obj.vertices.forEach(v => points.push(v.x, v.y));
-                         container!.hitArea = new Polygon(points);
-                    }
-                }
-
-                container!.cursor = "default";
-                const dragBehavior = obj.behaviors.find(b => b.enabled && b.trigger === 'MOUSE_DRAG');
-                const clickBehavior = obj.behaviors.find(b => b.enabled && b.trigger === 'MOUSE_CLICK');
-                
-                if (dragBehavior || clickBehavior) {
-                    container!.cursor = "pointer";
-                }
-
-                container!.on("pointerdown", (e: FederatedPointerEvent) => {
-                     const currentObj = objectsRef.current.find(o => o.id === obj.id);
-                     if (!currentObj) return;
-                     
-                     handleObjectPointerDown(e, currentObj.id);
-
-                     const currDragBehavior = currentObj.behaviors.find(b => b.enabled && b.trigger === 'MOUSE_DRAG');
-                     if (currDragBehavior) {
-                         const expectedButton = currDragBehavior.triggerKey === "2" ? 2 : 0;
-                         if (e.button === expectedButton) {
-                             e.stopPropagation();
-                             const p = world.toLocal(e.global);
-                             const cTransform = transformCacheRef.current.get(currentObj.id) || currentObj.transform;
-
-                             dragRef.current = {
-                                 id: currentObj.id,
-                                 offsetX: p.x - cTransform.translateX,
-                                 offsetY: p.y - cTransform.translateY,
-                                 historyPushed: false,
-                             };
-                             app.canvas.style.cursor = "grabbing";
-                         }
-                     }
-                });
+          });
+          container!.on("pointerdown", (e: FederatedPointerEvent) => {
+            if (interactionModeRef.current === "CUSTOM_SHAPE_PLACE") return;
+            e.stopPropagation();
+            selectObject(obj.id);
+            if (e.button === 0 && interactionModeRef.current !== "VERTEX_EDIT") {
+              const p = world.toLocal(e.global);
+              const currentObj = objectsRef.current.find((o) => o.id === obj.id);
+              if (currentObj) {
+                dragRef.current = {
+                  id: currentObj.id,
+                  offsetX: p.x - currentObj.transform.translateX,
+                  offsetY: p.y - currentObj.transform.translateY,
+                  historyPushed: false,
+                };
+                app.canvas.style.cursor = "grabbing";
+              }
             }
+          });
+        } else {
+          container!.eventMode = "static";
+          const isThinShape = ['LINE', 'LINE_STRIP', 'POINT', 'POINTS', 'TEXT'].includes(obj.type);
+          if (!isThinShape && !container!.hitArea) {
+            if (obj.type === 'CIRCLE') {
+              const { cx, cy, rx, ry } = bboxRadii(obj);
+              const r = (rx + ry) / 2;
+              container!.hitArea = new Circle(cx, cy, r);
+            } else if (obj.type === 'ELLIPSE') {
+              const { cx, cy, rx, ry } = bboxRadii(obj);
+              container!.hitArea = new Ellipse(cx, cy, rx, ry);
+            } else if (obj.vertices.length >= 3) {
+              const points: number[] = [];
+              obj.vertices.forEach((v) => points.push(v.x, v.y));
+              container!.hitArea = new Polygon(points);
+            }
+          }
+          container!.cursor = "default";
+          const dragBehavior = obj.behaviors.find(
+            (b) => b.enabled && b.trigger === 'MOUSE_DRAG'
+          );
+          const clickBehavior = obj.behaviors.find(
+            (b) => b.enabled && b.trigger === 'MOUSE_CLICK'
+          );
+          if (dragBehavior || clickBehavior) {
+            container!.cursor = "pointer";
+          }
+          container!.on("pointerdown", (e: FederatedPointerEvent) => {
+            const currentObj = objectsRef.current.find((o) => o.id === obj.id);
+            if (!currentObj) return;
+            handleObjectPointerDown(e, currentObj.id);
+            const currDragBehavior = currentObj.behaviors.find(
+              (b) => b.enabled && b.trigger === 'MOUSE_DRAG'
+            );
+            if (currDragBehavior) {
+              const expectedButton = currDragBehavior.triggerKey === "2" ? 2 : 0;
+              if (e.button === expectedButton) {
+                e.stopPropagation();
+                const p = world.toLocal(e.global);
+                const cTransform =
+                  transformCacheRef.current.get(currentObj.id) || currentObj.transform;
+                dragRef.current = {
+                  id: currentObj.id,
+                  offsetX: p.x - cTransform.translateX,
+                  offsetY: p.y - cTransform.translateY,
+                  historyPushed: false,
+                };
+                app.canvas.style.cursor = "grabbing";
+              }
+            }
+          });
         }
+      }
 
-        nextContainers.set(obj.id, container!);
+      nextContainers.set(obj.id, container!);
     });
 
     if (overlay.parent) overlay.parent.removeChild(overlay);
 
-    objects.forEach(obj => {
-        const container = nextContainers.get(obj.id);
-        if (!container) return;
-        
-        const isRoot = !obj.parentId;
-        if (isRoot) {
-            if (container.parent !== world) {
-                world.addChild(container);
-            }
-            container.eventMode = 'static';
-        } else {
-            const parentContainer = nextContainers.get(obj.parentId!);
-            if (parentContainer && container.parent !== parentContainer) {
-                parentContainer.addChild(container);
-                container.eventMode = 'none';
-            }
+    objects.forEach((obj) => {
+      const container = nextContainers.get(obj.id);
+      if (!container) return;
+      const isRoot = !obj.parentId;
+      if (isRoot) {
+        if (container.parent !== world) {
+          world.addChild(container);
         }
+        container.eventMode = 'static';
+      } else {
+        const parentContainer = nextContainers.get(obj.parentId!);
+        if (parentContainer && container.parent !== parentContainer) {
+          parentContainer.addChild(container);
+          container.eventMode = 'none';
+        }
+      }
     });
 
-    unusedIds.forEach(id => {
-        const c = containersRef.current.get(id);
-        if (c) {
-            c.children.forEach(child => {
-                if (child instanceof Mesh && child.geometry) {
-                    child.geometry.destroy();
-                }
-            });
-            c.destroy({ children: true });
-            if (c.parent) c.parent.removeChild(c);
-        }
+    unusedIds.forEach((id) => {
+      const c = containersRef.current.get(id);
+      if (c) {
+        c.children.forEach((child) => {
+          if (child instanceof Mesh && child.geometry) {
+            child.geometry.destroy();
+          }
+        });
+        c.destroy({ children: true });
+        if (c.parent) c.parent.removeChild(c);
+      }
     });
 
-    // Update state tracking refs
     containersRef.current = nextContainers;
     prevObjectsRef.current = nextObjectsMap;
     prevSelectedObjectIdRef.current = selectedObjectId;
     prevWorldScaleRef.current = { x: worldScaleX, y: worldScaleY };
-    
     world.addChild(overlay);
-
   }, [
     pixiReady,
     objects,
@@ -411,13 +424,12 @@ export function useSceneRenderer({
     selectObject,
     applyViewportTransform,
     simulationState,
-    handleObjectPointerDown
+    handleObjectPointerDown,
   ]);
 
   useEffect(() => {
     const overlay = overlayRef.current;
     if (!overlay) return;
-
     if (selectedObjectId && simulationState !== "PLAYING") {
       const target = containersRef.current.get(selectedObjectId);
       if (target && !target.destroyed) {

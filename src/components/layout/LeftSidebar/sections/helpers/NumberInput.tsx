@@ -17,13 +17,13 @@ const NumberInput = ({
   icon,
   iconClass,
   step = 0.1,
-  precision = 2
+  precision = 2,
 }: NumberInputProps) => {
   const [isFocused, setIsFocused] = useState(false);
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Display value: show edit value while focused, formatted value otherwise
+  // Show the live edit string while focused; formatted prop value otherwise.
   const displayValue = isFocused ? editValue : value.toFixed(precision);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,13 +32,10 @@ const NumberInput = ({
 
   const handleBlur = () => {
     let numValue = parseFloat(editValue);
-    
-    // Prevent NaN Deadlock when input is cleared completely
+    // Prevent NaN deadlock when input is cleared completely.
     if (isNaN(numValue)) {
       numValue = 0;
     }
-    
-    // Round to specified precision
     const rounded = parseFloat(numValue.toFixed(precision));
     onChange(rounded);
     setIsFocused(false);
@@ -47,7 +44,7 @@ const NumberInput = ({
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     setEditValue(value.toString());
     setIsFocused(true);
-    // Select all text on next tick to ensure it works
+    // Select all text on next tick so it works reliably across browsers.
     setTimeout(() => e.currentTarget.select(), 0);
   };
 
@@ -55,7 +52,18 @@ const NumberInput = ({
     if (e.key === 'Enter') {
       e.currentTarget.blur();
     } else if (e.key === 'Escape') {
+      // Bug 4 fix: the original code only called `setIsFocused(false)` on Escape,
+      // without calling `.blur()`. The browser then fired the native `blur` event
+      // which triggered `handleBlur`, which parsed `editValue` — still containing
+      // the in-progress text — and committed it via `onChange`. The cancel intent
+      // was directly contradicted by the commit that followed.
+      //
+      // Fix: restore `editValue` to the original prop value BEFORE calling blur()
+      // so that when `handleBlur` fires (which it will, because blur() triggers it),
+      // it parses the original value and calls onChange with a no-op change.
+      setEditValue(value.toString());
       setIsFocused(false);
+      inputRef.current?.blur();
     }
   };
 

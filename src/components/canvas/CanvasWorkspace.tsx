@@ -11,15 +11,14 @@ import "./CanvasWorkspace.scss";
 export default function CanvasWorkspace() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [coordinates, setCoordinates] = useState({ x: 0, y: 0 });
-  
+
   const viewportLimits = useVamsStore((s) => s.viewportLimits);
   const interactionMode = useVamsStore((s) => s.interactionMode);
-  const axisVisibility = useVamsStore((s) => s.axisVisibility);
+  // Bug 13 fix: axisVisibility is no longer passed to CanvasOverlays.
+  // It is consumed directly by useGridSystem at the PixiJS layer.
   const showCoordinateTracker = useVamsStore((s) => s.showCoordinateTracker);
 
-  // gridRef is now available
   const { pixiReady, appRef, worldRef, gridRef, overlayRef } = usePixiApp(canvasRef);
-  
   const { screenToWorld, applyViewportTransform } = useCanvasInteraction({
     pixiReady,
     appRef,
@@ -27,7 +26,6 @@ export default function CanvasWorkspace() {
     canvasRef,
   });
 
-  // Render Objects
   useSceneRenderer({
     pixiReady,
     appRef,
@@ -36,7 +34,6 @@ export default function CanvasWorkspace() {
     applyViewportTransform,
   });
 
-  // Render Infinite Axes (Vector Sharpness)
   useGridSystem({
     pixiReady,
     appRef,
@@ -69,7 +66,6 @@ export default function CanvasWorkspace() {
         viewportLimits={viewportLimits}
         interactionMode={interactionMode}
         coordinates={coordinates}
-        axisVisibility={axisVisibility}
         showCoordinateTracker={showCoordinateTracker}
       />
     </div>
