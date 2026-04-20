@@ -81,10 +81,7 @@ export interface VamsObject {
 }
 export interface LearningSettings {
   gridSnapping: boolean;
-  angleSnapping: boolean;
   snapIncrement: number;
-  angleSnapDegrees: number;
-  colorMode: 'FLOAT' | 'RGB';
 }
 export type InteractionMode =
   | 'SELECT'

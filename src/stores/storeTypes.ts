@@ -11,7 +11,6 @@ import type {
   SimulationState,
   PendingVertex,
 } from '@/types';
-
 export interface SceneSlice {
   objects: VamsObject[];
   selectedObjectId: string | null;
@@ -38,7 +37,6 @@ export interface SceneSlice {
   deleteGroup: (groupId: string) => void;
   reorderObject: (sourceId: string, targetId: string, position: 'before' | 'after' | 'inside') => void;
 }
-
 export interface InteractionSlice {
   interactionMode: InteractionMode;
   creationMode: PrimitiveType | null;
@@ -49,7 +47,6 @@ export interface InteractionSlice {
   toggleVertexEditMode: () => void;
   setSelectedVertex: (vertexId: string | null) => void;
 }
-
 export interface ViewportSlice {
   viewportLimits: ViewportLimits;
   axisVisibility: AxisVisibility;
@@ -58,9 +55,7 @@ export interface ViewportSlice {
   setAxisVisibility: (visibility: Partial<AxisVisibility>) => void;
   setShowCoordinateTracker: (show: boolean) => void;
 }
-
 export type ObjectSnapshot = VamsObject;
-
 export interface SimulationSlice {
   simulationState: SimulationState;
   isGameOver: boolean;
@@ -70,7 +65,6 @@ export interface SimulationSlice {
   stop: () => void;
   setGameOver: (isGameOver: boolean) => void;
 }
-
 export interface SettingsSlice {
   learningSettings: LearningSettings;
   theme: 'dark' | 'light';
@@ -79,7 +73,6 @@ export interface SettingsSlice {
   toggleTheme: () => void;
   setCanvasBackgroundColor: (color: string) => void;
 }
-
 export interface CustomShapeBuilderSlice {
   pendingShapeType: PrimitiveType | null;
   pendingVertices: PendingVertex[];
@@ -92,7 +85,6 @@ export interface CustomShapeBuilderSlice {
   removePendingVertexAt: (index: number) => void;
   updatePendingVertex: (index: number, x: number, y: number) => void;
 }
-
 export interface HistorySnapshot {
   objects: VamsObject[];
   selectedObjectId: string | null;
@@ -103,7 +95,6 @@ export interface HistorySnapshot {
   pendingVertices: PendingVertex[];
   timestamp: number;
 }
-
 export interface HistorySlice {
   past: HistorySnapshot[];
   future: HistorySnapshot[];
@@ -118,7 +109,6 @@ export interface HistorySlice {
   canRedo: () => boolean;
   clearHistory: () => void;
 }
-
 export type VamsState = SceneSlice &
   InteractionSlice &
   ViewportSlice &
