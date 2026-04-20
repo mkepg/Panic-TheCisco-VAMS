@@ -5,7 +5,7 @@ import { getInitialVertices } from './storeUtils';
 
 const generateId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    try { return crypto.randomUUID(); } catch { /* fall through */ }
+    try { return crypto.randomUUID(); } catch { /* fallthrough */ }
   }
   return 'id-' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
 };
@@ -29,14 +29,6 @@ const getDuplicateName = (originalName: string, objects: VamsObject[]) => {
   }
   return newName;
 };
-
-// ---------------------------------------------------------------------------
-// Flat 6-element affine matrix utilities  [a, b, tx, c, d, ty]
-// Equivalent to the 3×3 matrix:
-//   | a  b  tx |
-//   | c  d  ty |
-//   | 0  0   1 |
-// ---------------------------------------------------------------------------
 
 const getMatrix = (t: TransformState): number[] => {
   const rad = (t.rotate * Math.PI) / 180;
@@ -72,18 +64,9 @@ const invertMat = (m: number[]): number[] => {
 const extractTransform = (m: number[]): TransformState => {
   const scale = Math.sqrt(m[0] * m[0] + m[3] * m[3]);
   const rotate = Math.atan2(m[3], m[0]) * 180 / Math.PI;
-  return {
-    translateX: m[2],
-    translateY: m[5],
-    rotate,
-    scale,
-  };
+  return { translateX: m[2], translateY: m[5], rotate, scale };
 };
 
-/**
- * Returns the world-space affine matrix for the given object, walking the full
- * ancestor chain. Result is a flat number[6] in the form [a, b, tx, c, d, ty].
- */
 const getGlobalMatrix = (objId: string, objects: VamsObject[]): number[] => {
   const current = objects.find((o) => o.id === objId);
   if (!current) return [1, 0, 0, 0, 1, 0];
@@ -103,12 +86,7 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
   selectedObjectId: null,
 
   setSelection: (id) => get().selectObject(id),
-
-  selectObject: (id) => set({
-    selectedObjectId: id,
-    creationMode: null,
-    selectedVertexId: null,
-  }),
+  selectObject: (id) => set({ selectedObjectId: id, creationMode: null, selectedVertexId: null }),
 
   addObject: (type) => {
     get().pushToHistory();
@@ -126,12 +104,7 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         parentId: null,
         childIds: [],
       };
-      return {
-        objects: [newObj, ...state.objects],
-        selectedObjectId: newId,
-        creationMode: null,
-        interactionMode: 'SELECT',
-      };
+      return { objects: [newObj, ...state.objects], selectedObjectId: newId, creationMode: null, interactionMode: 'SELECT' };
     });
   },
 
@@ -139,23 +112,15 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
     get().pushToHistory();
     set((state) => {
       const newId = generateId();
-      let centerX = 0;
-      let centerY = 0;
+      let centerX = 0, centerY = 0;
       if (placedVertices.length > 0) {
-        let sumX = 0;
-        let sumY = 0;
-        placedVertices.forEach((v) => {
-          sumX += v.x;
-          sumY += v.y;
-        });
+        let sumX = 0, sumY = 0;
+        placedVertices.forEach((v) => { sumX += v.x; sumY += v.y; });
         centerX = sumX / placedVertices.length;
         centerY = sumY / placedVertices.length;
       }
       const vertices = placedVertices.map((pv, i) => ({
-        id: `v${i}`,
-        x: pv.x - centerX,
-        y: pv.y - centerY,
-        color: '#ffffff',
+        id: `v${i}`, x: pv.x - centerX, y: pv.y - centerY, color: '#ffffff',
       }));
       const newObj: VamsObject = {
         id: newId,
@@ -169,13 +134,7 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         parentId: null,
         childIds: [],
       };
-      return {
-        objects: [newObj, ...state.objects],
-        selectedObjectId: newId,
-        pendingShapeType: null,
-        pendingVertices: [],
-        interactionMode: 'SELECT',
-      };
+      return { objects: [newObj, ...state.objects], selectedObjectId: newId, pendingShapeType: null, pendingVertices: [], interactionMode: 'SELECT' };
     });
   },
 
@@ -190,22 +149,14 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
       if (obj.parentId) {
         updatedObjects = updatedObjects.map((o) => {
           if (o.id === obj.parentId) {
-            return {
-              ...o,
-              childIds: o.childIds?.filter((cid) => cid !== id) || [],
-            };
+            return { ...o, childIds: o.childIds?.filter((cid) => cid !== id) || [] };
           }
           return o;
         });
       }
       updatedObjects = updatedObjects.map((o) => {
         if (o.behaviors.some((b) => b.triggerTargetId && idsToDelete.includes(b.triggerTargetId))) {
-          return {
-            ...o,
-            behaviors: o.behaviors.filter(
-              (b) => !b.triggerTargetId || !idsToDelete.includes(b.triggerTargetId)
-            ),
-          };
+          return { ...o, behaviors: o.behaviors.filter((b) => !b.triggerTargetId || !idsToDelete.includes(b.triggerTargetId)) };
         }
         return o;
       });
@@ -213,12 +164,7 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
       return {
         objects: updatedObjects,
         selectedObjectId: isSelectedDeleted ? null : state.selectedObjectId,
-        ...(isSelectedDeleted
-          ? {
-              selectedVertexId: null,
-              interactionMode: state.interactionMode === 'VERTEX_EDIT' ? 'SELECT' : state.interactionMode,
-            }
-          : {}),
+        ...(isSelectedDeleted ? { selectedVertexId: null, interactionMode: state.interactionMode === 'VERTEX_EDIT' ? 'SELECT' : state.interactionMode } : {}),
       };
     });
   },
@@ -241,35 +187,50 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
       };
       const newObjects = [...state.objects];
       newObjects.splice(objIndex + 1, 0, duplicate);
-      return {
-        objects: newObjects,
-        selectedObjectId: newId,
-      };
+      return { objects: newObjects, selectedObjectId: newId };
     });
   },
 
   updateObjectName: (id, name) => {
     get().pushToHistory();
-    set((state) => ({
-      objects: state.objects.map((o) => (o.id === id ? { ...o, name } : o)),
-    }));
+    set((state) => ({ objects: state.objects.map((o) => (o.id === id ? { ...o, name } : o)) }));
   },
 
   toggleObjectVisibility: (id) => {
     get().pushToHistory();
-    set((state) => ({
-      objects: state.objects.map((o) =>
-        o.id === id ? { ...o, isVisible: !o.isVisible } : o
-      ),
-    }));
+    set((state) => {
+      const target = state.objects.find(o => o.id === id);
+      if (!target) return state;
+      const nextVisible = !target.isVisible;
+
+      if (target.type === 'GROUP') {
+        // Cascade visibility to all descendants
+        const getAllDescendantIds = (parentId: string): string[] => {
+          const children = state.objects.filter(o => o.parentId === parentId);
+          return children.reduce<string[]>(
+            (acc, child) => [...acc, child.id, ...getAllDescendantIds(child.id)],
+            []
+          );
+        };
+        const descendantIds = new Set(getAllDescendantIds(id));
+        return {
+          objects: state.objects.map(o => {
+            if (o.id === id || descendantIds.has(o.id)) return { ...o, isVisible: nextVisible };
+            return o;
+          }),
+        };
+      }
+
+      return {
+        objects: state.objects.map(o => o.id === id ? { ...o, isVisible: nextVisible } : o),
+      };
+    });
   },
 
   updateObjectTransform: (id, update) => {
     set((state) => ({
       objects: state.objects.map((obj) =>
-        obj.id === id
-          ? { ...obj, transform: { ...obj.transform, ...update } }
-          : obj
+        obj.id === id ? { ...obj, transform: { ...obj.transform, ...update } } : obj
       ),
     }));
   },
@@ -278,26 +239,18 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
     set((state) => ({
       objects: state.objects.map((obj) => {
         if (obj.id !== objectId) return obj;
-        return {
-          ...obj,
-          vertices: obj.vertices.map((v) => (v.id === vertexId ? { ...v, x, y } : v)),
-        };
+        return { ...obj, vertices: obj.vertices.map((v) => (v.id === vertexId ? { ...v, x, y } : v)) };
       }),
     }));
   },
 
   updateVertexColor: (objectId, vertexId, color) => {
     const state = get();
-    if (!state.isBatchMode) {
-      state.pushToHistory();
-    }
+    if (!state.isBatchMode) state.pushToHistory();
     set((s) => ({
       objects: s.objects.map((obj) => {
         if (obj.id !== objectId) return obj;
-        return {
-          ...obj,
-          vertices: obj.vertices.map((v) => (v.id === vertexId ? { ...v, color } : v)),
-        };
+        return { ...obj, vertices: obj.vertices.map((v) => (v.id === vertexId ? { ...v, color } : v)) };
       }),
     }));
   },
@@ -307,10 +260,7 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
     set((state) => ({
       objects: state.objects.map((obj) => {
         if (obj.id !== objectId) return obj;
-        return {
-          ...obj,
-          vertices: obj.vertices.map((v) => ({ ...v, color })),
-        };
+        return { ...obj, vertices: obj.vertices.map((v) => ({ ...v, color })) };
       }),
     }));
   },
@@ -327,12 +277,7 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
     set((state) => ({
       objects: state.objects.map((obj) => {
         if (obj.id !== objectId) return obj;
-        const newBehavior = {
-          ...behavior,
-          id: generateId(),
-          enabled: true,
-          mode: behavior.mode || 'INSTANT',
-        };
+        const newBehavior = { ...behavior, id: generateId(), enabled: true, mode: behavior.mode || 'INSTANT' };
         return { ...obj, behaviors: [...obj.behaviors, newBehavior] };
       }),
     }));
@@ -353,12 +298,7 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
     set((state) => ({
       objects: state.objects.map((obj) => {
         if (obj.id !== objectId) return obj;
-        return {
-          ...obj,
-          behaviors: obj.behaviors.map((b) =>
-            b.id === behaviorId ? { ...b, ...update } : b
-          ),
-        };
+        return { ...obj, behaviors: obj.behaviors.map((b) => b.id === behaviorId ? { ...b, ...update } : b) };
       }),
     }));
   },
@@ -387,9 +327,7 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
 
   updateTextContent: (id, text) => {
     set((state) => ({
-      objects: state.objects.map((obj) =>
-        obj.id === id ? { ...obj, textContent: text } : obj
-      ),
+      objects: state.objects.map((obj) => obj.id === id ? { ...obj, textContent: text } : obj),
     }));
   },
 
@@ -404,12 +342,8 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
       });
       if (validObjectIds.length < 2) return state;
       const objectsToGroup = state.objects.filter((o) => validObjectIds.includes(o.id));
-      const centerX =
-        objectsToGroup.reduce((sum, obj) => sum + obj.transform.translateX, 0) /
-        objectsToGroup.length;
-      const centerY =
-        objectsToGroup.reduce((sum, obj) => sum + obj.transform.translateY, 0) /
-        objectsToGroup.length;
+      const centerX = objectsToGroup.reduce((sum, obj) => sum + obj.transform.translateX, 0) / objectsToGroup.length;
+      const centerY = objectsToGroup.reduce((sum, obj) => sum + obj.transform.translateY, 0) / objectsToGroup.length;
       const groupObj: VamsObject = {
         id: groupId,
         name: getUniqueName('Group', state.objects),
@@ -436,10 +370,7 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         }
         return obj;
       });
-      return {
-        objects: [groupObj, ...updatedObjects],
-        selectedObjectId: groupId,
-      };
+      return { objects: [groupObj, ...updatedObjects], selectedObjectId: groupId };
     });
   },
 
@@ -448,91 +379,50 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
     set((state) => {
       const group = state.objects.find((o) => o.id === groupId);
       if (!group || group.type !== 'GROUP') return state;
-
-      // Bug 3 fix: the original implementation manually computed one level of
-      // group transform (gCos, gSin, gScale) and applied it to child positions.
-      // This was wrong when the group itself had a parent group — the ancestor
-      // transforms above the group were silently ignored.
-      //
-      // Fix: use getGlobalMatrix() which walks the full ancestor chain, then
-      // decompose the child's new local transform relative to the group's parent
-      // using matrix inversion — exactly the same approach already used by
-      // reorderObject(). Children that had a null parent (top-level group) will
-      // correctly get world-space transforms; children of a nested group will get
-      // transforms local to the grandparent group.
-
       const groupGlobalMat = getGlobalMatrix(groupId, state.objects);
-
-      // Determine the parent to re-attach children to (the group's own parent).
       const newParentId = group.parentId ?? null;
       let newParentGlobalMat: number[] = [1, 0, 0, 0, 1, 0];
-      if (newParentId) {
-        newParentGlobalMat = getGlobalMatrix(newParentId, state.objects);
-      }
+      if (newParentId) newParentGlobalMat = getGlobalMatrix(newParentId, state.objects);
       const invParentMat = invertMat(newParentGlobalMat);
-
       let updatedObjects = state.objects
         .filter((o) => o.id !== groupId)
         .map((obj) => {
           if (!group.childIds?.includes(obj.id)) return obj;
-
-          // Compute child's global matrix = groupGlobal × childLocal.
           const childLocalMat = getMatrix(obj.transform);
           const childGlobalMat = multiplyMat(groupGlobalMat, childLocalMat);
-
-          // Express in the new parent's local space.
           const newLocalMat = multiplyMat(invParentMat, childGlobalMat);
           const newTransform = extractTransform(newLocalMat);
-
-          // Round to avoid floating-point noise.
           return {
             ...obj,
             parentId: newParentId,
             transform: {
               translateX: parseFloat(newTransform.translateX.toFixed(6)),
               translateY: parseFloat(newTransform.translateY.toFixed(6)),
-              rotate:     parseFloat(newTransform.rotate.toFixed(6)),
-              scale:      parseFloat(newTransform.scale.toFixed(6)),
+              rotate: parseFloat(newTransform.rotate.toFixed(6)),
+              scale: parseFloat(newTransform.scale.toFixed(6)),
             },
           };
         });
-
-      // If the group had a parent, add the ungrouped children to that parent's childIds.
       if (newParentId) {
         updatedObjects = updatedObjects.map((o) => {
           if (o.id === newParentId) {
             const existingChildIds = o.childIds?.filter((cid) => cid !== groupId) ?? [];
-            return {
-              ...o,
-              childIds: [...existingChildIds, ...(group.childIds ?? [])],
-            };
+            return { ...o, childIds: [...existingChildIds, ...(group.childIds ?? [])] };
           }
           return o;
         });
       }
-
-      // Clean up any behaviors that referenced the now-deleted group.
       updatedObjects = updatedObjects.map((o) => {
         if (o.behaviors.some((b) => b.triggerTargetId === groupId)) {
-          return {
-            ...o,
-            behaviors: o.behaviors.filter((b) => b.triggerTargetId !== groupId),
-          };
+          return { ...o, behaviors: o.behaviors.filter((b) => b.triggerTargetId !== groupId) };
         }
         return o;
       });
-
       const isSelectedDeleted = state.selectedObjectId === groupId;
       return {
         objects: updatedObjects,
         selectedObjectId: isSelectedDeleted ? null : state.selectedObjectId,
-        ...(isSelectedDeleted
-          ? {
-              selectedVertexId: null,
-              interactionMode:
-                state.interactionMode === 'VERTEX_EDIT' ? 'SELECT' : state.interactionMode,
-            }
-          : {}),
+        ...(isSelectedDeleted ? { selectedVertexId: null, interactionMode: state.interactionMode === 'VERTEX_EDIT' ? 'SELECT' : state.interactionMode } : {}),
       };
     });
   },
@@ -546,32 +436,16 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
       const idsToDelete = [groupId, ...childIdsToDelete];
       let updatedObjects = state.objects.filter((o) => !idsToDelete.includes(o.id));
       updatedObjects = updatedObjects.map((o) => {
-        if (
-          o.behaviors.some(
-            (b) => b.triggerTargetId && idsToDelete.includes(b.triggerTargetId)
-          )
-        ) {
-          return {
-            ...o,
-            behaviors: o.behaviors.filter(
-              (b) => !b.triggerTargetId || !idsToDelete.includes(b.triggerTargetId)
-            ),
-          };
+        if (o.behaviors.some((b) => b.triggerTargetId && idsToDelete.includes(b.triggerTargetId))) {
+          return { ...o, behaviors: o.behaviors.filter((b) => !b.triggerTargetId || !idsToDelete.includes(b.triggerTargetId)) };
         }
         return o;
       });
-      const isSelectedDeleted =
-        state.selectedObjectId && idsToDelete.includes(state.selectedObjectId);
+      const isSelectedDeleted = state.selectedObjectId && idsToDelete.includes(state.selectedObjectId);
       return {
         objects: updatedObjects,
         selectedObjectId: isSelectedDeleted ? null : state.selectedObjectId,
-        ...(isSelectedDeleted
-          ? {
-              selectedVertexId: null,
-              interactionMode:
-                state.interactionMode === 'VERTEX_EDIT' ? 'SELECT' : state.interactionMode,
-            }
-          : {}),
+        ...(isSelectedDeleted ? { selectedVertexId: null, interactionMode: state.interactionMode === 'VERTEX_EDIT' ? 'SELECT' : state.interactionMode } : {}),
       };
     });
   },
@@ -594,10 +468,7 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
       let newObjects = [...state.objects];
       const getDescendants = (id: string): VamsObject[] => {
         const children = newObjects.filter((o) => o.parentId === id);
-        return children.reduce(
-          (acc, child) => [...acc, child, ...getDescendants(child.id)],
-          children
-        );
+        return children.reduce((acc, child) => [...acc, child, ...getDescendants(child.id)], children);
       };
       const sourceDescendants = getDescendants(sourceId);
       const sourceFamilyIds = new Set([sourceId, ...sourceDescendants.map((o) => o.id)]);
@@ -609,9 +480,7 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         newParentId = targetObj.parentId ?? null;
       }
       let newParentGlobalMat: number[] = [1, 0, 0, 0, 1, 0];
-      if (newParentId) {
-        newParentGlobalMat = getGlobalMatrix(newParentId, state.objects);
-      }
+      if (newParentId) newParentGlobalMat = getGlobalMatrix(newParentId, state.objects);
       const invParentMat = invertMat(newParentGlobalMat);
       const newLocalMat = multiplyMat(invParentMat, globalMat);
       const newTransform = extractTransform(newLocalMat);
@@ -621,20 +490,14 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
       newTransform.scale = parseFloat(newTransform.scale.toFixed(4));
       const familyObjects = newObjects.filter((o) => sourceFamilyIds.has(o.id));
       newObjects = newObjects.filter((o) => !sourceFamilyIds.has(o.id));
-      familyObjects[0] = {
-        ...familyObjects[0],
-        parentId: newParentId,
-        transform: newTransform,
-      };
+      familyObjects[0] = { ...familyObjects[0], parentId: newParentId, transform: newTransform };
       const newTargetIndex = newObjects.findIndex((o) => o.id === targetId);
       let insertIndex = newTargetIndex;
       if (position === 'inside') {
         insertIndex = newTargetIndex + 1;
       } else if (position === 'after') {
         const targetDescendants = getDescendants(targetId);
-        const validDescendantsCount = targetDescendants.filter(
-          (o) => !sourceFamilyIds.has(o.id)
-        ).length;
+        const validDescendantsCount = targetDescendants.filter((o) => !sourceFamilyIds.has(o.id)).length;
         insertIndex = newTargetIndex + 1 + validDescendantsCount;
       }
       newObjects.splice(insertIndex, 0, ...familyObjects);

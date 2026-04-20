@@ -30,6 +30,16 @@
     color: $text-main;
     cursor: move;
 
+    // Dimmed appearance when hidden / excluded from output
+    &.hidden-item {
+      opacity: 0.45;
+
+      .label .name {
+        text-decoration: line-through;
+        text-decoration-color: $text-dim;
+      }
+    }
+
     .label {
       display: flex;
       align-items: center;
@@ -37,20 +47,23 @@
       color: $text-main;
       flex: 1;
       min-width: 0;
-      
+
       svg {
         color: $accent-blue;
         flex-shrink: 0;
       }
+
       .text-icon {
         color: white;
       }
+
       .name {
         flex: 1;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
+
       .parent-indicator {
         color: $text-dim;
         margin-left: auto;
@@ -63,26 +76,34 @@
       opacity: 0;
       transition: opacity 0.2s;
       flex-shrink: 0;
-      
+
       .action-btn {
         padding: 4px;
         border-radius: 3px;
         color: $text-dim;
         transition: all 0.15s;
-        
+
         &:hover {
           color: $text-main;
           background-color: rgba(var(--border-rgb), 0.5);
         }
+
         &.delete:hover {
           color: $accent-red;
           background-color: rgba(var(--accent-red-rgb), 0.1);
+        }
+
+        // Eye button when object is hidden — stays tinted so state is obvious
+        &.active-dim {
+          color: $text-dim;
+          opacity: 1;
         }
       }
     }
 
     &:hover {
       background-color: $border-color;
+
       .item-actions {
         opacity: 1;
       }
@@ -95,6 +116,7 @@
 
     &[draggable="true"] {
       cursor: grab;
+
       &:active {
         cursor: grabbing;
         opacity: 0.6;
@@ -102,30 +124,30 @@
     }
 
     &.drag-before::before {
-        content: '';
-        position: absolute;
-        top: -2px;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background-color: $accent-blue;
-        z-index: 10;
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background-color: $accent-blue;
+      z-index: 10;
     }
 
     &.drag-after::after {
-        content: '';
-        position: absolute;
-        bottom: -2px;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background-color: $accent-blue;
-        z-index: 10;
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background-color: $accent-blue;
+      z-index: 10;
     }
 
     &.drag-inside {
-        background-color: rgba(var(--accent-blue-rgb), 0.3);
-        border: 1px dashed $accent-blue;
+      background-color: rgba(var(--accent-blue-rgb), 0.3);
+      border: 1px dashed $accent-blue;
     }
   }
 

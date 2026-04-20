@@ -1,41 +1,49 @@
 import { useState, useRef } from 'react';
-import { Layers, Shapes, Type, Eye, EyeOff, Copy, Trash2, FolderOpen, Folder, FolderX, Edit3 } from 'lucide-react';
+import {
+  Layers, Shapes, Type, Eye, EyeOff, Copy, Trash2,
+  FolderOpen, Folder, FolderX, Edit3
+} from 'lucide-react';
 import { useVamsStore } from "@/stores";
 import type { VamsObject } from "@/types";
 import CollapsibleSection from './helpers/CollapsibleSection';
 
 export default function SceneHierarchy() {
-  const { 
-    objects, 
-    selectedObjectId, 
-    setSelection, 
-    deleteObject, 
-    duplicateObject, 
+  const {
+    objects,
+    selectedObjectId,
+    setSelection,
+    deleteObject,
+    duplicateObject,
     toggleObjectVisibility,
     createGroup,
     ungroup,
     deleteGroup,
     updateObjectName,
-    reorderObject
+    reorderObject,
   } = useVamsStore();
 
   const [selectedObjects, setSelectedObjects] = useState<Set<string>>(new Set());
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState<string>('');
-
-  // Drag and drop states
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dragPosition, setDragPosition] = useState<'before' | 'after' | 'inside' | null>(null);
-
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const getRootObjects = () => {
-    return objects.filter(obj => !obj.parentId || !objects.find(o => o.id === obj.parentId));
-  };
+  const getRootObjects = () =>
+    objects.filter(obj => !obj.parentId || !objects.find(o => o.id === obj.parentId));
 
-  const getChildren = (parentId: string) => {
-    return objects.filter(obj => obj.parentId === parentId);
+  const getChildren = (parentId: string) =>
+    objects.filter(obj => obj.parentId === parentId);
+
+  // Determine if an object is effectively hidden (self or any ancestor hidden)
+  const isEffectivelyHidden = (obj: VamsObject): boolean => {
+    if (!obj.isVisible) return true;
+    if (obj.parentId) {
+      const parent = objects.find(o => o.id === obj.parentId);
+      if (parent && isEffectivelyHidden(parent)) return true;
+    }
+    return false;
   };
 
   const toggleObjectSelection = (id: string) => {
@@ -43,25 +51,19 @@ export default function SceneHierarchy() {
       setSelection(id);
       return;
     }
-
     const newSelection = new Set(selectedObjects);
-    if (newSelection.has(id)) {
-      newSelection.delete(id);
-    } else {
-      newSelection.add(id);
-    }
+    if (newSelection.has(id)) newSelection.delete(id);
+    else newSelection.add(id);
     setSelectedObjects(newSelection);
   };
 
   const handleItemClick = (id: string, e: React.MouseEvent<HTMLElement>) => {
     e.stopPropagation();
-    
     if (e.detail === 1) {
       clickTimerRef.current = setTimeout(() => {
         toggleObjectSelection(id);
       }, 200);
-    } 
-    else if (e.detail === 2) {
+    } else if (e.detail === 2) {
       if (clickTimerRef.current) {
         clearTimeout(clickTimerRef.current);
         clickTimerRef.current = null;
@@ -81,33 +83,22 @@ export default function SceneHierarchy() {
     setIsMultiSelectMode(false);
   };
 
-  const handleUngroup = (groupId: string, event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    ungroup(groupId);
-  };
-
-  const handleDeleteGroup = (groupId: string, event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    deleteGroup(groupId);
-  };
-
   const renderObjectItem = (obj: VamsObject, depth: number = 0) => {
     const isGroup = obj.type === 'GROUP';
-    const isSelected = isMultiSelectMode 
-      ? selectedObjects.has(obj.id) 
+    const isSelected = isMultiSelectMode
+      ? selectedObjects.has(obj.id)
       : selectedObjectId === obj.id;
     const children = isGroup ? getChildren(obj.id) : [];
     const isEditing = editingId === obj.id;
+    const effectivelyHidden = isEffectivelyHidden(obj);
 
     let dragClass = '';
-    if (dragOverId === obj.id && dragPosition) {
-      dragClass = `drag-${dragPosition}`;
-    }
+    if (dragOverId === obj.id && dragPosition) dragClass = `drag-${dragPosition}`;
 
     return (
       <li key={obj.id} style={{ marginLeft: `${depth * 16}px` }}>
-        <div 
-          className={`tree-item ${isSelected ? 'selected' : ''} ${isGroup ? 'group-item' : ''} ${dragClass}`}
+        <div
+          className={`tree-item ${isSelected ? 'selected' : ''} ${isGroup ? 'group-item' : ''} ${dragClass} ${effectivelyHidden ? 'hidden-item' : ''}`}
           draggable={!isEditing}
           onDragStart={(e) => {
             e.stopPropagation();
@@ -116,22 +107,17 @@ export default function SceneHierarchy() {
           onDragOver={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            
             const rect = e.currentTarget.getBoundingClientRect();
             const y = e.clientY - rect.top;
             const h = rect.height;
-            
             let pos: 'before' | 'after' | 'inside' = 'inside';
-            
             if (isGroup) {
-                if (y < h * 0.25) pos = 'before';
-                else if (y > h * 0.75) pos = 'after';
-                else pos = 'inside';
+              if (y < h * 0.25) pos = 'before';
+              else if (y > h * 0.75) pos = 'after';
+              else pos = 'inside';
             } else {
-                if (y < h * 0.5) pos = 'before';
-                else pos = 'after';
+              pos = y < h * 0.5 ? 'before' : 'after';
             }
-
             setDragOverId(obj.id);
             setDragPosition(pos);
           }}
@@ -147,7 +133,6 @@ export default function SceneHierarchy() {
             const sourceId = e.dataTransfer?.getData('text/plain');
             setDragOverId(null);
             setDragPosition(null);
-            
             if (sourceId && sourceId !== obj.id && dragPosition) {
               reorderObject(sourceId, obj.id, dragPosition);
             }
@@ -158,13 +143,13 @@ export default function SceneHierarchy() {
             {isGroup ? (
               children.length > 0 ? <FolderOpen size={13} /> : <Folder size={13} />
             ) : obj.type === 'TEXT' ? (
-              <Type size={13}/>
+              <Type size={13} />
             ) : (
-              <Shapes size={14}/>
+              <Shapes size={14} />
             )}
-            
+
             {isEditing ? (
-              <input 
+              <input
                 autoFocus
                 value={editName}
                 onChange={(e) => setEditName(e.currentTarget.value)}
@@ -190,7 +175,7 @@ export default function SceneHierarchy() {
                   fontSize: 'inherit',
                   fontFamily: 'inherit',
                   outline: 'none',
-                  minWidth: 0
+                  minWidth: 0,
                 }}
               />
             ) : (
@@ -199,60 +184,72 @@ export default function SceneHierarchy() {
               </span>
             )}
 
-            {isGroup && !isEditing && <span className="child-count">({children.length})</span>}
+            {isGroup && !isEditing && (
+              <span className="child-count">({children.length})</span>
+            )}
           </span>
+
           <div className="item-actions">
+            {/* Rename — shown for all */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditingId(obj.id);
+                setEditName(obj.textContent || obj.name);
+              }}
+              className="action-btn"
+              title="Rename"
+            >
+              <Edit3 size={14} />
+            </button>
+
+            {/* Visibility toggle — shown for all (groups cascade to children) */}
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleObjectVisibility(obj.id); }}
+              className={`action-btn ${effectivelyHidden ? 'active-dim' : ''}`}
+              title={effectivelyHidden ? 'Show (excluded from output)' : 'Hide (exclude from output)'}
+            >
+              {effectivelyHidden ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+
             {isGroup ? (
               <>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setEditingId(obj.id); setEditName(obj.textContent || obj.name); }}
+                <button
+                  onClick={(e) => { e.stopPropagation(); ungroup(obj.id); }}
                   className="action-btn"
-                  title="Rename Group">
-                  <Edit3 size={14}/>
+                  title="Ungroup"
+                >
+                  <FolderOpen size={14} />
                 </button>
-                <button 
-                  onClick={(e) => handleUngroup(obj.id, e)}
-                  className="action-btn"
-                  title="Ungroup">
-                  <FolderOpen size={14}/>
-                </button>
-                <button 
-                  onClick={(e) => handleDeleteGroup(obj.id, e)}
+                <button
+                  onClick={(e) => { e.stopPropagation(); deleteGroup(obj.id); }}
                   className="action-btn delete"
-                  title="Delete Group & Children">
-                  <FolderX size={14}/>
+                  title="Delete Group & Children"
+                >
+                  <FolderX size={14} />
                 </button>
               </>
             ) : (
               <>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setEditingId(obj.id); setEditName(obj.textContent || obj.name); }}
-                  className="action-btn"
-                  title="Rename">
-                  <Edit3 size={14}/>
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); toggleObjectVisibility(obj.id); }}
-                  className="action-btn"
-                  title={obj.isVisible ? 'Hide' : 'Show'}>
-                  {obj.isVisible ? <Eye size={14}/> : <EyeOff size={14}/>}
-                </button>
-                <button 
+                <button
                   onClick={(e) => { e.stopPropagation(); duplicateObject(obj.id); }}
                   className="action-btn"
-                  title="Duplicate">
-                  <Copy size={14}/>
+                  title="Duplicate"
+                >
+                  <Copy size={14} />
                 </button>
-                <button 
+                <button
                   onClick={(e) => { e.stopPropagation(); deleteObject(obj.id); }}
                   className="action-btn delete"
-                  title="Delete">
-                  <Trash2 size={14}/>
+                  title="Delete"
+                >
+                  <Trash2 size={14} />
                 </button>
               </>
             )}
           </div>
         </div>
+
         {isGroup && children.length > 0 && (
           <ul className="tree-list">
             {children.map(child => renderObjectItem(child, depth + 1))}
@@ -267,7 +264,7 @@ export default function SceneHierarchy() {
   return (
     <CollapsibleSection title="Scene Hierarchy" icon={<Layers size={14} />} defaultOpen={true}>
       <div className="group-controls">
-        <button 
+        <button
           onClick={() => {
             setIsMultiSelectMode(!isMultiSelectMode);
             setSelectedObjects(new Set());
@@ -278,7 +275,7 @@ export default function SceneHierarchy() {
           {isMultiSelectMode ? 'Cancel Selection' : 'Multi-Select'}
         </button>
         {isMultiSelectMode && (
-          <button 
+          <button
             onClick={handleCreateGroup}
             disabled={selectedObjects.size < 2}
             className="control-btn group-btn"
@@ -289,10 +286,11 @@ export default function SceneHierarchy() {
           </button>
         )}
       </div>
-
       <ul className="tree-list">
         {rootObjects.map(obj => renderObjectItem(obj))}
-        {rootObjects.length === 0 && <div className="empty-msg">Scene is empty</div>}
+        {rootObjects.length === 0 && (
+          <div className="empty-msg">Scene is empty</div>
+        )}
       </ul>
     </CollapsibleSection>
   );
