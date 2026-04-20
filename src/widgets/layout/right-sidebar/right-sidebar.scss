@@ -1,0 +1,36 @@
+@use '../../../shared/styles/tokens' as *;
+.right-sidebar {
+  width: $right-sidebar-width;
+  background-color: $bg-panel;
+  border-left: 1px solid $border-color;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  .sidebar-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.6rem 1rem;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid $border-color;
+    flex-shrink: 0;
+    .sidebar-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: $text-muted;
+    }
+    .sidebar-hint {
+      font-size: 0.65rem;
+      color: $text-dim;
+      font-style: italic;
+    }
+  }
+  .sidebar-content {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+}

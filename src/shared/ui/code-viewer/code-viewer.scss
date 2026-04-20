@@ -1,0 +1,81 @@
+@use '../../styles/tokens' as *;
+.code-viewer-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: $bg-dark;
+  .code-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 1rem;
+    background-color: rgba(0, 0, 0, 0.15);
+    border-bottom: 1px solid $border-color;
+    flex-shrink: 0;
+    .code-lang {
+      font-family: $font-mono;
+      font-size: 0.7rem;
+      color: $text-dim;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .copy-button {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.6rem;
+      background-color: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      color: $text-muted;
+      font-family: $font-mono;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+        color: $text-main;
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+      &.copied {
+        color: $accent-green;
+        background-color: rgba(var(--accent-green-rgb), 0.1);
+        border-color: rgba(var(--accent-green-rgb), 0.3);
+      }
+    }
+  }
+  .code-content {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    font-family: $font-mono;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    align-items: stretch;
+    @include scrollbar;
+    &::-webkit-scrollbar-corner {
+      background: rgba(0, 0, 0, 0);
+    }
+    .line-numbers {
+      padding: 1rem 0.5rem;
+      text-align: right;
+      color: $text-dim;
+      user-select: none;
+      border-right: 1px solid $border-color;
+      background-color: rgba(var(--bg-panel-rgb), 0.5);
+      min-height: 100%;
+      height: fit-content;
+    }
+    pre {
+      flex: 1;
+      margin: 0;
+      padding: 1rem;
+      color: var(--code-content);
+      white-space: pre;
+    }
+  }
+}
