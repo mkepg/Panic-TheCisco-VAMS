@@ -1,1 +1,1 @@
-export { default } from './VAMSCanvas';
+export { default } from './VamsCanvas';
