@@ -3,14 +3,13 @@ import type {
   SceneNode,
   ShadingModel,
   TransformState,
-  Behavior,
   ViewportLimits,
   LearningSettings,
   InteractionMode,
   AxisVisibility,
-  SimulationState,
   PendingVertex,
 } from '@/core/types/scene';
+
 export interface SceneSlice {
   objects: SceneNode[];
   selectedObjectId: string | null;
@@ -27,9 +26,6 @@ export interface SceneSlice {
   updateVertexColor: (objectId: string, vertexId: string, color: string) => void;
   setAllVertexColors: (objectId: string, color: string) => void;
   updateObjectShading: (id: string, mode: ShadingModel) => void;
-  addBehavior: (objectId: string, behavior: Omit<Behavior, 'id'>) => void;
-  removeBehavior: (objectId: string, behaviorId: string) => void;
-  updateBehavior: (objectId: string, behaviorId: string, update: Partial<Behavior>) => void;
   addTextObject: (text: string, x: number, y: number) => void;
   updateTextContent: (id: string, text: string) => void;
   createGroup: (objectIds: string[]) => void;
@@ -37,6 +33,7 @@ export interface SceneSlice {
   deleteGroup: (groupId: string) => void;
   reorderObject: (sourceId: string, targetId: string, position: 'before' | 'after' | 'inside') => void;
 }
+
 export interface InteractionSlice {
   interactionMode: InteractionMode;
   creationMode: PrimitiveType | null;
@@ -47,6 +44,7 @@ export interface InteractionSlice {
   toggleVertexEditMode: () => void;
   setSelectedVertex: (vertexId: string | null) => void;
 }
+
 export interface ViewportSlice {
   viewportLimits: ViewportLimits;
   axisVisibility: AxisVisibility;
@@ -55,16 +53,7 @@ export interface ViewportSlice {
   setAxisVisibility: (visibility: Partial<AxisVisibility>) => void;
   setShowCoordinateTracker: (show: boolean) => void;
 }
-export type ObjectSnapshot = SceneNode;
-export interface SimulationSlice {
-  simulationState: SimulationState;
-  isGameOver: boolean;
-  initialObjectStates: Map<string, ObjectSnapshot>;
-  play: () => void;
-  pause: () => void;
-  stop: () => void;
-  setGameOver: (isGameOver: boolean) => void;
-}
+
 export interface SettingsSlice {
   learningSettings: LearningSettings;
   theme: 'dark' | 'light';
@@ -73,6 +62,7 @@ export interface SettingsSlice {
   toggleTheme: () => void;
   setCanvasBackgroundColor: (color: string) => void;
 }
+
 export interface CustomShapeBuilderSlice {
   pendingShapeType: PrimitiveType | null;
   pendingVertices: PendingVertex[];
@@ -85,6 +75,7 @@ export interface CustomShapeBuilderSlice {
   removePendingVertexAt: (index: number) => void;
   updatePendingVertex: (index: number, x: number, y: number) => void;
 }
+
 export interface HistorySnapshot {
   objects: SceneNode[];
   selectedObjectId: string | null;
@@ -95,6 +86,7 @@ export interface HistorySnapshot {
   pendingVertices: PendingVertex[];
   timestamp: number;
 }
+
 export interface HistorySlice {
   past: HistorySnapshot[];
   future: HistorySnapshot[];
@@ -109,10 +101,10 @@ export interface HistorySlice {
   canRedo: () => boolean;
   clearHistory: () => void;
 }
+
 export type VamsState = SceneSlice &
   InteractionSlice &
   ViewportSlice &
-  SimulationSlice &
   SettingsSlice &
   CustomShapeBuilderSlice &
   HistorySlice;

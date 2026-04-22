@@ -2,12 +2,14 @@ import type { StateCreator } from 'zustand';
 import type { VamsState, SceneSlice } from '@/core/store/types';
 import type { SceneNode, TransformState } from '@/core/types/scene';
 import { getInitialVertices } from '@/entities/scene/lib/store-utils';
+
 const generateId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    try { return crypto.randomUUID(); } catch {  }
+    try { return crypto.randomUUID(); } catch { /* fallback */ }
   }
   return 'id-' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
 };
+
 const getUniqueName = (basePrefix: string, objects: SceneNode[]) => {
   let counter = 1;
   let newName = `${basePrefix}_${counter}`;
@@ -17,6 +19,7 @@ const getUniqueName = (basePrefix: string, objects: SceneNode[]) => {
   }
   return newName;
 };
+
 const getDuplicateName = (originalName: string, objects: SceneNode[]) => {
   let newName = `${originalName}_copy`;
   let counter = 2;
@@ -26,6 +29,7 @@ const getDuplicateName = (originalName: string, objects: SceneNode[]) => {
   }
   return newName;
 };
+
 const getMatrix = (t: TransformState): number[] => {
   const rad = (t.rotate * Math.PI) / 180;
   const cos = Math.cos(rad);
@@ -35,6 +39,7 @@ const getMatrix = (t: TransformState): number[] => {
     t.scale * sin,  t.scale * cos, t.translateY,
   ];
 };
+
 const multiplyMat = (m1: number[], m2: number[]): number[] => {
   return [
     m1[0] * m2[0] + m1[1] * m2[3],
@@ -45,6 +50,7 @@ const multiplyMat = (m1: number[], m2: number[]): number[] => {
     m1[3] * m2[2] + m1[4] * m2[5] + m1[5],
   ];
 };
+
 const invertMat = (m: number[]): number[] => {
   const det = m[0] * m[4] - m[1] * m[3];
   if (det === 0) return [1, 0, 0, 0, 1, 0];
@@ -54,11 +60,13 @@ const invertMat = (m: number[]): number[] => {
     -m[3] * invDet,  m[0] * invDet, (m[2] * m[3] - m[0] * m[5]) * invDet,
   ];
 };
+
 const extractTransform = (m: number[]): TransformState => {
   const scale = Math.sqrt(m[0] * m[0] + m[3] * m[3]);
   const rotate = Math.atan2(m[3], m[0]) * 180 / Math.PI;
   return { translateX: m[2], translateY: m[5], rotate, scale };
 };
+
 const getGlobalMatrix = (objId: string, objects: SceneNode[]): number[] => {
   const current = objects.find((o) => o.id === objId);
   if (!current) return [1, 0, 0, 0, 1, 0];
@@ -72,6 +80,7 @@ const getGlobalMatrix = (objId: string, objects: SceneNode[]): number[] => {
   }
   return mat;
 };
+
 export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (set, get) => ({
   objects: [],
   selectedObjectId: null,
@@ -89,7 +98,6 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         shading: 'SMOOTH',
         vertices: getInitialVertices(type),
         transform: { translateX: 0, translateY: 0, rotate: 0, scale: 1 },
-        behaviors: [],
         parentId: null,
         childIds: [],
       };
@@ -118,7 +126,6 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         shading: 'SMOOTH',
         vertices,
         transform: { translateX: centerX, translateY: centerY, rotate: 0, scale: 1 },
-        behaviors: [],
         parentId: null,
         childIds: [],
       };
@@ -141,12 +148,6 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
           return o;
         });
       }
-      updatedObjects = updatedObjects.map((o) => {
-        if (o.behaviors.some((b) => b.triggerTargetId && idsToDelete.includes(b.triggerTargetId))) {
-          return { ...o, behaviors: o.behaviors.filter((b) => !b.triggerTargetId || !idsToDelete.includes(b.triggerTargetId)) };
-        }
-        return o;
-      });
       const isSelectedDeleted = state.selectedObjectId && idsToDelete.includes(state.selectedObjectId);
       return {
         objects: updatedObjects,
@@ -167,7 +168,6 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         id: newId,
         name: getDuplicateName(obj.name, state.objects),
         vertices: obj.vertices.map((v) => ({ ...v, id: generateId() })),
-        behaviors: obj.behaviors.map((b) => ({ ...b, id: generateId() })),
         parentId: null,
         childIds: [],
       };
@@ -247,34 +247,6 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
       objects: state.objects.map((obj) => (obj.id === id ? { ...obj, shading: mode } : obj)),
     }));
   },
-  addBehavior: (objectId, behavior) => {
-    get().pushToHistory();
-    set((state) => ({
-      objects: state.objects.map((obj) => {
-        if (obj.id !== objectId) return obj;
-        const newBehavior = { ...behavior, id: generateId(), enabled: true, mode: behavior.mode || 'INSTANT' };
-        return { ...obj, behaviors: [...obj.behaviors, newBehavior] };
-      }),
-    }));
-  },
-  removeBehavior: (objectId, behaviorId) => {
-    get().pushToHistory();
-    set((state) => ({
-      objects: state.objects.map((obj) => {
-        if (obj.id !== objectId) return obj;
-        return { ...obj, behaviors: obj.behaviors.filter((b) => b.id !== behaviorId) };
-      }),
-    }));
-  },
-  updateBehavior: (objectId, behaviorId, update) => {
-    get().pushToHistory();
-    set((state) => ({
-      objects: state.objects.map((obj) => {
-        if (obj.id !== objectId) return obj;
-        return { ...obj, behaviors: obj.behaviors.map((b) => b.id === behaviorId ? { ...b, ...update } : b) };
-      }),
-    }));
-  },
   addTextObject: (text, x, y) => {
     get().pushToHistory();
     set((state) => {
@@ -287,7 +259,6 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         shading: 'FLAT',
         vertices: [{ id: 'v0', x: 0, y: 0, color: '#ffffff' }],
         transform: { translateX: x, translateY: y, rotate: 0, scale: 1 },
-        behaviors: [],
         textContent: text,
         rasterPosition: { x, y },
         parentId: null,
@@ -322,7 +293,6 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         shading: 'FLAT',
         vertices: [],
         transform: { translateX: centerX, translateY: centerY, rotate: 0, scale: 1 },
-        behaviors: [],
         parentId: null,
         childIds: validObjectIds,
       };
@@ -381,12 +351,6 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
           return o;
         });
       }
-      updatedObjects = updatedObjects.map((o) => {
-        if (o.behaviors.some((b) => b.triggerTargetId === groupId)) {
-          return { ...o, behaviors: o.behaviors.filter((b) => b.triggerTargetId !== groupId) };
-        }
-        return o;
-      });
       const isSelectedDeleted = state.selectedObjectId === groupId;
       return {
         objects: updatedObjects,
@@ -402,13 +366,7 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
       if (!group || group.type !== 'GROUP') return state;
       const childIdsToDelete = group.childIds || [];
       const idsToDelete = [groupId, ...childIdsToDelete];
-      let updatedObjects = state.objects.filter((o) => !idsToDelete.includes(o.id));
-      updatedObjects = updatedObjects.map((o) => {
-        if (o.behaviors.some((b) => b.triggerTargetId && idsToDelete.includes(b.triggerTargetId))) {
-          return { ...o, behaviors: o.behaviors.filter((b) => !b.triggerTargetId || !idsToDelete.includes(b.triggerTargetId)) };
-        }
-        return o;
-      });
+      const updatedObjects = state.objects.filter((o) => !idsToDelete.includes(o.id));
       const isSelectedDeleted = state.selectedObjectId && idsToDelete.includes(state.selectedObjectId);
       return {
         objects: updatedObjects,

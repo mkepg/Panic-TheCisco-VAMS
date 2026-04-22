@@ -11,7 +11,6 @@ import type {
   SceneNodeType,
   Vertex,
   ViewportLimits,
-  Behavior,
 } from '@/core/types/scene';
 
 export const VAMS_PROJECT_SCHEMA_VERSION = 1 as const;
@@ -42,7 +41,7 @@ export type VamsProjectFile = {
 };
 
 const ALLOWED_OBJECT_TYPES: ReadonlySet<SceneNodeType> = new Set([
-  'TRIANGLE', 'RECTANGLE', 'CIRCLE', 'ELLIPSE', 'HEXAGON', 'STAR', 'POLYGON', 
+  'TRIANGLE', 'RECTANGLE', 'CIRCLE', 'ELLIPSE', 'HEXAGON', 'STAR', 'POLYGON',
   'LINE', 'LINE_STRIP', 'POINT', 'POINTS', 'TRIANGLE_STRIP', 'TEXT', 'GROUP',
 ]);
 
@@ -50,7 +49,6 @@ const DEFAULT_VIEWPORT: ViewportLimits = { minX: -1, maxX: 1, minY: -1, maxY: 1 
 const DEFAULT_AXIS: AxisVisibility = { showGlobalAxes: true, showLocalAxes: true, showOriginMarker: true, showGridlines: true };
 const DEFAULT_LEARNING: LearningSettings = { gridSnapping: false, snapIncrement: 0.1 };
 const DEFAULT_TRANSFORM: TransformState = { translateX: 0, translateY: 0, rotate: 0, scale: 1 };
-
 const DEFAULT_DATA: VamsProjectData = {
   objects: [],
   viewportLimits: DEFAULT_VIEWPORT,
@@ -84,49 +82,39 @@ function toPrimitiveType(v: unknown): PrimitiveType | null {
   const allowed: PrimitiveType[] = ['TRIANGLE', 'RECTANGLE', 'CIRCLE', 'ELLIPSE', 'HEXAGON', 'STAR', 'POLYGON', 'LINE', 'LINE_STRIP', 'POINT', 'POINTS', 'TRIANGLE_STRIP'];
   return allowed.includes(v as PrimitiveType) ? (v as PrimitiveType) : null;
 }
+
 function sanitizeViewport(v: unknown): ViewportLimits {
   if (!isRecord(v)) return DEFAULT_VIEWPORT;
   return { minX: toNumber(v.minX, DEFAULT_VIEWPORT.minX), maxX: toNumber(v.maxX, DEFAULT_VIEWPORT.maxX), minY: toNumber(v.minY, DEFAULT_VIEWPORT.minY), maxY: toNumber(v.maxY, DEFAULT_VIEWPORT.maxY) };
 }
+
 function sanitizeAxis(v: unknown): AxisVisibility {
   if (!isRecord(v)) return DEFAULT_AXIS;
   return { showGlobalAxes: toBoolean(v.showGlobalAxes, DEFAULT_AXIS.showGlobalAxes), showLocalAxes: toBoolean(v.showLocalAxes, DEFAULT_AXIS.showLocalAxes), showOriginMarker: toBoolean(v.showOriginMarker, DEFAULT_AXIS.showOriginMarker), showGridlines: toBoolean(v.showGridlines, DEFAULT_AXIS.showGridlines) };
 }
+
 function sanitizeLearning(v: unknown): LearningSettings {
   if (!isRecord(v)) return DEFAULT_LEARNING;
   return { gridSnapping: toBoolean(v.gridSnapping, DEFAULT_LEARNING.gridSnapping), snapIncrement: toNumber(v.snapIncrement, DEFAULT_LEARNING.snapIncrement) };
 }
+
 function sanitizeTransform(v: unknown): TransformState {
   if (!isRecord(v)) return DEFAULT_TRANSFORM;
   return { translateX: toNumber(v.translateX, DEFAULT_TRANSFORM.translateX), translateY: toNumber(v.translateY, DEFAULT_TRANSFORM.translateY), rotate: toNumber(v.rotate, DEFAULT_TRANSFORM.rotate), scale: toNumber(v.scale, DEFAULT_TRANSFORM.scale) };
 }
+
 function sanitizeVertex(v: unknown, idx: number): Vertex {
   if (!isRecord(v)) return { id: `v${idx}`, x: 0, y: 0, color: '#ffffff' };
   return { id: toString(v.id, `v${idx}`), x: toNumber(v.x, 0), y: toNumber(v.y, 0), color: toString(v.color, '#ffffff') };
 }
-function sanitizeBehavior(v: unknown, idx: number): Behavior {
-  if (!isRecord(v)) return { id: `b${idx}`, enabled: true, trigger: 'ON_START', triggerKey: '', action: 'TRANSLATE_X', mode: 'INSTANT', value: 0, target: 'OBJECT' } as Behavior;
-  return {
-    id: toString(v.id, `b${idx}`),
-    enabled: toBoolean(v.enabled, true),
-    trigger: (typeof v.trigger === 'string' ? v.trigger : 'ON_START') as Behavior['trigger'],
-    triggerKey: toString(v.triggerKey, ''),
-    triggerTargetId: typeof v.triggerTargetId === 'string' ? v.triggerTargetId : undefined,
-    action: (typeof v.action === 'string' ? v.action : 'TRANSLATE_X') as Behavior['action'],
-    mode: (typeof v.mode === 'string' ? v.mode : 'INSTANT') as Behavior['mode'],
-    value: toNumber(v.value, 0),
-    target: (typeof v.target === 'string' ? v.target : 'OBJECT') as Behavior['target'],
-    textPayload: typeof v.textPayload === 'string' ? v.textPayload : undefined,
-    colorPayload: typeof v.colorPayload === 'string' ? v.colorPayload : undefined,
-  };
-}
+
 function sanitizeObject(v: unknown, idx: number): SceneNode | null {
   if (!isRecord(v)) return null;
   const typeRaw = v.type;
   const type = (typeof typeRaw === 'string' ? typeRaw : '') as SceneNodeType;
   if (!ALLOWED_OBJECT_TYPES.has(type)) return null;
   const verticesRaw = Array.isArray(v.vertices) ? v.vertices : [];
-  const behaviorsRaw = Array.isArray(v.behaviors) ? v.behaviors : [];
+  
   return {
     id: toString(v.id, `obj-${idx}`),
     name: toString(v.name, `${type}_${idx + 1}`),
@@ -135,13 +123,13 @@ function sanitizeObject(v: unknown, idx: number): SceneNode | null {
     shading: toShading(v.shading),
     vertices: verticesRaw.map((vv, i) => sanitizeVertex(vv, i)),
     transform: sanitizeTransform(v.transform),
-    behaviors: behaviorsRaw.map((bb, i) => sanitizeBehavior(bb, i)),
     textContent: typeof v.textContent === 'string' ? v.textContent : undefined,
     rasterPosition: isRecord(v.rasterPosition) ? { x: toNumber(v.rasterPosition.x, 0), y: toNumber(v.rasterPosition.y, 0) } : undefined,
     parentId: typeof v.parentId === 'string' ? v.parentId : null,
     childIds: Array.isArray(v.childIds) ? (v.childIds.filter((id) => typeof id === 'string') as string[]) : [],
   };
 }
+
 function fixHierarchy(objects: SceneNode[]): SceneNode[] {
   const ids = new Set(objects.map((o) => o.id));
   let normalized = objects.map((o) => ({ ...o, parentId: o.parentId && ids.has(o.parentId) ? o.parentId : null }));
@@ -171,6 +159,7 @@ export function buildProjectFile(state: VamsState): VamsProjectFile {
     pendingVertices: state.pendingVertices,
     pendingMinVertices: state.pendingMinVertices,
   };
+
   return {
     app: 'VAMS',
     schemaVersion: VAMS_PROJECT_SCHEMA_VERSION,
@@ -216,6 +205,7 @@ export async function parseProjectFromFile(file: File): Promise<VamsProjectData>
     const blob = new Blob([workerCode], { type: 'application/javascript' });
     const workerUrl = URL.createObjectURL(blob);
     const worker = new Worker(workerUrl);
+
     worker.onmessage = (e) => {
       URL.revokeObjectURL(workerUrl);
       worker.terminate();
@@ -235,33 +225,40 @@ export async function parseProjectFromFile(file: File): Promise<VamsProjectData>
         reject(new Error(e.data.error));
       }
     };
+
     worker.onerror = (err) => {
       URL.revokeObjectURL(workerUrl);
       worker.terminate();
       reject(err);
     };
+
     worker.postMessage(file);
   });
 }
 
 export function sanitizeProjectData(raw: unknown): VamsProjectData {
   if (!isRecord(raw)) return { ...DEFAULT_DATA };
+
   const objectsRaw = Array.isArray(raw.objects) ? raw.objects : [];
   const objects = fixHierarchy(
     objectsRaw.map((o, i) => sanitizeObject(o, i)).filter((o): o is SceneNode => o !== null)
   );
+
   const viewportLimits = sanitizeViewport(raw.viewportLimits);
   const axisVisibility = sanitizeAxis(raw.axisVisibility);
   const learningSettings = sanitizeLearning(raw.learningSettings);
   const pendingShapeType = toPrimitiveType(raw.pendingShapeType);
+
   const pendingVertices = Array.isArray(raw.pendingVertices)
     ? raw.pendingVertices
         .filter(isRecord)
         .map((v) => ({ x: toNumber(v.x, 0), y: toNumber(v.y, 0) }))
     : [];
+
   const selectedObjectIdRaw = typeof raw.selectedObjectId === 'string' ? raw.selectedObjectId : null;
   const selectedObjectId =
     selectedObjectIdRaw && objects.some((o) => o.id === selectedObjectIdRaw) ? selectedObjectIdRaw : null;
+
   return {
     objects,
     viewportLimits,

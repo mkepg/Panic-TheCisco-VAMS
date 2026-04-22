@@ -4,15 +4,12 @@ import { toast } from 'sonner';
 import { useVamsStore } from '@/core/store';
 
 export default function HistoryControls() {
-  const simulationState = useVamsStore((state) => state.simulationState);
   const undo = useVamsStore((state) => state.undo);
   const redo = useVamsStore((state) => state.redo);
   const canUndo = useVamsStore((state) => state.canUndo);
   const canRedo = useVamsStore((state) => state.canRedo);
 
   useEffect(() => {
-    if (simulationState === 'PLAYING' || simulationState === 'PAUSED') return;
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key === 'z' && !event.shiftKey) {
         event.preventDefault();
@@ -21,7 +18,6 @@ export default function HistoryControls() {
           toast.info('Undo');
         }
       }
-
       if (
         ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'z') ||
         (event.ctrlKey && event.key === 'y')
@@ -36,7 +32,7 @@ export default function HistoryControls() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, canUndo, canRedo, simulationState]);
+  }, [undo, redo, canUndo, canRedo]);
 
   const handleUndo = () => {
     if (!canUndo()) return;

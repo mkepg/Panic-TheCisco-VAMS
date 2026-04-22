@@ -1,8 +1,11 @@
 import { produce, enableMapSet } from 'immer';
 import type { StateCreator } from 'zustand';
 import type { VamsState, HistorySlice, HistorySnapshot } from '@/core/store/types';
+
 enableMapSet();
+
 const HISTORY_THROTTLE_MS = 50;
+
 const createSnapshot = (state: VamsState): HistorySnapshot => ({
   objects: state.objects,
   selectedObjectId: state.selectedObjectId,
@@ -13,6 +16,7 @@ const createSnapshot = (state: VamsState): HistorySnapshot => ({
   pendingVertices: state.pendingVertices,
   timestamp: Date.now(),
 });
+
 const restoreSnapshot = (snapshot: HistorySnapshot): Partial<VamsState> => ({
   objects: snapshot.objects,
   selectedObjectId: snapshot.selectedObjectId,
@@ -22,22 +26,27 @@ const restoreSnapshot = (snapshot: HistorySnapshot): Partial<VamsState> => ({
   pendingShapeType: snapshot.pendingShapeType,
   pendingVertices: snapshot.pendingVertices,
 });
+
 export const createHistorySlice: StateCreator<VamsState, [], [], HistorySlice> = (set, get) => ({
   past: [],
   future: [],
   maxHistorySize: 30,
   isBatchMode: false,
+  
   startBatch: () => {
     set({ isBatchMode: true });
   },
+  
   endBatch: () => {
     set({ isBatchMode: false });
   },
+  
   pushToHistory: () => {
     const state = get();
-    if (state.simulationState === 'PLAYING' || state.isBatchMode) {
+    if (state.isBatchMode) {
       return;
     }
+    
     const snapshotTimestamp = Date.now();
     const snapshot: HistorySnapshot = {
       objects: state.objects,
@@ -49,6 +58,7 @@ export const createHistorySlice: StateCreator<VamsState, [], [], HistorySlice> =
       pendingVertices: state.pendingVertices,
       timestamp: snapshotTimestamp,
     };
+
     set(
       produce((draft: VamsState) => {
         const lastPast = draft.past[draft.past.length - 1];
@@ -63,9 +73,10 @@ export const createHistorySlice: StateCreator<VamsState, [], [], HistorySlice> =
       })
     );
   },
+  
   undo: () => {
     const state = get();
-    if (state.past.length === 0 || state.simulationState === 'PLAYING') {
+    if (state.past.length === 0) {
       return;
     }
     set(
@@ -78,9 +89,10 @@ export const createHistorySlice: StateCreator<VamsState, [], [], HistorySlice> =
       })
     );
   },
+  
   redo: () => {
     const state = get();
-    if (state.future.length === 0 || state.simulationState === 'PLAYING') {
+    if (state.future.length === 0) {
       return;
     }
     set(
@@ -93,14 +105,17 @@ export const createHistorySlice: StateCreator<VamsState, [], [], HistorySlice> =
       })
     );
   },
+  
   canUndo: () => {
     const state = get();
-    return state.past.length > 0 && state.simulationState !== 'PLAYING';
+    return state.past.length > 0;
   },
+  
   canRedo: () => {
     const state = get();
-    return state.future.length > 0 && state.simulationState !== 'PLAYING';
+    return state.future.length > 0;
   },
+  
   clearHistory: () => {
     set(
       produce((draft: VamsState) => {

@@ -8,16 +8,14 @@ import TextNodePanel from '@/features/text-nodes/ui/TextNodePanel';
 import SceneHierarchyPanel from '@/features/scene-hierarchy/ui/SceneHierarchyPanel';
 import ObjectTransformPanel from '@/features/object-transform/ui/ObjectTransformPanel';
 import ObjectAppearancePanel from '@/features/object-appearance/ui/ObjectAppearancePanel';
-import BehaviorRulePanel from '@/features/behavior-engine/ui/BehaviorRulePanel';
 import './left-sidebar.scss';
 
 type Tab = 'create' | 'scene' | 'edit';
 
 export default function LeftSidebar() {
-  const { selectedObjectId, objects, simulationState } = useVamsStore();
+  const { selectedObjectId, objects } = useVamsStore();
   const selectedObject = objects.find((object) => object.id === selectedObjectId);
-  const isInputDisabled =
-    simulationState === 'PLAYING' || simulationState === 'PAUSED';
+
   const [activeTab, setActiveTab] = useState<Tab>(() =>
     selectedObjectId ? 'edit' : 'create'
   );
@@ -31,14 +29,7 @@ export default function LeftSidebar() {
   }, [selectedObjectId]);
 
   return (
-    <aside
-      className="left-sidebar"
-      style={{
-        pointerEvents: isInputDisabled ? 'none' : 'auto',
-        opacity: isInputDisabled ? 0.6 : 1,
-        transition: 'opacity 0.2s ease-in-out',
-      }}
-    >
+    <aside className="left-sidebar">
       <div className="sidebar-tabs">
         <SidebarTab
           label="Create"
@@ -81,7 +72,6 @@ export default function LeftSidebar() {
               <>
                 <ObjectTransformPanel />
                 <ObjectAppearancePanel />
-                <BehaviorRulePanel />
               </>
             ) : (
               <div className="empty-selection-state">

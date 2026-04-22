@@ -5,7 +5,6 @@ import type { VamsState } from '@/core/store/types';
 import { createSceneSlice } from '@/entities/scene/model/scene-slice';
 import { createInteractionSlice } from '@/entities/scene/model/interaction-slice';
 import { createViewportSlice } from '@/entities/scene/model/viewport-slice';
-import { createSimulationSlice } from '@/entities/simulation/model/simulation-slice';
 import { createSettingsSlice } from '@/core/store/settings-slice';
 import { createCustomShapeBuilderSlice } from '@/features/custom-shapes/model/custom-shape-builder-slice';
 import { createHistorySlice } from '@/core/store/history-slice';
@@ -18,7 +17,6 @@ export const useVamsStore = create<VamsState>()(
       ...createSceneSlice(...a),
       ...createInteractionSlice(...a),
       ...createViewportSlice(...a),
-      ...createSimulationSlice(...a),
       ...createSettingsSlice(...a),
       ...createCustomShapeBuilderSlice(...a),
       ...createHistorySlice(...a),

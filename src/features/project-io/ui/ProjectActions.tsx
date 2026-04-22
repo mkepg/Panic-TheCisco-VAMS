@@ -11,9 +11,7 @@ import {
 } from '@/entities/project/model/project-io';
 
 export default function ProjectActions() {
-  const simulationState = useVamsStore((state) => state.simulationState);
   const clearHistory = useVamsStore((state) => state.clearHistory);
-
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -59,10 +57,6 @@ export default function ProjectActions() {
   };
 
   const handleLoad = () => {
-    if (simulationState !== 'STOPPED') {
-      toast.error('Stop the runtime before loading a project.');
-      return;
-    }
     if (hasWorkInProgress()) {
       const shouldContinue = window.confirm(
         'Load a project? Unsaved changes will be lost.'
@@ -81,17 +75,12 @@ export default function ProjectActions() {
     try {
       const projectData = await parseProjectFromFile(file);
       const patch = toStorePatchFromProject(projectData);
-
       useVamsStore.setState(
         {
           ...patch,
-          simulationState: 'STOPPED',
-          isGameOver: false,
-          initialObjectStates: new Map(),
         },
         false
       );
-
       clearHistory();
       toast.success(`Project loaded: ${file.name}`);
     } catch (error) {
@@ -115,6 +104,7 @@ export default function ProjectActions() {
       <button className="icon-btn" onClick={handleLoad} title="Load Project">
         <FolderOpen size={16} />
       </button>
+
       <div className="dropdown-container" ref={exportMenuRef}>
         <button
           className="icon-btn"
@@ -123,6 +113,7 @@ export default function ProjectActions() {
         >
           <Download size={16} />
         </button>
+
         {showExportMenu && (
           <div className="dropdown-menu">
             <div className="menu-header">Export As</div>
