@@ -2,6 +2,7 @@ import * as PIXI from "pixi.js";
 import type { SceneNode } from "@/core/types/scene";
 import { toNumColor } from "../utils/color-utils";
 import { pxToWorld, bboxRadii, buildEllipsePoints, createPaddedHitArea } from "../utils/geometry-utils";
+
 export function drawWithGraphics(
   g: PIXI.Graphics,
   o: SceneNode,
@@ -9,10 +10,12 @@ export function drawWithGraphics(
   worldScaleY?: number
 ): void {
   g.clear();
+
   const strokeColor = 0xffffff;
   const strokeWidthWorld = pxToWorld(1, worldScaleX);
   const defaultFill = toNumColor(o.vertices[0]?.color, 0xffffff);
   const hitPadding = worldScaleX ? 10 / Math.abs(worldScaleX) : 0.5;
+
   if (o.type === "POINT" || o.type === "POINTS") {
     renderPointSet(g, o, worldScaleX, worldScaleY, strokeColor, strokeWidthWorld, hitPadding);
     return;
@@ -29,8 +32,10 @@ export function drawWithGraphics(
     renderCircleOrEllipse(g, o, strokeWidthWorld, strokeColor, defaultFill, hitPadding);
     return;
   }
+
   renderGenericPolygon(g, o, strokeWidthWorld, strokeColor, defaultFill, hitPadding);
 }
+
 function renderPointSet(
   g: PIXI.Graphics,
   o: SceneNode,
@@ -45,11 +50,13 @@ function renderPointSet(
   const sizeWorldY = Math.abs(pxToWorld(desiredPx, worldScaleY || worldScaleX));
   const halfX = sizeWorldX / 2;
   const halfY = sizeWorldY / 2;
+
   o.vertices.forEach((v) => {
     const color = toNumColor(v.color, 0xffffff);
     g.rect(v.x - halfX, v.y - halfY, sizeWorldX, sizeWorldY);
     g.fill({ color: color, alpha: 1 });
   });
+
   if (o.vertices.length > 0) {
     const { cx, cy, rx, ry } = bboxRadii(o);
     const boundsX = (cx - rx) - halfX;
@@ -59,6 +66,7 @@ function renderPointSet(
     g.hitArea = createPaddedHitArea(boundsX, boundsY, boundsW, boundsH, hitPadding);
   }
 }
+
 function renderLine(
   g: PIXI.Graphics,
   o: SceneNode,
@@ -69,13 +77,16 @@ function renderLine(
   const a = o.vertices[0];
   const b = o.vertices[1];
   if (!a || !b) return;
+
   g.moveTo(a.x, a.y);
   g.lineTo(b.x, b.y);
   g.stroke({ color: defaultFill, alpha: 1, width: strokeWidthWorld });
+
   const minX = Math.min(a.x, b.x), maxX = Math.max(a.x, b.x);
   const minY = Math.min(a.y, b.y), maxY = Math.max(a.y, b.y);
   g.hitArea = createPaddedHitArea(minX, minY, maxX - minX, maxY - minY, hitPadding);
 }
+
 function renderLinePath(
   g: PIXI.Graphics,
   o: SceneNode,
@@ -92,6 +103,7 @@ function renderLinePath(
   const { cx, cy, rx, ry } = bboxRadii(o);
   g.hitArea = createPaddedHitArea(cx - rx, cy - ry, rx * 2, ry * 2, hitPadding);
 }
+
 function renderCircleOrEllipse(
   g: PIXI.Graphics,
   o: SceneNode,
@@ -102,11 +114,14 @@ function renderCircleOrEllipse(
 ): void {
   const { cx, cy, rx, ry } = bboxRadii(o);
   const R = o.type === "CIRCLE" ? (rx + ry) / 2 : undefined;
+  
   const pts = o.type === "CIRCLE"
     ? buildEllipsePoints(cx, cy, R!, R!, 128)
     : buildEllipsePoints(cx, cy, rx, ry, 128);
+
   g.poly(pts);
   g.fill({ color: defaultFill, alpha: 1 });
+
   g.hitArea = createPaddedHitArea(
     cx - (o.type === "CIRCLE" ? R! : rx),
     cy - (o.type === "CIRCLE" ? R! : ry),
@@ -115,6 +130,7 @@ function renderCircleOrEllipse(
     hitPadding
   );
 }
+
 function renderGenericPolygon(
   g: PIXI.Graphics,
   o: SceneNode,
@@ -123,11 +139,18 @@ function renderGenericPolygon(
   defaultFill: number,
   hitPadding: number
 ): void {
-  const pts: number[] = [];
-  for (const v of o.vertices) pts.push(v.x, v.y);
-  if (pts.length >= 6) {
-    g.poly(pts);
-    g.fill({ color: defaultFill, alpha: 1 });
+  if (o.vertices.length >= 3) {
+    const v0 = o.vertices[0];
+    
+    // Draw as a manual triangle fan to mimic GL_POLYGON behavior
+    for (let i = 1; i < o.vertices.length - 1; i++) {
+      const v1 = o.vertices[i];
+      const v2 = o.vertices[i + 1];
+      
+      g.poly([v0.x, v0.y, v1.x, v1.y, v2.x, v2.y]);
+      g.fill({ color: defaultFill, alpha: 1 });
+    }
+
     const { cx, cy, rx, ry } = bboxRadii(o);
     g.hitArea = createPaddedHitArea(cx - rx, cy - ry, rx * 2, ry * 2, hitPadding);
   }

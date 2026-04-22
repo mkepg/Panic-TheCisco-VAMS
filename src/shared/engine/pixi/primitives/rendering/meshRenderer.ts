@@ -2,25 +2,32 @@ import * as PIXI from "pixi.js";
 import type { SceneNode } from "@/core/types/scene";
 import { colorToRGB } from "../utils/color-utils";
 import { bboxRadii } from "../utils/geometry-utils";
+
 export interface MeshCreationResult {
   mesh: PIXI.Mesh<PIXI.MeshGeometry, PIXI.Shader>;
 }
+
 const VERTEX_COLOR_SHADER: PIXI.Shader = createVertexColorShader();
+
 export function createMesh(o: SceneNode): MeshCreationResult | null {
   const { positions, colors, indices, topology } = buildMeshData(o);
+
   if (positions.length === 0) {
     return null;
   }
+
   const geometry = new PIXI.MeshGeometry({
     positions: new Float32Array(positions),
     uvs: new Float32Array(positions.length).fill(0),
     indices: new Uint32Array(indices),
     topology: topology,
   });
+
   const colorBuffer = new PIXI.Buffer({
     data: new Float32Array(colors),
     usage: PIXI.BufferUsage.VERTEX | PIXI.BufferUsage.COPY_DST,
   });
+
   geometry.addAttribute('aColor', {
     buffer: colorBuffer,
     format: 'float32x4',
@@ -28,9 +35,11 @@ export function createMesh(o: SceneNode): MeshCreationResult | null {
     offset: 0,
     instance: false,
   });
+
   const mesh = new PIXI.Mesh({ geometry, shader: VERTEX_COLOR_SHADER });
   return { mesh };
 }
+
 function buildMeshData(o: SceneNode): {
   positions: number[];
   colors: number[];
@@ -41,6 +50,7 @@ function buildMeshData(o: SceneNode): {
   const colors: number[] = [];
   let indices: number[] = [];
   let topology: 'triangle-list' | 'triangle-strip' | 'line-strip' = 'triangle-list';
+
   if (o.type === "TRIANGLE_STRIP") {
     topology = 'triangle-strip';
     for (let i = 0; i < o.vertices.length; i++) {
@@ -84,8 +94,10 @@ function buildMeshData(o: SceneNode): {
   else if (o.vertices.length >= 3) {
     buildPolygonMeshData(o, positions, colors, indices);
   }
+
   return { positions, colors, indices, topology };
 }
+
 function buildCircleOrEllipseMeshData(
   o: SceneNode,
   positions: number[],
@@ -95,7 +107,9 @@ function buildCircleOrEllipseMeshData(
   const { cx, cy, rx, ry } = bboxRadii(o);
   const R = o.type === "CIRCLE" ? (rx + ry) / 2 : undefined;
   const segments = 64;
+
   positions.push(cx, cy);
+
   let avgR = 0, avgG = 0, avgB = 0;
   for (const v of o.vertices) {
     const rgb = colorToRGB(v.color);
@@ -105,17 +119,21 @@ function buildCircleOrEllipseMeshData(
   }
   const count = o.vertices.length;
   colors.push(avgR / count, avgG / count, avgB / count, 1.0);
+
   for (let i = 0; i <= segments; i++) {
     const t = (i / segments) * Math.PI * 2;
     const x = cx + Math.cos(t) * (o.type === "CIRCLE" ? R! : rx);
     const y = cy + Math.sin(t) * (o.type === "CIRCLE" ? R! : ry);
     positions.push(x, y);
+
     const ratio = (i % segments) / segments;
     const idx = Math.floor(ratio * o.vertices.length);
     const nextIdx = (idx + 1) % o.vertices.length;
     const localRatio = (ratio * o.vertices.length) - idx;
+
     const rgb1 = colorToRGB(o.vertices[idx].color);
     const rgb2 = colorToRGB(o.vertices[nextIdx].color);
+
     colors.push(
       rgb1[0] * (1 - localRatio) + rgb2[0] * localRatio,
       rgb1[1] * (1 - localRatio) + rgb2[1] * localRatio,
@@ -123,10 +141,12 @@ function buildCircleOrEllipseMeshData(
       1.0
     );
   }
+
   for (let i = 1; i <= segments; i++) {
     indices.push(0, i, i + 1);
   }
 }
+
 function buildStarMeshData(
   o: SceneNode,
   positions: number[],
@@ -141,6 +161,7 @@ function buildStarMeshData(
   cx /= o.vertices.length;
   cy /= o.vertices.length;
   positions.push(cx, cy);
+
   let avgR = 0, avgG = 0, avgB = 0;
   for (const v of o.vertices) {
     const rgb = colorToRGB(v.color);
@@ -150,16 +171,19 @@ function buildStarMeshData(
   }
   const count = o.vertices.length;
   colors.push(avgR / count, avgG / count, avgB / count, 1.0);
+
   for (let i = 0; i < o.vertices.length; i++) {
     positions.push(o.vertices[i].x, o.vertices[i].y);
     const rgb = colorToRGB(o.vertices[i].color);
     colors.push(rgb[0], rgb[1], rgb[2], 1.0);
   }
+
   for (let i = 0; i < o.vertices.length; i++) {
     const next = (i + 1) % o.vertices.length;
     indices.push(0, i + 1, next + 1);
   }
 }
+
 function buildPolygonMeshData(
   o: SceneNode,
   positions: number[],
@@ -167,85 +191,20 @@ function buildPolygonMeshData(
   indices: number[]
 ): void {
   const startIndex = positions.length / 2;
+
   for (let i = 0; i < o.vertices.length; i++) {
     positions.push(o.vertices[i].x, o.vertices[i].y);
     const rgb = colorToRGB(o.vertices[i].color);
     colors.push(rgb[0], rgb[1], rgb[2], 1.0);
   }
-  const polyIndices = triangulate(o.vertices);
-  for (let i = 0; i < polyIndices.length; i++) {
-    indices.push(startIndex + polyIndices[i]);
+
+  // OpenGL 1.5 strictly renders GL_POLYGON as a triangle fan originating from vertex 0.
+  // Concave polygons will intentionally artifact here.
+  for (let i = 1; i < o.vertices.length - 1; i++) {
+    indices.push(startIndex, startIndex + i, startIndex + i + 1);
   }
 }
-function triangulate(vertices: { x: number; y: number }[]): number[] {
-  const indices: number[] = [];
-  const n = vertices.length;
-  if (n < 3) return indices;
-  const V: number[] = new Array(n);
-  let area = 0;
-  for (let p = n - 1, q = 0; q < n; p = q++) {
-    area += vertices[p].x * vertices[q].y - vertices[q].x * vertices[p].y;
-  }
-  if (area > 0) {
-    for (let i = 0; i < n; i++) V[i] = i;
-  } else {
-    for (let i = 0; i < n; i++) V[i] = (n - 1) - i;
-  }
-  let nv = n;
-  let count = 2 * nv;
-  for (let v = nv - 1; nv > 2; ) {
-    if (count-- <= 0) {
-      for (let i = 1; i < nv - 1; i++) {
-        indices.push(V[0], V[i], V[i + 1]);
-      }
-      break;
-    }
-    let u = v; if (nv <= u) u = 0;
-    v = u + 1; if (nv <= v) v = 0;
-    let w = v + 1; if (nv <= w) w = 0;
-    if (snip(vertices, u, v, w, nv, V)) {
-      indices.push(V[u], V[v], V[w]);
-      for (let s = v, t = v + 1; t < nv; s++, t++) {
-        V[s] = V[t];
-      }
-      nv--;
-      count = 2 * nv;
-    }
-  }
-  return indices;
-}
-function snip(
-  vertices: { x: number; y: number }[],
-  u: number,
-  v: number,
-  w: number,
-  n: number,
-  V: number[]
-): boolean {
-  const ax = vertices[V[u]].x, ay = vertices[V[u]].y;
-  const bx = vertices[V[v]].x, by = vertices[V[v]].y;
-  const cx = vertices[V[w]].x, cy = vertices[V[w]].y;
-  if (1e-6 > ((bx - ax) * (cy - ay) - (by - ay) * (cx - ax))) return false;
-  for (let p = 0; p < n; p++) {
-    if (p === u || p === v || p === w) continue;
-    const px = vertices[V[p]].x, py = vertices[V[p]].y;
-    if (insideTriangle(ax, ay, bx, by, cx, cy, px, py)) return false;
-  }
-  return true;
-}
-function insideTriangle(
-  ax: number, ay: number,
-  bx: number, by: number,
-  cx: number, cy: number,
-  px: number, py: number
-): boolean {
-  const cross1 = (bx - ax) * (py - ay) - (by - ay) * (px - ax);
-  const cross2 = (cx - bx) * (py - by) - (cy - by) * (px - bx);
-  const cross3 = (ax - cx) * (py - cy) - (ay - cy) * (px - cx);
-  const hasNeg = (cross1 < 0) || (cross2 < 0) || (cross3 < 0);
-  const hasPos = (cross1 > 0) || (cross2 > 0) || (cross3 > 0);
-  return !(hasNeg && hasPos);
-}
+
 function createVertexColorShader(): PIXI.Shader {
   return PIXI.Shader.from({
     gl: {
