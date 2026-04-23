@@ -3,10 +3,16 @@ import TopBar from '@/widgets/layout/top-bar';
 import LeftSidebar from '@/widgets/layout/left-sidebar';
 import RightSidebar from '@/widgets/layout/right-sidebar';
 import VamsCanvas from '@/widgets/canvas';
+import LessonBar from '@/features/lesson-engine/ui/LessonBar';
 import { useVamsStore } from '@/core/store';
+import { useKeyboardShortcuts } from '@/shared/hooks/useKeyboardShortcuts';
 
 export default function App() {
-  const { theme } = useVamsStore();
+  useKeyboardShortcuts(); // Initialize global listeners
+  // Use strict selectors instead of destructuring the whole store!
+  const theme = useVamsStore((state) => state.theme);
+  const appMode = useVamsStore((state) => state.appMode); 
+
   return (
     <div className="app-container" data-theme={theme}>
       <TopBar />
@@ -17,6 +23,8 @@ export default function App() {
         </main>
         <RightSidebar />
       </div>
+      {/* If appMode is 'Lesson', this will mount */}
+      {appMode === 'Lesson' && <LessonBar />}
     </div>
   );
 }

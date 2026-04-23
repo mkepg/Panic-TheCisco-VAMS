@@ -1,4 +1,5 @@
 @use '../../../shared/styles/tokens' as *;
+
 .right-sidebar {
   width: $right-sidebar-width;
   background-color: $bg-panel;
@@ -7,6 +8,7 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+
   .sidebar-header {
     display: flex;
     align-items: baseline;
@@ -15,6 +17,7 @@
     background-color: rgba(0, 0, 0, 0.2);
     border-bottom: 1px solid $border-color;
     flex-shrink: 0;
+
     .sidebar-title {
       font-size: 0.7rem;
       font-weight: 700;
@@ -22,15 +25,33 @@
       letter-spacing: 0.06em;
       color: $text-muted;
     }
+
     .sidebar-hint {
       font-size: 0.65rem;
       color: $text-dim;
       font-style: italic;
     }
   }
-  .sidebar-content {
+
+  .right-sidebar-content {
     flex: 1;
-    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
     overflow: hidden;
+    padding-bottom: 0;
+
+    .panel-top {
+      flex: 1.5;
+      position: relative;
+      min-height: 200px;
+    }
+
+    .panel-bottom {
+      flex: 1;
+      position: relative;
+      min-height: 150px; /* Dropped min-height slightly so it doesn't fight the code panel on small screens */
+    }
   }
 }

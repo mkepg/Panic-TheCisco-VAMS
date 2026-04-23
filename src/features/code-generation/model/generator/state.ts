@@ -6,7 +6,6 @@ export const generateState = (allObjects: SceneNode[]): string => {
   code += `    float x, y;\n`;
   code += `    float rotation;\n`;
   code += `    float scaleX, scaleY;\n`;
-  code += `    bool isVisible;\n`;
   code += `};\n\n`;
   allObjects.forEach(obj => {
     const safeName = sanitizeName(obj.name);

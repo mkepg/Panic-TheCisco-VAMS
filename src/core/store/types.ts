@@ -79,8 +79,8 @@ export interface HistorySnapshot {
   selectedVertexId: string | null;
   pendingShapeType: PrimitiveType | null;
   pendingVertices: PendingVertex[];
-  pendingMinVertices: number;         // <- Added
-  pendingVertexStride: number | null; // <- Added
+  pendingMinVertices: number;
+  pendingVertexStride: number | null;
   timestamp: number;
 }
 
@@ -99,9 +99,34 @@ export interface HistorySlice {
   clearHistory: () => void;
 }
 
+export type AppMode = 'Author' | 'Lesson';
+export type CurriculumSection = 'Pipeline' | 'Primitives' | 'Buffers' | 'Transforms' | 'Textures';
+
+export interface RuntimeSlice {
+  appMode: AppMode;
+  activeSection: CurriculumSection;
+  setAppMode: (mode: AppMode) => void;
+  setActiveSection: (section: CurriculumSection) => void;
+}
+
+export interface LessonSlice {
+  activeLessonId: string | null;
+  currentStepIndex: number;
+  exerciseAnswers: Record<string, unknown>;
+  isSuccess: boolean;
+  sceneBackup: SceneNode[] | null; // Added backup storage
+  setActiveLesson: (lessonId: string | null) => void;
+  setCurrentStep: (index: number) => void;
+  setExerciseAnswer: (stepId: string, answer: unknown) => void;
+  setSuccessState: (success: boolean) => void;
+  clearLessonState: () => void;
+}
+
 export type VamsState = SceneSlice &
   InteractionSlice &
   ViewportSlice &
   SettingsSlice &
   CustomShapeBuilderSlice &
-  HistorySlice;
+  HistorySlice &
+  RuntimeSlice &
+  LessonSlice;

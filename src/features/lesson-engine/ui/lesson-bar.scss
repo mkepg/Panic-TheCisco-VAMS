@@ -1,0 +1,120 @@
+@use '../../../shared/styles/tokens' as *;
+
+.lesson-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 6rem;
+  flex-shrink: 0;
+  background-color: $bg-dark; // Shifted to a deeper, developer-oriented aesthetic
+  position: relative;
+  padding: 0 1.5rem;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+
+  /* The Sleek Top-Mounted Progress Indicator */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 2px;
+    background-color: $accent-blue;
+    width: var(--progress, 0%);
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 10px rgba(var(--accent-blue-rgb), 0.6);
+  }
+
+  .lesson-info {
+    display: flex;
+    flex-direction: column;
+    width: 20%;
+    
+    .lesson-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: $text-main;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      letter-spacing: 0.03em;
+    }
+    
+    .step-counter {
+      font-size: 0.85rem;
+      color: $text-dim;
+      font-family: $font-mono;
+      margin-top: 0.25rem;
+    }
+  }
+
+  .lesson-narration {
+    flex: 1;
+    padding: 0 2rem;
+    font-size: 0.95rem;
+    color: var(--accent-blue-light);
+    text-align: center;
+    line-height: 1.5;
+    font-weight: 400;
+
+    p { margin: 0; }
+  }
+
+  .lesson-controls {
+    display: flex;
+    gap: 0.75rem;
+    width: 20%;
+    justify-content: flex-end;
+
+    .control-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.7rem 1.2rem;
+      background-color: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      color: $text-muted;
+      font-size: 0.75rem;
+      font-family: $font-mono; // Developer look
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover:not(:disabled) {
+        background-color: rgba(255, 255, 255, 0.08);
+        color: $text-main;
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+
+      &:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+
+      &.primary {
+        background-color: rgba(var(--accent-blue-rgb), 0.15);
+        border-color: rgba(var(--accent-blue-rgb), 0.4);
+        color: var(--accent-blue-light);
+
+        &.ready {
+          background-color: $accent-blue;
+          color: white;
+          border-color: $accent-blue;
+          box-shadow: 0 0 12px rgba(var(--accent-blue-rgb), 0.4);
+        }
+      }
+
+      &.exit {
+        margin-right: auto;
+        color: var(--accent-red-light);
+        background-color: rgba(var(--accent-red-rgb), 0.1);
+        border-color: transparent;
+
+        &:hover {
+          background-color: rgba(var(--accent-red-rgb), 0.2);
+        }
+      }
+    }
+  }
+}

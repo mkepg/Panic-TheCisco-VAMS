@@ -1,4 +1,5 @@
 @use '../../shared/styles/tokens' as *;
+
 .app-container {
   display: flex;
   flex-direction: column;
@@ -6,10 +7,12 @@
   width: 100vw;
   background-color: $bg-dark;
 }
+
 .main-workspace {
   flex: 1;
   display: flex;
   overflow: hidden;
+
   .canvas-area {
     flex: 1;
     position: relative;

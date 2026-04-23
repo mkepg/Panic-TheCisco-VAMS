@@ -9,8 +9,6 @@ export const generateObjectDrawBody = (
   const safeName = sanitizeName(object.name);
 
   drawBody += `    // ${object.name}\n`;
-  drawBody += `    if (!state_${safeName}.isVisible) return;\n\n`;
-
   drawBody += `    glPushMatrix();\n`;
   drawBody += `    // Transform\n`;
   drawBody += `    glTranslatef(state_${safeName}.x, state_${safeName}.y, 0.0f);\n`;
