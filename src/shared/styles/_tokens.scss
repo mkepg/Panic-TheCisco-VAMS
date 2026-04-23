@@ -5,6 +5,13 @@
   font-style: normal;
   font-display: swap;
 }
+@font-face {
+  font-family: 'Comfortaa';
+  src: url('/fonts/Comfortaa-Light.ttf') format('truetype'); /* Update filename if needed */
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
 $logo-font: 'Minecrafter', sans-serif;
 $font-mono: 'Menlo', 'Monaco', 'Courier New', monospace;
 $header-height: 3.7rem;

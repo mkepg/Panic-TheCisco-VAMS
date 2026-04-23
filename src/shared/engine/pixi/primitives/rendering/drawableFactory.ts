@@ -114,13 +114,13 @@ function createTextDrawable(
   const color = toNumColor(o.vertices[0]?.color, 0xffffff);
 
   const textStyle = new PIXI.TextStyle({
-    // Force a consistent, standardized monospace font to match GLUT proportions
-    fontFamily: "'Courier New', Courier, monospace", 
+    // --- Update to use the local font ---
+    fontFamily: "Comfortaa", 
     fontSize: 64,
     fill: color,
     align: 'center',
-    // Lighter weight helps mimic the wireframe look of glutStrokeCharacter
-    fontWeight: 'lighter', 
+    fontWeight: '300', // Matches the font-weight in your @font-face
+    // ------------------------------------
   });
 
   const text = new PIXI.Text({

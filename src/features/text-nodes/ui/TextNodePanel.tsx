@@ -19,7 +19,7 @@ export default function TextNodePanel() {
     setTextInput('');
   };
   return (
-    <CollapsibleSection title="Text Objects" icon={<Type size={14} />} defaultOpen={true}>
+    <CollapsibleSection title="Create Text" icon={<Type size={14} />} defaultOpen={true}>
       <div className="text-objects-section">
         {/* Creation Input */}
         <div>
