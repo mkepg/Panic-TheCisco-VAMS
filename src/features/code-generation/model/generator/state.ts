@@ -17,8 +17,7 @@ export const generateState = (allObjects: SceneNode[]): string => {
     const rot = obj.transform.rotate.toFixed(rotPrec);
     const sx = obj.transform.scaleX.toFixed(scalePrec);
     const sy = obj.transform.scaleY.toFixed(scalePrec);
-    const isVis = obj.visible ? 'true' : 'false';
-    code += `ObjectState state_${safeName} = { ${tx}f, ${ty}f, ${rot}f, ${sx}f, ${sy}f, ${isVis} };\n`;
+    code += `ObjectState state_${safeName} = { ${tx}f, ${ty}f, ${rot}f, ${sx}f, ${sy}f };\n`;
   });
   return code + `\n`;
 };

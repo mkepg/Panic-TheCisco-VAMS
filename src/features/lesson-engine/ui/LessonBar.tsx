@@ -12,7 +12,6 @@ export default function LessonBar() {
     setCurrentStep, 
     setAppMode, 
     clearLessonState,
-    objects
   } = useVamsStore();
 
   const lesson = activeLessonId ? LESSON_REGISTRY[activeLessonId] : null;
@@ -25,7 +24,7 @@ export default function LessonBar() {
     if (!step) return false;
     if (!step.successCheck) return true;
     return step.successCheck(useVamsStore.getState());
-  }, [step, objects]);
+  }, [step]);
 
   // DETERMINISTIC SCENE REBUILDER
   // Executes whenever the step changes (Next or Back)
