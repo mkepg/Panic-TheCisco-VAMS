@@ -19,7 +19,7 @@ const CodeViewer = memo(function CodeViewer({ code }: CodeViewerProps) {
   return (
     <div className="code-viewer-container">
       <div className="code-header">
-        <span className="code-lang">C++ (OpenGL)</span>
+        <span className="code-lang">C++ (OpenGL 1.5)</span>
         <button
           className={`copy-button ${copied ? 'copied' : ''}`}
           onClick={handleCopy}

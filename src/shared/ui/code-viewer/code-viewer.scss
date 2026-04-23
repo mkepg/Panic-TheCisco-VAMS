@@ -18,10 +18,11 @@
     flex-shrink: 0;
     .code-lang {
       font-family: $font-mono;
-      font-size: 0.7rem;
+      font-size: 0.8rem;
       color: $text-dim;
       text-transform: uppercase;
       letter-spacing: 0.05em;
+      font-weight: 700;
     }
     .copy-button {
       display: flex;
