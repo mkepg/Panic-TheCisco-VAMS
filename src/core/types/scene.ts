@@ -1,20 +1,15 @@
-export type ShapePrimitive =
-  | 'TRIANGLE'
-  | 'RECTANGLE'
-  | 'CIRCLE'
-  | 'ELLIPSE'
-  | 'HEXAGON'
-  | 'STAR'
+export type PrimitiveType =
+  | 'POINTS'
+  | 'LINES'
+  | 'LINE_STRIP'
+  | 'LINE_LOOP'
+  | 'TRIANGLES'
+  | 'TRIANGLE_STRIP'
+  | 'TRIANGLE_FAN'
+  | 'QUADS'
+  | 'QUAD_STRIP'
   | 'POLYGON';
-export type PathPrimitive =
-  | 'LINE'
-  | 'LINE_STRIP';
-export type PointPrimitive =
-  | 'POINT'
-  | 'POINTS';
-export type MeshPrimitive =
-  | 'TRIANGLE_STRIP';
-export type PrimitiveType = ShapePrimitive | PathPrimitive | PointPrimitive | MeshPrimitive;
+
 export type SceneNodeType = PrimitiveType | 'TEXT' | 'GROUP';
 export type ShadingModel = 'FLAT' | 'SMOOTH';
 
@@ -36,21 +31,22 @@ export interface TransformState {
   translateX: number;
   translateY: number;
   rotate: number;
-  scale: number;
+  scaleX: number;
+  scaleY: number;
 }
 
 export interface SceneNode {
   id: string;
   name: string;
   type: SceneNodeType;
-  isVisible: boolean;
+  visible: boolean;
   shading: ShadingModel;
   vertices: Vertex[];
   transform: TransformState;
   textContent?: string;
   rasterPosition?: { x: number; y: number };
   parentId?: string | null;
-  childIds?: string[];
+  children?: string[];
 }
 
 export interface LearningSettings {
@@ -60,10 +56,8 @@ export interface LearningSettings {
 
 export type InteractionMode =
   | 'SELECT'
-  | 'CREATE'
-  | 'VERTEX_EDIT'
-  | 'PARENT_LINK'
-  | 'CUSTOM_SHAPE_PLACE';
+  | 'VERTEX_PLACE'
+  | 'VERTEX_EDIT';
 
 export type AxisVisibility = {
   showGlobalAxes: boolean;
@@ -79,16 +73,6 @@ export interface ProjectExportOptions {
   includeScaffold: boolean;
 }
 
-export interface CircleObject {
-  id: string;
-  cx: number;
-  cy: number;
-  radius: number;
-  strokeWidth?: number;
-  strokeColor?: number;
-  fillColor?: number;
-}
- 
 export interface PendingVertex {
   x: number;
   y: number;

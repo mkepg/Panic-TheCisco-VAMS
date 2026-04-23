@@ -1,20 +1,65 @@
 @use '../../../shared/styles/tokens' as *;
+
+.grid-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+
+  .create-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.75rem 0.5rem;
+    background-color: $bg-input;
+    border: 1px solid $border-color;
+    border-radius: 4px;
+    color: $text-muted;
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+
+    svg {
+      opacity: 0.8;
+      transition: opacity 0.2s;
+    }
+
+    &:hover {
+      background-color: var(--bg-panel-hover);
+      color: $text-main;
+      border-color: $accent-blue;
+
+      svg {
+        opacity: 1;
+        color: $accent-blue;
+      }
+    }
+  }
+}
+
 .vertex-shape-builder {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+
   .control-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
+
     &.header {
       margin-bottom: 0.25rem;
+
       .shape-label {
         color: $text-main;
         font-weight: 600;
         font-size: 0.9rem;
       }
     }
+
     .icon-btn-ghost {
       background: transparent;
       color: $text-muted;
@@ -24,12 +69,14 @@
       display: flex;
       align-items: center;
       justify-content: center;
+
       &:hover {
         color: $accent-red;
         background-color: rgba(var(--accent-red-rgb), 0.1);
       }
     }
   }
+
   .placement-hint {
     display: flex;
     align-items: center;
@@ -41,25 +88,30 @@
     background-color: rgba(var(--accent-blue-rgb), 0.06);
     border: 1px solid rgba(var(--accent-blue-rgb), 0.15);
     transition: all 0.25s ease;
+
     .hint-icon {
       flex-shrink: 0;
       color: $text-dim;
       transition: color 0.25s;
     }
+
     &.active {
       background-color: rgba(var(--accent-blue-rgb), 0.14);
       border-color: rgba(var(--accent-blue-rgb), 0.4);
       color: var(--accent-blue-light);
+
       .hint-icon {
         color: var(--accent-blue-light);
         animation: hint-pulse 2s ease-in-out infinite;
       }
     }
   }
+
   @keyframes hint-pulse {
     0%, 100% { opacity: 1; }
     50%      { opacity: 0.4; }
   }
+
   .vertex-list {
     display: flex;
     flex-direction: column;
@@ -70,6 +122,7 @@
     @include scrollbar;
     padding-right: 0.25rem;
     margin-bottom: 0.25rem;
+
     .vertex-empty-msg {
       font-size: 0.75rem;
       color: $text-dim;
@@ -77,6 +130,7 @@
       text-align: center;
       padding: 0.6rem 0;
     }
+
     .vertex-row {
       display: flex;
       align-items: center;
@@ -86,9 +140,11 @@
       border: 1px solid $border-color;
       border-radius: 4px;
       transition: border-color 0.2s;
+
       &:hover {
         border-color: var(--border-highlight);
       }
+
       .vertex-index {
         font-size: 0.7rem;
         font-weight: 600;
@@ -97,12 +153,14 @@
         min-width: 1.2rem;
         flex-shrink: 0;
       }
+
       .coord-input-group {
         display: flex;
         align-items: center;
         gap: 0.3rem;
         flex: 1;
         min-width: 0;
+
         .coord-label {
           font-size: 0.65rem;
           font-weight: 600;
@@ -110,6 +168,7 @@
           font-family: $font-mono;
           flex-shrink: 0;
         }
+
         .vertex-coord-input {
           flex: 1;
           min-width: 0;
@@ -124,16 +183,20 @@
           transition: all 0.2s;
           box-sizing: border-box;
           text-align: right;
+
           &:focus {
             outline: none;
             border-color: $accent-blue;
             box-shadow: 0 0 0 2px rgba(var(--accent-blue-rgb), 0.1);
           }
+
           &::placeholder {
             color: $text-dim;
             opacity: 0.5;
           }
+
           -moz-appearance: textfield;
+
           &::-webkit-outer-spin-button,
           &::-webkit-inner-spin-button {
             -webkit-appearance: none;
@@ -141,6 +204,7 @@
           }
         }
       }
+
       .vertex-delete {
         background: transparent;
         color: $text-dim;
@@ -151,10 +215,12 @@
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+
         &:hover:not(:disabled) {
           color: $accent-red;
           background-color: rgba(var(--accent-red-rgb), 0.1);
         }
+
         &:disabled {
           opacity: 0.25;
           cursor: not-allowed;
@@ -162,28 +228,34 @@
       }
     }
   }
+
   .vertex-count-status {
     display: flex;
     justify-content: flex-end;
+
     .count-badge {
       font-family: $font-mono;
       font-size: 0.7rem;
       padding: 2px 8px;
       border-radius: 10px;
       font-weight: 600;
+
       &.insufficient {
         background-color: rgba(var(--accent-red-rgb), 0.1);
         color: var(--accent-red-light);
       }
+
       &.sufficient {
         background-color: rgba(var(--accent-green-rgb), 0.12);
         color: var(--accent-green-light);
       }
     }
   }
+
   .vertex-tools {
     display: flex;
     gap: 0.5rem;
+
     .tool-btn {
       flex: 1;
       display: flex;
@@ -198,15 +270,19 @@
       font-size: 0.75rem;
       font-weight: 500;
       transition: all 0.2s;
+
       svg {
         opacity: 0.7;
       }
+
       &:hover:not(:disabled) {
         background: rgba(255, 255, 255, 0.08);
         color: $text-main;
         border-color: var(--border-highlight);
+
         svg { opacity: 1; }
       }
+
       &:disabled {
         opacity: 0.4;
         cursor: not-allowed;
@@ -214,11 +290,13 @@
       }
     }
   }
+
   .vertex-input-actions {
     display: flex;
     gap: 0.5rem;
     margin-top: 0.25rem;
     width: 100%;
+
     .action-btn {
       flex: 1;
       padding: 0.6rem;
@@ -230,25 +308,31 @@
       align-items: center;
       justify-content: center;
       box-sizing: border-box;
+
       &.cancel-btn {
         background-color: $border-color;
         color: $text-main;
+
         &:hover {
           background-color: var(--border-highlight);
         }
       }
+
       &.create-btn-primary {
         background-color: rgba(var(--accent-blue-rgb), 0.15);
         color: $accent-blue;
         border: 1px solid rgba(var(--accent-blue-rgb), 0.3);
+
         &:hover:not(:disabled) {
           background-color: rgba(var(--accent-blue-rgb), 0.25);
           border-color: rgba(var(--accent-blue-rgb), 0.5);
         }
+
         &:active:not(:disabled) {
           background-color: $accent-blue;
           color: white;
         }
+
         &:disabled {
           opacity: 0.4;
           cursor: not-allowed;
@@ -257,6 +341,7 @@
     }
   }
 }
+
 .create-btn-full {
   width: 100%;
   display: flex;
@@ -269,12 +354,15 @@
   border-radius: 4px;
   font-size: 0.85rem;
   transition: all 0.2s;
+
   &:hover {
     background-color: rgba(var(--accent-blue-rgb), 0.2);
   }
+
   &:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+
     &:hover {
       background-color: rgba(var(--accent-blue-rgb), 0.1);
     }

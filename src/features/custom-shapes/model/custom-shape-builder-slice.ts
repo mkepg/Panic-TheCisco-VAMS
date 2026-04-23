@@ -4,18 +4,21 @@ export const createCustomShapeBuilderSlice: StateCreator<VamsState, [], [], Cust
   pendingShapeType: null,
   pendingVertices: [],
   pendingMinVertices: 1,
-  startCustomShape: (type, minVertices) =>
+  pendingVertexStride: null,
+  startCustomShape: (type, minVertices, stride) =>
     set({
       pendingShapeType: type,
       pendingVertices: [],
       pendingMinVertices: minVertices,
-      interactionMode: 'CUSTOM_SHAPE_PLACE',
+      pendingVertexStride: stride ?? null,
+      interactionMode: 'VERTEX_PLACE',
       selectedObjectId: null,
     }),
   cancelCustomShape: () =>
     set({
       pendingShapeType: null,
       pendingVertices: [],
+      pendingVertexStride: null,
       interactionMode: 'SELECT',
     }),
   addPendingVertex: (x, y) => {

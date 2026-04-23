@@ -1,8 +1,10 @@
 import * as PIXI from "pixi.js";
 import type { SceneNode, Vertex } from "@/core/types/scene";
+
 export function pxToWorld(px: number, worldScaleX?: number): number {
   return worldScaleX ? px / worldScaleX : 0.02;
 }
+
 export function bboxRadii(o: SceneNode): { cx: number; cy: number; rx: number; ry: number } {
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   for (const v of o.vertices) {
@@ -18,6 +20,7 @@ export function bboxRadii(o: SceneNode): { cx: number; cy: number; rx: number; r
   const ry = Math.max(1e-6, (maxY - minY) / 2);
   return { cx, cy, rx, ry };
 }
+
 export function buildEllipsePoints(
   cx: number,
   cy: number,
@@ -32,11 +35,13 @@ export function buildEllipsePoints(
   }
   return pts;
 }
+
 export function hasUniformColor(o: SceneNode): boolean {
   if (o.vertices.length === 0) return true;
   const firstColor = o.vertices[0].color;
   return o.vertices.every(v => v.color === firstColor);
 }
+
 export function createPaddedHitArea(
   minX: number,
   minY: number,
@@ -51,6 +56,7 @@ export function createPaddedHitArea(
     height + (padding * 2)
   );
 }
+
 export function getGroupLocalBounds(
   children: SceneNode[]
 ): { minX: number; minY: number; maxX: number; maxY: number; width: number; height: number } {
@@ -58,26 +64,31 @@ export function getGroupLocalBounds(
     return { minX: -0.5, minY: -0.5, maxX: 0.5, maxY: 0.5, width: 1, height: 1 };
   }
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  
   children.forEach(child => {
     const cRad = (child.transform.rotate * Math.PI) / 180;
     const cCos = Math.cos(cRad);
     const cSin = Math.sin(cRad);
-    const cScale = child.transform.scale || 1;
+    const cScaleX = child.transform.scaleX ?? 1;
+    const cScaleY = child.transform.scaleY ?? 1;
     const cX = child.transform.translateX;
     const cY = child.transform.translateY;
     const vertices = child.vertices.length > 0
       ? child.vertices
       : [{x: -0.5, y: -0.5}, {x: 0.5, y: -0.5}, {x: 0.5, y: 0.5}, {x: -0.5, y: 0.5}] as Vertex[];
+      
     vertices.forEach(v => {
-      const lx = (v.x * cScale * cCos) - (v.y * cScale * cSin) + cX;
-      const ly = (v.x * cScale * cSin) + (v.y * cScale * cCos) + cY;
+      const lx = (v.x * cScaleX * cCos) - (v.y * cScaleY * cSin) + cX;
+      const ly = (v.x * cScaleX * cSin) + (v.y * cScaleY * cCos) + cY;
       if (lx < minX) minX = lx;
       if (lx > maxX) maxX = lx;
       if (ly < minY) minY = ly;
       if (ly > maxY) maxY = ly;
     });
   });
+
   if (!isFinite(minX)) return { minX: -0.5, minY: -0.5, maxX: 0.5, maxY: 0.5, width: 1, height: 1 };
+  
   return {
     minX, maxX, minY, maxY,
     width: maxX - minX,

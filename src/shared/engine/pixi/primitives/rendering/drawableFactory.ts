@@ -31,10 +31,10 @@ export function createDrawable(
   if (o.type === 'TEXT') {
     return createTextDrawable(o, hitPadding, container);
   }
-  const shouldUseGraphics =
-    (hasUniformColor(o) && o.type !== 'TRIANGLE_STRIP') ||
-    o.type === "POINT" ||
-    o.type === "POINTS";
+  const isLineOrPoint = (
+    ['POINTS', 'LINES', 'LINE_STRIP', 'LINE_LOOP'] as SceneNode['type'][]
+  ).includes(o.type);
+  const shouldUseGraphics = isLineOrPoint || hasUniformColor(o);
   if (shouldUseGraphics) {
     return createGraphicsDrawable(o, worldScaleX, worldScaleY, hitPadding, container);
   }
@@ -48,8 +48,8 @@ function createGroupDrawable(
 ): PIXI.Container {
   container.position.set(o.transform.translateX, o.transform.translateY);
   container.rotation = (o.transform.rotate * Math.PI) / 180;
-  container.scale.set(o.transform.scale);
-  container.visible = o.isVisible;
+  container.scale.set(o.transform.scaleX, o.transform.scaleY);
+  container.visible = o.visible;
   const bounds = getGroupLocalBounds(options?.groupChildren || []);
   const padding = pxToWorld(4, worldScaleX);
   const drawX = bounds.minX - padding;
@@ -112,30 +112,43 @@ function createTextDrawable(
   container: PIXI.Container
 ): PIXI.Container {
   const color = toNumColor(o.vertices[0]?.color, 0xffffff);
+
   const textStyle = new PIXI.TextStyle({
-    fontFamily: "monospace",
+    // Force a consistent, standardized monospace font to match GLUT proportions
+    fontFamily: "'Courier New', Courier, monospace", 
     fontSize: 64,
     fill: color,
     align: 'center',
-    fontWeight: 'normal',
+    // Lighter weight helps mimic the wireframe look of glutStrokeCharacter
+    fontWeight: 'lighter', 
   });
+
   const text = new PIXI.Text({
     text: o.textContent || '',
     style: textStyle,
     resolution: 2,
   });
+
   text.anchor.set(0.5);
-  const textScale = 0.003;
-  text.scale.set(textScale, -textScale);
+
+  // Adjusted scale to sync with the C++ generator's specific aspect ratio
+  const textScaleX = 0.003;
+  const textScaleY = 0.003 * (0.0016 / 0.0011); // Matches OpenGL's Y-scale compensation
+  
+  text.scale.set(textScaleX, -textScaleY);
+
   container.position.set(o.transform.translateX, o.transform.translateY);
   container.rotation = (o.transform.rotate * Math.PI) / 180;
-  container.scale.set(o.transform.scale);
-  container.visible = o.isVisible;
+  container.scale.set(o.transform.scaleX, o.transform.scaleY);
+  container.visible = o.visible;
   container.zIndex = 10;
+
   container.addChild(text);
+
   const w = text.width;
   const h = text.height;
   container.hitArea = createPaddedHitArea(-w/2, -h/2, w, h, hitPadding);
+
   return container;
 }
 function createGraphicsDrawable(
@@ -150,8 +163,8 @@ function createGraphicsDrawable(
   container.addChild(g);
   container.position.set(o.transform.translateX, o.transform.translateY);
   container.rotation = (o.transform.rotate * Math.PI) / 180;
-  container.scale.set(o.transform.scale);
-  container.visible = o.isVisible;
+  container.scale.set(o.transform.scaleX, o.transform.scaleY);
+  container.visible = o.visible;
   if (!g.hitArea) {
     const { cx, cy, rx, ry } = bboxRadii(o);
     container.hitArea = createPaddedHitArea(cx - rx, cy - ry, rx * 2, ry * 2, hitPadding);
@@ -171,8 +184,8 @@ function createMeshDrawable(
     container.addChild(g);
     container.position.set(o.transform.translateX, o.transform.translateY);
     container.rotation = (o.transform.rotate * Math.PI) / 180;
-    container.scale.set(o.transform.scale);
-    container.visible = o.isVisible;
+    container.scale.set(o.transform.scaleX, o.transform.scaleY);
+    container.visible = o.visible;
     if (!g.hitArea) {
       const { cx, cy, rx, ry } = bboxRadii(o);
       container.hitArea = createPaddedHitArea(cx - rx, cy - ry, rx * 2, ry * 2, hitPadding);
@@ -182,8 +195,8 @@ function createMeshDrawable(
   container.addChild(meshResult.mesh);
   container.position.set(o.transform.translateX, o.transform.translateY);
   container.rotation = (o.transform.rotate * Math.PI) / 180;
-  container.scale.set(o.transform.scale);
-  container.visible = o.isVisible;
+  container.scale.set(o.transform.scaleX, o.transform.scaleY);
+  container.visible = o.visible;
   const { cx, cy, rx, ry } = bboxRadii(o);
   container.hitArea = createPaddedHitArea(cx - rx, cy - ry, rx * 2, ry * 2, hitPadding);
   return container;

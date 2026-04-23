@@ -34,7 +34,7 @@ export default function SceneHierarchyPanel() {
   const getChildren = (parentId: string) =>
     objects.filter(obj => obj.parentId === parentId);
   const isEffectivelyHidden = (obj: SceneNode): boolean => {
-    if (!obj.isVisible) return true;
+    if (!obj.visible) return true;
     if (obj.parentId) {
       const parent = objects.find(o => o.id === obj.parentId);
       if (parent && isEffectivelyHidden(parent)) return true;

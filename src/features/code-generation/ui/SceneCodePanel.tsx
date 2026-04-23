@@ -7,7 +7,7 @@ import type { SceneNode } from "@/core/types/scene";
 function getEffectivelyVisibleObjects(objects: SceneNode[]): SceneNode[] {
   const byId = new Map(objects.map(o => [o.id, o]));
   const isEffectivelyHidden = (obj: SceneNode): boolean => {
-    if (!obj.isVisible) return true;
+    if (!obj.visible) return true;
     if (obj.parentId) {
       const parent = byId.get(obj.parentId);
       if (parent && isEffectivelyHidden(parent)) return true;

@@ -11,9 +11,10 @@ const createSnapshot = (state: VamsState): HistorySnapshot => ({
   selectedObjectId: state.selectedObjectId,
   interactionMode: state.interactionMode,
   selectedVertexId: state.selectedVertexId,
-  isVertexEditMode: state.isVertexEditMode,
   pendingShapeType: state.pendingShapeType,
   pendingVertices: state.pendingVertices,
+  pendingMinVertices: state.pendingMinVertices,
+  pendingVertexStride: state.pendingVertexStride,
   timestamp: Date.now(),
 });
 
@@ -22,9 +23,10 @@ const restoreSnapshot = (snapshot: HistorySnapshot): Partial<VamsState> => ({
   selectedObjectId: snapshot.selectedObjectId,
   interactionMode: snapshot.interactionMode,
   selectedVertexId: snapshot.selectedVertexId,
-  isVertexEditMode: snapshot.isVertexEditMode,
   pendingShapeType: snapshot.pendingShapeType,
   pendingVertices: snapshot.pendingVertices,
+  pendingMinVertices: snapshot.pendingMinVertices,
+  pendingVertexStride: snapshot.pendingVertexStride,
 });
 
 export const createHistorySlice: StateCreator<VamsState, [], [], HistorySlice> = (set, get) => ({
@@ -32,30 +34,30 @@ export const createHistorySlice: StateCreator<VamsState, [], [], HistorySlice> =
   future: [],
   maxHistorySize: 30,
   isBatchMode: false,
-  
+
   startBatch: () => {
     set({ isBatchMode: true });
   },
-  
   endBatch: () => {
     set({ isBatchMode: false });
   },
-  
+
   pushToHistory: () => {
     const state = get();
     if (state.isBatchMode) {
       return;
     }
-    
+
     const snapshotTimestamp = Date.now();
     const snapshot: HistorySnapshot = {
       objects: state.objects,
       selectedObjectId: state.selectedObjectId,
       interactionMode: state.interactionMode,
       selectedVertexId: state.selectedVertexId,
-      isVertexEditMode: state.isVertexEditMode,
       pendingShapeType: state.pendingShapeType,
       pendingVertices: state.pendingVertices,
+      pendingMinVertices: state.pendingMinVertices,
+      pendingVertexStride: state.pendingVertexStride,
       timestamp: snapshotTimestamp,
     };
 
@@ -65,57 +67,64 @@ export const createHistorySlice: StateCreator<VamsState, [], [], HistorySlice> =
         if (lastPast && snapshotTimestamp - lastPast.timestamp < HISTORY_THROTTLE_MS) {
           return;
         }
+
         draft.past.push(snapshot);
         draft.future = [];
+
         if (draft.past.length > draft.maxHistorySize) {
           draft.past.shift();
         }
       })
     );
   },
-  
+
   undo: () => {
     const state = get();
     if (state.past.length === 0) {
       return;
     }
+
     set(
       produce((draft: VamsState) => {
         const previousSnapshot = draft.past.pop()!;
         const currentSnapshot = createSnapshot(state);
+
         draft.future.push(currentSnapshot);
+
         const restoredState = restoreSnapshot(previousSnapshot);
         Object.assign(draft, restoredState);
       })
     );
   },
-  
+
   redo: () => {
     const state = get();
     if (state.future.length === 0) {
       return;
     }
+
     set(
       produce((draft: VamsState) => {
         const nextSnapshot = draft.future.pop()!;
         const currentSnapshot = createSnapshot(state);
+
         draft.past.push(currentSnapshot);
+
         const restoredState = restoreSnapshot(nextSnapshot);
         Object.assign(draft, restoredState);
       })
     );
   },
-  
+
   canUndo: () => {
     const state = get();
     return state.past.length > 0;
   },
-  
   canRedo: () => {
     const state = get();
     return state.future.length > 0;
   },
-  
+
   clearHistory: () => {
     set(
       produce((draft: VamsState) => {

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Plus, BoxSelect } from 'lucide-react';
 import { VscTypeHierarchySub, VscSymbolProperty } from 'react-icons/vsc';
 import { useVamsStore } from '@/core/store';
-import BuiltInShapesPanel from '@/features/object-creation/ui/BuiltInShapesPanel';
 import CustomShapeBuilderPanel from '@/features/custom-shapes/ui/CustomShapeBuilderPanel';
 import TextNodePanel from '@/features/text-nodes/ui/TextNodePanel';
 import SceneHierarchyPanel from '@/features/scene-hierarchy/ui/SceneHierarchyPanel';
@@ -54,7 +53,6 @@ export default function LeftSidebar() {
       <div className="sidebar-content">
         {activeTab === 'create' && (
           <div className="tab-pane">
-            <BuiltInShapesPanel />
             <CustomShapeBuilderPanel />
             <TextNodePanel />
           </div>

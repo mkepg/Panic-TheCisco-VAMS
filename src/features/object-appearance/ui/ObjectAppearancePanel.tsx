@@ -3,27 +3,35 @@ import { useState } from 'react';
 import { Palette, Settings2 } from 'lucide-react';
 import { useVamsStore } from "@/core/store";
 import CollapsibleSection from '@/shared/ui/collapsible-section/CollapsibleSection';
+
 const getGradientColor = (colors: string[], position: number): string => {
   if (colors.length === 0) return '#ffffff';
   if (colors.length === 1) return colors[0];
   if (position <= 0) return colors[0];
   if (position >= 1) return colors[colors.length - 1];
+
   const segment = 1 / (colors.length - 1);
   const index = Math.floor(position / segment);
   const factor = (position - index * segment) / segment;
+
   const c1 = colors[index];
   const c2 = colors[index + 1];
+
   const r1 = parseInt(c1.substring(1, 3), 16);
   const g1 = parseInt(c1.substring(3, 5), 16);
   const b1 = parseInt(c1.substring(5, 7), 16);
+
   const r2 = parseInt(c2.substring(1, 3), 16);
   const g2 = parseInt(c2.substring(3, 5), 16);
   const b2 = parseInt(c2.substring(5, 7), 16);
+
   const r = Math.round(r1 + factor * (r2 - r1));
   const g = Math.round(g1 + factor * (g2 - g1));
   const b = Math.round(b1 + factor * (b2 - b1));
+
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
 };
+
 export default function ObjectAppearancePanel() {
   const {
     objects,
@@ -38,10 +46,12 @@ export default function ObjectAppearancePanel() {
   const selectedObject = objects.find(o => o.id === selectedObjectId);
   const [colorMode, setColorMode] = useState<'OBJECT' | 'VERTEX'>('OBJECT');
   const [activeColorChange, setActiveColorChange] = useState<string | null>(null);
+
   const switchColorMode = (mode: 'OBJECT' | 'VERTEX') => {
     setColorMode(mode);
     setActiveColorChange(null);
   };
+
   if (!selectedObject) {
     return (
       <CollapsibleSection title="Scene Settings" icon={<Settings2 size={14} />} defaultOpen={true}>
@@ -63,12 +73,16 @@ export default function ObjectAppearancePanel() {
       </CollapsibleSection>
     );
   }
+
   if (selectedObject.type === 'GROUP') return null;
+
   const supportsPerVertexColor =
     (selectedObject.vertices.length >= 2) &&
-    selectedObject.type !== 'POINT';
+    selectedObject.type !== 'POINTS';
+
   const isMultiColor = selectedObject.vertices.length > 0 &&
     selectedObject.vertices.some(v => v.color !== selectedObject.vertices[0].color);
+
   const handleUniformColorChange = (color: string) => {
     if (!selectedObjectId) return;
     pushToHistory();
@@ -78,23 +92,28 @@ export default function ObjectAppearancePanel() {
     });
     endBatch();
   };
+
   const handlePresetGradient = (colors: string[]) => {
     if (!selectedObjectId) return;
     pushToHistory();
     startBatch();
+
     const numVertices = selectedObject.vertices.length;
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
+
     selectedObject.vertices.forEach(v => {
       if (v.x < minX) minX = v.x;
       if (v.x > maxX) maxX = v.x;
       if (v.y < minY) minY = v.y;
       if (v.y > maxY) maxY = v.y;
     });
+
     const width = maxX - minX;
     const height = maxY - minY;
     const useY = width < 0.0001 && height > 0.0001;
     const range = useY ? height : width;
+
     selectedObject.vertices.forEach((v, i) => {
       let position = 0;
       if (range > 0.0001) {
@@ -107,21 +126,25 @@ export default function ObjectAppearancePanel() {
     });
     endBatch();
   };
+
   const handleVertexColorStart = (vertexId: string) => {
     if (!activeColorChange) {
       pushToHistory();
       setActiveColorChange(vertexId);
     }
   };
+
   const handleVertexColorChange = (vertexId: string, color: string) => {
     if (!selectedObjectId) return;
     startBatch();
     updateVertexColor(selectedObjectId, vertexId, color);
     endBatch();
   };
+
   const handleVertexColorEnd = () => {
     setActiveColorChange(null);
   };
+
   return (
     <CollapsibleSection title="Color & Shading" icon={<Palette size={14} />} defaultOpen={true}>
       <div className="color-section">
@@ -144,6 +167,7 @@ export default function ObjectAppearancePanel() {
             </div>
           </>
         )}
+
         {/* Object / Uniform Mode */}
         {colorMode === 'OBJECT' || !supportsPerVertexColor ? (
           <div className="vertex-color-list">
@@ -189,7 +213,7 @@ export default function ObjectAppearancePanel() {
                   </div>
                 ))}
               </div>
-              {}
+
               <div className="gradient-presets">
                 <div className="shading-header" style={{ marginTop: '12px' }}>Quick Gradients</div>
                 <div className="preset-buttons">

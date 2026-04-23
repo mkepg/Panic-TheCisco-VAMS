@@ -81,7 +81,7 @@ export function useCanvasInteraction({
     const app = appRef.current;
     if (!app || !pixiReady) return;
     const onStagePointerDown = (e: FederatedPointerEvent) => {
-      if (interactionModeRef.current === "CUSTOM_SHAPE_PLACE") {
+      if (interactionModeRef.current === "VERTEX_PLACE") {
         if (e.button !== 0) return;
         e.stopPropagation();
         const { x, y } = screenToWorld(e.clientX, e.clientY);
@@ -111,7 +111,7 @@ export function useCanvasInteraction({
     if (!pixiReady) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       const state = useVamsStore.getState();
-      if (interactionModeRef.current === "CUSTOM_SHAPE_PLACE") {
+      if (interactionModeRef.current === "VERTEX_PLACE") {
         if (e.key === "Escape") {
           state.cancelCustomShape();
         } else if (e.key === "Enter") {
@@ -129,7 +129,6 @@ export function useCanvasInteraction({
         return;
       }
       if (e.key === "Backspace" || e.key === "Delete") {
-        if (state.simulationState === 'PLAYING') return;
         const activeTag = document.activeElement?.tagName;
         if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
         if (state.selectedObjectId) {

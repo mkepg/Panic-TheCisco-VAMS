@@ -23,6 +23,9 @@ export const useVamsStore = create<VamsState>()(
     }),
     {
       name: 'vams-storage',
+      // v2: PrimitiveType purge + SceneNode field rename + scaleX/scaleY split.
+      // Incompatible with v1 persisted objects; bump forces a clean slate.
+      version: 2,
       partialize: (state) => ({
         theme: state.theme,
         learningSettings: state.learningSettings,

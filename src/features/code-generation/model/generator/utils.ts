@@ -36,27 +36,19 @@ export const hexToGlColor = (hex: string): string => {
   const b = parseInt(hex.slice(5, 7), 16) / 255;
   return `${r.toFixed(2)}f, ${g.toFixed(2)}f, ${b.toFixed(2)}f`;
 };
-export const getGlPrimitive = (type: string): string => {
-  switch (type) {
-    case 'POINT':
-    case 'POINTS':
-      return 'GL_QUADS';
-    case 'LINE':
-    case 'LINE_STRIP':
-      return 'GL_LINE_STRIP';
-    case 'TRIANGLE':
-      return 'GL_TRIANGLES';
-    case 'RECTANGLE':
-      return 'GL_QUADS';
-    case 'POLYGON':
-    case 'HEXAGON':
-    case 'STAR':
-    case 'CIRCLE':
-    case 'ELLIPSE':
-      return 'GL_POLYGON';
-    case 'TRIANGLE_STRIP':
-      return 'GL_TRIANGLE_STRIP';
-    default:
-      return 'GL_POINTS';
-  }
+import type { PrimitiveType } from "@/core/types/scene";
+export const getGlPrimitive = (type: PrimitiveType): string => {
+  const map: Record<PrimitiveType, string> = {
+    POINTS:         'GL_POINTS',
+    LINES:          'GL_LINES',
+    LINE_STRIP:     'GL_LINE_STRIP',
+    LINE_LOOP:      'GL_LINE_LOOP',
+    TRIANGLES:      'GL_TRIANGLES',
+    TRIANGLE_STRIP: 'GL_TRIANGLE_STRIP',
+    TRIANGLE_FAN:   'GL_TRIANGLE_FAN',
+    QUADS:          'GL_QUADS',
+    QUAD_STRIP:     'GL_QUAD_STRIP',
+    POLYGON:        'GL_POLYGON',
+  };
+  return map[type] ?? 'GL_POINTS';
 };

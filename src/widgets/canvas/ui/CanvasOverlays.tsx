@@ -16,7 +16,7 @@ export function CanvasOverlays({
       <div className="viewport-info">
         Viewport: ({viewportLimits.minX}, {viewportLimits.maxX})
       </div>
-      {interactionMode === "CUSTOM_SHAPE_PLACE" && (
+      {interactionMode === "VERTEX_PLACE" && (
         <div className="placement-mode-banner">
           <span>● Vertex Placement Mode — click to place</span>
         </div>

@@ -15,7 +15,6 @@ export interface SceneSlice {
   selectedObjectId: string | null;
   setSelection: (id: string | null) => void;
   selectObject: (id: string | null) => void;
-  addObject: (type: PrimitiveType) => void;
   addCustomObject: (type: PrimitiveType, vertices: PendingVertex[]) => void;
   deleteObject: (id: string) => void;
   duplicateObject: (id: string) => void;
@@ -36,12 +35,8 @@ export interface SceneSlice {
 
 export interface InteractionSlice {
   interactionMode: InteractionMode;
-  creationMode: PrimitiveType | null;
-  isVertexEditMode: boolean;
   selectedVertexId: string | null;
   setInteractionMode: (mode: InteractionMode) => void;
-  setCreationMode: (mode: PrimitiveType | null) => void;
-  toggleVertexEditMode: () => void;
   setSelectedVertex: (vertexId: string | null) => void;
 }
 
@@ -67,7 +62,8 @@ export interface CustomShapeBuilderSlice {
   pendingShapeType: PrimitiveType | null;
   pendingVertices: PendingVertex[];
   pendingMinVertices: number;
-  startCustomShape: (type: PrimitiveType, minVertices: number) => void;
+  pendingVertexStride: number | null;
+  startCustomShape: (type: PrimitiveType, minVertices: number, stride?: number | null) => void;
   cancelCustomShape: () => void;
   addPendingVertex: (x: number, y: number) => void;
   addManualVertex: () => void;
@@ -81,9 +77,10 @@ export interface HistorySnapshot {
   selectedObjectId: string | null;
   interactionMode: InteractionMode;
   selectedVertexId: string | null;
-  isVertexEditMode: boolean;
   pendingShapeType: PrimitiveType | null;
   pendingVertices: PendingVertex[];
+  pendingMinVertices: number;         // <- Added
+  pendingVertexStride: number | null; // <- Added
   timestamp: number;
 }
 

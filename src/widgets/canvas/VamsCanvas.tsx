@@ -49,7 +49,7 @@ export default function VamsCanvas() {
   };
 
   const cursorStyle =
-    interactionMode === 'CUSTOM_SHAPE_PLACE' ? 'crosshair' : undefined;
+    interactionMode === 'VERTEX_PLACE' ? 'crosshair' : undefined;
 
   return (
     <div

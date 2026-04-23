@@ -13,7 +13,7 @@ import type {
   ViewportLimits,
 } from '@/core/types/scene';
 
-export const VAMS_PROJECT_SCHEMA_VERSION = 1 as const;
+export const VAMS_PROJECT_SCHEMA_VERSION = 2 as const;
 
 export type VamsProjectData = {
   objects: SceneNode[];
@@ -25,12 +25,11 @@ export type VamsProjectData = {
   canvasBackgroundColor: string;
   selectedObjectId: string | null;
   interactionMode: InteractionMode;
-  creationMode: PrimitiveType | null;
-  isVertexEditMode: boolean;
   selectedVertexId: string | null;
   pendingShapeType: PrimitiveType | null;
   pendingVertices: PendingVertex[];
   pendingMinVertices: number;
+  pendingVertexStride: number | null;
 };
 
 export type VamsProjectFile = {
@@ -41,14 +40,17 @@ export type VamsProjectFile = {
 };
 
 const ALLOWED_OBJECT_TYPES: ReadonlySet<SceneNodeType> = new Set([
-  'TRIANGLE', 'RECTANGLE', 'CIRCLE', 'ELLIPSE', 'HEXAGON', 'STAR', 'POLYGON',
-  'LINE', 'LINE_STRIP', 'POINT', 'POINTS', 'TRIANGLE_STRIP', 'TEXT', 'GROUP',
+  'POINTS', 'LINES', 'LINE_STRIP', 'LINE_LOOP',
+  'TRIANGLES', 'TRIANGLE_STRIP', 'TRIANGLE_FAN',
+  'QUADS', 'QUAD_STRIP', 'POLYGON',
+  'TEXT', 'GROUP',
 ]);
 
 const DEFAULT_VIEWPORT: ViewportLimits = { minX: -1, maxX: 1, minY: -1, maxY: 1 };
 const DEFAULT_AXIS: AxisVisibility = { showGlobalAxes: true, showLocalAxes: true, showOriginMarker: true, showGridlines: true };
 const DEFAULT_LEARNING: LearningSettings = { gridSnapping: false, snapIncrement: 0.1 };
-const DEFAULT_TRANSFORM: TransformState = { translateX: 0, translateY: 0, rotate: 0, scale: 1 };
+const DEFAULT_TRANSFORM: TransformState = { translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1 };
+
 const DEFAULT_DATA: VamsProjectData = {
   objects: [],
   viewportLimits: DEFAULT_VIEWPORT,
@@ -59,12 +61,11 @@ const DEFAULT_DATA: VamsProjectData = {
   canvasBackgroundColor: '#000000',
   selectedObjectId: null,
   interactionMode: 'SELECT',
-  creationMode: null,
-  isVertexEditMode: false,
   selectedVertexId: null,
   pendingShapeType: null,
   pendingVertices: [],
   pendingMinVertices: 1,
+  pendingVertexStride: null,
 };
 
 function isRecord(v: unknown): v is Record<string, unknown> { return typeof v === 'object' && v !== null; }
@@ -73,13 +74,20 @@ function toBoolean(v: unknown, fallback: boolean): boolean { return typeof v ===
 function toString(v: unknown, fallback: string): string { return typeof v === 'string' ? v : fallback; }
 function toTheme(v: unknown): 'dark' | 'light' { return v === 'light' ? 'light' : 'dark'; }
 function toShading(v: unknown): ShadingModel { return v === 'FLAT' ? 'FLAT' : 'SMOOTH'; }
+
 function toInteractionMode(v: unknown): InteractionMode {
-  const allowed: InteractionMode[] = ['SELECT', 'CREATE', 'VERTEX_EDIT', 'PARENT_LINK', 'CUSTOM_SHAPE_PLACE'];
+  if (v === 'CUSTOM_SHAPE_PLACE') return 'VERTEX_PLACE';
+  const allowed: InteractionMode[] = ['SELECT', 'VERTEX_PLACE', 'VERTEX_EDIT'];
   return allowed.includes(v as InteractionMode) ? (v as InteractionMode) : 'SELECT';
 }
+
 function toPrimitiveType(v: unknown): PrimitiveType | null {
   if (typeof v !== 'string') return null;
-  const allowed: PrimitiveType[] = ['TRIANGLE', 'RECTANGLE', 'CIRCLE', 'ELLIPSE', 'HEXAGON', 'STAR', 'POLYGON', 'LINE', 'LINE_STRIP', 'POINT', 'POINTS', 'TRIANGLE_STRIP'];
+  const allowed: PrimitiveType[] = [
+    'POINTS', 'LINES', 'LINE_STRIP', 'LINE_LOOP',
+    'TRIANGLES', 'TRIANGLE_STRIP', 'TRIANGLE_FAN',
+    'QUADS', 'QUAD_STRIP', 'POLYGON',
+  ];
   return allowed.includes(v as PrimitiveType) ? (v as PrimitiveType) : null;
 }
 
@@ -100,7 +108,13 @@ function sanitizeLearning(v: unknown): LearningSettings {
 
 function sanitizeTransform(v: unknown): TransformState {
   if (!isRecord(v)) return DEFAULT_TRANSFORM;
-  return { translateX: toNumber(v.translateX, DEFAULT_TRANSFORM.translateX), translateY: toNumber(v.translateY, DEFAULT_TRANSFORM.translateY), rotate: toNumber(v.rotate, DEFAULT_TRANSFORM.rotate), scale: toNumber(v.scale, DEFAULT_TRANSFORM.scale) };
+  return {
+    translateX: toNumber(v.translateX, DEFAULT_TRANSFORM.translateX),
+    translateY: toNumber(v.translateY, DEFAULT_TRANSFORM.translateY),
+    rotate:     toNumber(v.rotate,     DEFAULT_TRANSFORM.rotate),
+    scaleX:     toNumber(v.scaleX ?? v.scale, DEFAULT_TRANSFORM.scaleX),
+    scaleY:     toNumber(v.scaleY ?? v.scale, DEFAULT_TRANSFORM.scaleY),
+  };
 }
 
 function sanitizeVertex(v: unknown, idx: number): Vertex {
@@ -113,20 +127,26 @@ function sanitizeObject(v: unknown, idx: number): SceneNode | null {
   const typeRaw = v.type;
   const type = (typeof typeRaw === 'string' ? typeRaw : '') as SceneNodeType;
   if (!ALLOWED_OBJECT_TYPES.has(type)) return null;
+
   const verticesRaw = Array.isArray(v.vertices) ? v.vertices : [];
-  
+  // Accept legacy `isVisible` and `childIds` from v1 files.
+  const visibleRaw = v.visible ?? v.isVisible;
+  const childrenRaw = Array.isArray(v.children)
+    ? v.children
+    : Array.isArray(v.childIds) ? v.childIds : [];
+
   return {
     id: toString(v.id, `obj-${idx}`),
     name: toString(v.name, `${type}_${idx + 1}`),
     type,
-    isVisible: toBoolean(v.isVisible, true),
+    visible: toBoolean(visibleRaw, true),
     shading: toShading(v.shading),
     vertices: verticesRaw.map((vv, i) => sanitizeVertex(vv, i)),
     transform: sanitizeTransform(v.transform),
     textContent: typeof v.textContent === 'string' ? v.textContent : undefined,
     rasterPosition: isRecord(v.rasterPosition) ? { x: toNumber(v.rasterPosition.x, 0), y: toNumber(v.rasterPosition.y, 0) } : undefined,
     parentId: typeof v.parentId === 'string' ? v.parentId : null,
-    childIds: Array.isArray(v.childIds) ? (v.childIds.filter((id) => typeof id === 'string') as string[]) : [],
+    children: (childrenRaw as unknown[]).filter((id) => typeof id === 'string') as string[],
   };
 }
 
@@ -136,7 +156,7 @@ function fixHierarchy(objects: SceneNode[]): SceneNode[] {
   normalized = normalized.map((o) => {
     if (o.type !== 'GROUP') return o;
     const children = normalized.filter((child) => child.parentId === o.id).map((child) => child.id);
-    return { ...o, childIds: children };
+    return { ...o, children };
   });
   return normalized;
 }
@@ -152,12 +172,11 @@ export function buildProjectFile(state: VamsState): VamsProjectFile {
     canvasBackgroundColor: state.canvasBackgroundColor,
     selectedObjectId: state.selectedObjectId,
     interactionMode: state.interactionMode,
-    creationMode: state.creationMode,
-    isVertexEditMode: state.isVertexEditMode,
     selectedVertexId: state.selectedVertexId,
     pendingShapeType: state.pendingShapeType,
     pendingVertices: state.pendingVertices,
     pendingMinVertices: state.pendingMinVertices,
+    pendingVertexStride: state.pendingVertexStride,
   };
 
   return {
@@ -225,13 +244,11 @@ export async function parseProjectFromFile(file: File): Promise<VamsProjectData>
         reject(new Error(e.data.error));
       }
     };
-
     worker.onerror = (err) => {
       URL.revokeObjectURL(workerUrl);
       worker.terminate();
       reject(err);
     };
-
     worker.postMessage(file);
   });
 }
@@ -247,8 +264,8 @@ export function sanitizeProjectData(raw: unknown): VamsProjectData {
   const viewportLimits = sanitizeViewport(raw.viewportLimits);
   const axisVisibility = sanitizeAxis(raw.axisVisibility);
   const learningSettings = sanitizeLearning(raw.learningSettings);
-  const pendingShapeType = toPrimitiveType(raw.pendingShapeType);
 
+  const pendingShapeType = toPrimitiveType(raw.pendingShapeType);
   const pendingVertices = Array.isArray(raw.pendingVertices)
     ? raw.pendingVertices
         .filter(isRecord)
@@ -258,6 +275,12 @@ export function sanitizeProjectData(raw: unknown): VamsProjectData {
   const selectedObjectIdRaw = typeof raw.selectedObjectId === 'string' ? raw.selectedObjectId : null;
   const selectedObjectId =
     selectedObjectIdRaw && objects.some((o) => o.id === selectedObjectIdRaw) ? selectedObjectIdRaw : null;
+
+  const pendingVertexStrideRaw = raw.pendingVertexStride;
+  const pendingVertexStride =
+    typeof pendingVertexStrideRaw === 'number' && Number.isFinite(pendingVertexStrideRaw) && pendingVertexStrideRaw > 0
+      ? Math.floor(pendingVertexStrideRaw)
+      : null;
 
   return {
     objects,
@@ -269,12 +292,11 @@ export function sanitizeProjectData(raw: unknown): VamsProjectData {
     canvasBackgroundColor: toString(raw.canvasBackgroundColor, DEFAULT_DATA.canvasBackgroundColor),
     selectedObjectId,
     interactionMode: toInteractionMode(raw.interactionMode),
-    creationMode: toPrimitiveType(raw.creationMode),
-    isVertexEditMode: toBoolean(raw.isVertexEditMode, DEFAULT_DATA.isVertexEditMode),
     selectedVertexId: typeof raw.selectedVertexId === 'string' ? raw.selectedVertexId : null,
     pendingShapeType,
     pendingVertices,
     pendingMinVertices: Math.max(1, Math.floor(toNumber(raw.pendingMinVertices, DEFAULT_DATA.pendingMinVertices))),
+    pendingVertexStride,
   };
 }
 
@@ -289,11 +311,10 @@ export function toStorePatchFromProject(data: VamsProjectData): Partial<VamsStat
     canvasBackgroundColor: data.canvasBackgroundColor,
     selectedObjectId: data.selectedObjectId,
     interactionMode: data.interactionMode,
-    creationMode: data.creationMode,
-    isVertexEditMode: data.isVertexEditMode,
     selectedVertexId: data.selectedVertexId,
     pendingShapeType: data.pendingShapeType,
     pendingVertices: data.pendingVertices,
     pendingMinVertices: data.pendingMinVertices,
+    pendingVertexStride: data.pendingVertexStride,
   };
 }

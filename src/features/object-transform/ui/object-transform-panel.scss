@@ -1,27 +1,35 @@
 @use '../../../shared/styles/tokens' as *;
+
 .input-stack {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
+
 .input-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-size: 0.85rem;
+
   label {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     color: $text-muted;
+
     .icon {
-      font-family: $font-mono;
-      width: 16px;
-      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: $text-dim;
+      
+      svg {
+        opacity: 0.8;
+      }
     }
-    .icon-red { color: var(--accent-red-light); }
-    .icon-green { color: var(--accent-green-light); }
   }
+
   input[type="number"] {
     width: 80px;
     background-color: $bg-input;
@@ -33,14 +41,29 @@
     font-size: 0.8rem;
     color: $text-main;
     -moz-appearance: textfield;
+
     &::-webkit-outer-spin-button,
     &::-webkit-inner-spin-button {
       -webkit-appearance: none;
       margin: 0;
     }
+
     &:focus {
       outline: none;
       border-color: $accent-blue;
     }
+  }
+}
+
+.scale-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+
+  .scale-inputs {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
   }
 }
