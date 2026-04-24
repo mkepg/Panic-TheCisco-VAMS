@@ -10,11 +10,13 @@ import {
 } from "../utils/geometry-utils";
 import { drawWithGraphics } from "./graphicsRenderer";
 import { createMesh } from "./meshRenderer";
+
 export interface CreateDrawableOptions {
   groupChildren?: SceneNode[];
   isSelected?: boolean;
   worldScaleY?: number;
 }
+
 export function createDrawable(
   o: SceneNode,
   worldScaleX?: number,
@@ -23,23 +25,29 @@ export function createDrawable(
   const container = new PIXI.Container();
   container.label = o.id;
   container.sortableChildren = true;
+
   const hitPadding = worldScaleX ? 10 / Math.abs(worldScaleX) : 0.5;
   const worldScaleY = options?.worldScaleY;
+
   if (o.type === 'GROUP') {
     return createGroupDrawable(o, worldScaleX, options, container);
   }
+
   if (o.type === 'TEXT') {
     return createTextDrawable(o, hitPadding, container);
   }
-  const isLineOrPoint = (
-    ['POINTS', 'LINES', 'LINE_STRIP', 'LINE_LOOP'] as SceneNode['type'][]
-  ).includes(o.type);
-  const shouldUseGraphics = isLineOrPoint || hasUniformColor(o);
+
+  // MODIFIED: POINTS always use Graphics because we render them as individual rects
+  // Everything else uses Mesh if it has mixed per-vertex colors
+  const shouldUseGraphics = o.type === 'POINTS' || hasUniformColor(o);
+
   if (shouldUseGraphics) {
     return createGraphicsDrawable(o, worldScaleX, worldScaleY, hitPadding, container);
   }
+
   return createMeshDrawable(o, worldScaleX, hitPadding, container);
 }
+
 function createGroupDrawable(
   o: SceneNode,
   worldScaleX: number | undefined,
@@ -50,13 +58,17 @@ function createGroupDrawable(
   container.rotation = (o.transform.rotate * Math.PI) / 180;
   container.scale.set(o.transform.scaleX, o.transform.scaleY);
   container.visible = o.visible;
+
   const bounds = getGroupLocalBounds(options?.groupChildren || []);
   const padding = pxToWorld(4, worldScaleX);
+
   const drawX = bounds.minX - padding;
   const drawY = bounds.minY - padding;
   const drawW = bounds.width + (padding * 2);
   const drawH = bounds.height + (padding * 2);
+
   const groupGraphics = new PIXI.Graphics();
+  
   if (options?.isSelected) {
       groupGraphics.setStrokeStyle({
         width: pxToWorld(1, worldScaleX),
@@ -67,10 +79,13 @@ function createGroupDrawable(
       drawDashedRectangle(groupGraphics, drawX, drawY, drawW, drawH);
       groupGraphics.stroke();
   }
+
   container.addChild(groupGraphics);
   container.hitArea = new PIXI.Rectangle(drawX, drawY, drawW, drawH);
+
   return container;
 }
+
 function drawDashedRectangle(
   graphics: PIXI.Graphics,
   x: number,
@@ -87,6 +102,7 @@ function drawDashedRectangle(
     { x, y: y + height },
     { x, y }
   ];
+
   for (let i = 0; i < points.length - 1; i++) {
     const start = points[i];
     const end = points[i + 1];
@@ -94,18 +110,22 @@ function drawDashedRectangle(
     const dy = end.y - start.y;
     const sideLength = Math.sqrt(dx * dx + dy * dy);
     const steps = Math.ceil(sideLength / (dashLength + gapLength));
+
     for (let j = 0; j < steps; j++) {
       const t1 = j / steps;
       const t2 = Math.min((j + 0.6) / steps, 1);
+      
       const x1 = start.x + dx * t1;
       const y1 = start.y + dy * t1;
       const x2 = start.x + dx * t2;
       const y2 = start.y + dy * t2;
+
       graphics.moveTo(x1, y1);
       graphics.lineTo(x2, y2);
     }
   }
 }
+
 function createTextDrawable(
   o: SceneNode,
   hitPadding: number,
@@ -114,13 +134,11 @@ function createTextDrawable(
   const color = toNumColor(o.vertices[0]?.color, 0xffffff);
 
   const textStyle = new PIXI.TextStyle({
-    // --- Update to use the local font ---
-    fontFamily: "Comfortaa", 
+    fontFamily: "Comfortaa",
     fontSize: 64,
     fill: color,
     align: 'center',
-    fontWeight: '300', // Matches the font-weight in your @font-face
-    // ------------------------------------
+    fontWeight: '300',
   });
 
   const text = new PIXI.Text({
@@ -133,8 +151,7 @@ function createTextDrawable(
 
   // Adjusted scale to sync with the C++ generator's specific aspect ratio
   const textScaleX = 0.003;
-  const textScaleY = 0.003 * (0.0016 / 0.0011); // Matches OpenGL's Y-scale compensation
-  
+  const textScaleY = 0.003 * (0.0016 / 0.0011);
   text.scale.set(textScaleX, -textScaleY);
 
   container.position.set(o.transform.translateX, o.transform.translateY);
@@ -151,6 +168,7 @@ function createTextDrawable(
 
   return container;
 }
+
 function createGraphicsDrawable(
   o: SceneNode,
   worldScaleX: number | undefined,
@@ -161,16 +179,20 @@ function createGraphicsDrawable(
   const g = new PIXI.Graphics();
   drawWithGraphics(g, o, worldScaleX, worldScaleY);
   container.addChild(g);
+
   container.position.set(o.transform.translateX, o.transform.translateY);
   container.rotation = (o.transform.rotate * Math.PI) / 180;
   container.scale.set(o.transform.scaleX, o.transform.scaleY);
   container.visible = o.visible;
+
   if (!g.hitArea) {
     const { cx, cy, rx, ry } = bboxRadii(o);
     container.hitArea = createPaddedHitArea(cx - rx, cy - ry, rx * 2, ry * 2, hitPadding);
   }
+
   return container;
 }
+
 function createMeshDrawable(
   o: SceneNode,
   worldScaleX: number | undefined,
@@ -178,26 +200,34 @@ function createMeshDrawable(
   container: PIXI.Container
 ): PIXI.Container {
   const meshResult = createMesh(o);
+
   if (!meshResult) {
     const g = new PIXI.Graphics();
     drawWithGraphics(g, o, worldScaleX);
     container.addChild(g);
+
     container.position.set(o.transform.translateX, o.transform.translateY);
     container.rotation = (o.transform.rotate * Math.PI) / 180;
     container.scale.set(o.transform.scaleX, o.transform.scaleY);
     container.visible = o.visible;
+
     if (!g.hitArea) {
       const { cx, cy, rx, ry } = bboxRadii(o);
       container.hitArea = createPaddedHitArea(cx - rx, cy - ry, rx * 2, ry * 2, hitPadding);
     }
+
     return container;
   }
+
   container.addChild(meshResult.mesh);
+
   container.position.set(o.transform.translateX, o.transform.translateY);
   container.rotation = (o.transform.rotate * Math.PI) / 180;
   container.scale.set(o.transform.scaleX, o.transform.scaleY);
   container.visible = o.visible;
+
   const { cx, cy, rx, ry } = bboxRadii(o);
   container.hitArea = createPaddedHitArea(cx - rx, cy - ry, rx * 2, ry * 2, hitPadding);
+
   return container;
 }

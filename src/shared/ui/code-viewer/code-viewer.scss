@@ -1,5 +1,14 @@
 @use '../../styles/tokens' as *;
 
+@keyframes highlight-pulse {
+  0% {
+    background-color: rgba(var(--accent-blue-rgb), 0.45);
+  }
+  100% {
+    background-color: rgba(var(--accent-blue-rgb), 0.15);
+  }
+}
+
 .code-viewer-container {
   position: absolute;
   top: 0;
@@ -10,10 +19,9 @@
   flex-direction: column;
   background-color: $bg-dark;
 
-  // NEW: Restricted state for active lessons
   &.lesson-mode {
     .code-content {
-      user-select: none; // Restricts modification/interaction by blocking selection
+      user-select: none;
     }
   }
 
@@ -89,11 +97,13 @@
 
       .line-num {
         padding: 0 0.5rem;
-        
+        transition: background-color 0.3s ease, color 0.3s ease;
+
         &.highlight {
           color: var(--accent-blue-light);
           background-color: rgba(var(--accent-blue-rgb), 0.15);
           font-weight: bold;
+          animation: highlight-pulse 0.4s ease-out;
         }
       }
     }
@@ -103,15 +113,17 @@
       margin: 0;
       padding: 1rem 0;
       color: var(--code-content);
-      
+
       .code-line {
         padding: 0 1rem;
         white-space: pre;
         border-left: 2px solid transparent;
+        transition: background-color 0.3s ease, border-left-color 0.3s ease;
 
         &.highlight {
           background-color: rgba(var(--accent-blue-rgb), 0.15);
           border-left-color: $accent-blue;
+          animation: highlight-pulse 0.4s ease-out;
         }
       }
     }

@@ -1,4 +1,22 @@
 @use '../../../shared/styles/tokens' as *;
+
+@keyframes subtle-fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px); /* Adds a gentle "settling" motion */
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.color-section,
+.canvas-color-control {
+  /* Slightly longer duration with a smooth deceleration curve */
+  animation: subtle-fade 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) both;
+}
+
 .shading-header {
   font-size: 0.75rem;
   font-weight: 600;
@@ -6,85 +24,119 @@
   margin-bottom: 0.5rem;
   text-transform: uppercase;
 }
+
 .toggle-group {
   display: flex;
   border: 1px solid $border-color;
-  border-radius: 4px;
+  border-radius: 6px;
   overflow: hidden;
   margin-bottom: 1rem;
+  
   button {
     flex: 1;
-    padding: 6px 0;
+    padding: 8px 0;
     font-size: 0.85rem;
     background: $bg-input;
     color: $text-muted;
     transition: all 0.2s;
     border: none;
     cursor: pointer;
+
     &.active {
       background: $accent-blue;
       color: white;
     }
+
     &:hover:not(.active) {
       background: var(--bg-panel-hover);
       color: $text-main;
     }
   }
 }
-.canvas-color-control {
+
+.property-row {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  .property-row {
+  align-items: center;
+  justify-content: space-between;
+  background-color: $bg-input;
+  padding: 0.75rem;
+  border: 1px solid $border-color;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  margin-bottom: 0.5rem;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  &:hover {
+    border-color: $accent-blue;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .label-group {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background-color: $bg-input;
-    padding: 0.75rem;
-    border: 1px solid $border-color;
-    border-radius: 6px;
-    transition: all 0.2s ease;
+    flex-direction: column;
+    gap: 0.2rem;
+    
+    .label {
+      font-size: 0.85rem;
+      color: $text-main;
+      font-weight: 500;
+    }
+    
+    .sub-label {
+      font-size: 0.7rem;
+      color: $text-dim;
+      font-family: $font-mono;
+    }
+
+    .vertex-label {
+      font-family: $font-mono;
+      font-size: 0.8rem;
+      color: $accent-blue;
+      font-weight: 600;
+    }
+    
+    .vertex-coords {
+      font-family: $font-mono;
+      font-size: 0.75rem;
+      color: $text-dim;
+    }
+  }
+
+  .color-preview-input {
+    width: 48px;
+    height: 32px;
+    padding: 0;
+    border: 2px solid $border-color;
+    border-radius: 4px;
+    background: none;
+    cursor: pointer;
+    transition: transform 0.1s;
+    flex-shrink: 0;
+
     &:hover {
-      border-color: $accent-blue;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transform: scale(1.05);
+      border-color: $text-muted;
     }
-    .label-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.2rem;
-      .label {
-        font-size: 0.85rem;
-        color: $text-main;
-        font-weight: 400;
-      }
-      .sub-label {
-        font-size: 0.7rem;
-        color: $text-dim;
-      }
+
+    &::-webkit-color-swatch-wrapper {
+      padding: 2px;
     }
-    .color-preview-input {
-      width: 48px;
-      height: 32px;
-      padding: 0;
-      border: 2px solid $border-color;
-      border-radius: 4px;
-      background: none;
-      cursor: pointer;
-      transition: transform 0.1s;
-      &:hover {
-        transform: scale(1.05);
-        border-color: $text-muted;
-      }
-      &::-webkit-color-swatch-wrapper {
-        padding: 2px;
-      }
-      &::-webkit-color-swatch {
-        border: none;
-        border-radius: 2px;
-      }
+
+    &::-webkit-color-swatch {
+      border: none;
+      border-radius: 2px;
     }
   }
 }
+
+.canvas-color-control {
+  display: flex;
+  flex-direction: column;
+}
+
 .vertex-hint {
   font-size: 0.75rem;
   color: $text-dim;
@@ -94,99 +146,60 @@
   background-color: rgba(var(--accent-blue-rgb), 0.05);
   border-radius: 4px;
   text-align: center;
+
   &.warning {
     color: var(--accent-red-light);
     background-color: rgba(var(--accent-red-rgb), 0.1);
     border: 1px solid rgba(var(--accent-red-rgb), 0.2);
   }
 }
+
 .vertex-color-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  
   .vertex-scroll-area {
-    max-height: 200px;
+    max-height: 220px;
     overflow-y: auto;
     overflow-x: hidden;
     padding-right: 4px;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
     @include scrollbar;
   }
-  .vertex-color-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem;
-    background-color: $bg-input;
-    border: 1px solid $border-color;
-    border-radius: 4px;
-    .vertex-label {
-      font-family: $font-mono;
-      font-size: 0.8rem;
-      color: $accent-blue;
-      font-weight: 600;
-      min-width: 30px;
-    }
-    .vertex-coords {
-      flex: 1;
-      font-family: $font-mono;
-      font-size: 0.75rem;
-      color: $text-dim;
-    }
-    .color-input {
-      width: 40px;
-      height: 28px;
-      padding: 0;
-      background: transparent;
-      border: 1px solid $border-color;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      &:hover {
-        border-color: $accent-blue;
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      }
-      &::-webkit-color-swatch-wrapper {
-        padding: 3px;
-      }
-      &::-webkit-color-swatch {
-        border: none;
-        border-radius: 3px;
-        box-shadow: inset 0 0 2px rgba(0,0,0,0.1);
-      }
-    }
-  }
+
   .gradient-presets {
     margin-top: 1rem;
+
     .preset-buttons {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 0.5rem;
       margin-top: 0.5rem;
     }
+
     .preset-btn {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 0.6rem;
+      padding: 0.75rem;
       background-color: $bg-input;
       border: 1px solid $border-color;
-      border-radius: 4px;
+      border-radius: 6px;
       color: $text-muted;
       font-size: 0.75rem;
       font-weight: 500;
       cursor: pointer;
       transition: all 0.2s ease;
+
       &:hover {
         border-color: $accent-blue;
         color: $text-main;
         background-color: var(--bg-panel-hover);
         transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       }
+
       &:active {
         transform: translateY(0);
       }

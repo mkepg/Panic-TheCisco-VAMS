@@ -1,6 +1,6 @@
 import './object-appearance-panel.scss';
 import { useState } from 'react';
-import { Palette, Settings2 } from 'lucide-react';
+import { Palette } from 'lucide-react';
 import { useVamsStore } from "@/core/store";
 import CollapsibleSection from '@/shared/ui/collapsible-section/CollapsibleSection';
 
@@ -43,6 +43,7 @@ export default function ObjectAppearancePanel() {
     canvasBackgroundColor,
     setCanvasBackgroundColor
   } = useVamsStore();
+
   const selectedObject = objects.find(o => o.id === selectedObjectId);
   const [colorMode, setColorMode] = useState<'OBJECT' | 'VERTEX'>('OBJECT');
   const [activeColorChange, setActiveColorChange] = useState<string | null>(null);
@@ -54,7 +55,7 @@ export default function ObjectAppearancePanel() {
 
   if (!selectedObject) {
     return (
-      <CollapsibleSection title="Scene Settings" icon={<Settings2 size={14} />} defaultOpen={true}>
+      <CollapsibleSection title="Scene Color" icon={<Palette size={14} />} defaultOpen={true}>
         <div className="canvas-color-control">
            <div className="property-row">
               <div className="label-group">
@@ -76,9 +77,7 @@ export default function ObjectAppearancePanel() {
 
   if (selectedObject.type === 'GROUP') return null;
 
-  const supportsPerVertexColor =
-    (selectedObject.vertices.length >= 2) &&
-    selectedObject.type !== 'POINTS';
+  const supportsPerVertexColor = selectedObject.vertices.length >= 2;
 
   const isMultiColor = selectedObject.vertices.length > 0 &&
     selectedObject.vertices.some(v => v.color !== selectedObject.vertices[0].color);
@@ -124,6 +123,7 @@ export default function ObjectAppearancePanel() {
       const interpolatedColor = getGradientColor(colors, position);
       updateVertexColor(selectedObjectId, v.id, interpolatedColor);
     });
+
     endBatch();
   };
 
@@ -176,18 +176,22 @@ export default function ObjectAppearancePanel() {
                 Mixed colors detected. Selecting a color below will overwrite all vertex colors.
               </div>
             )}
-            <div className="vertex-color-item">
-              <span className="vertex-label">FILL</span>
-              <span className="vertex-coords">
-                {supportsPerVertexColor ? ' (Apply to Object)' : ' (Uniform Color)'}
-              </span>
+            
+            <div className="property-row">
+              <div className="label-group">
+                <span className="vertex-label">FILL</span>
+                <span className="vertex-coords">
+                  {supportsPerVertexColor ? 'Apply to Object' : 'Uniform Color'}
+                </span>
+              </div>
               <input
                 type="color"
                 value={selectedObject.vertices[0]?.color || '#ffffff'}
                 onChange={(e) => handleUniformColorChange(e.currentTarget.value)}
-                className="color-input"
+                className="color-preview-input"
               />
             </div>
+            
           </div>
         ) : (
           selectedObject.vertices.length > 0 && (
@@ -197,18 +201,20 @@ export default function ObjectAppearancePanel() {
               </div>
               <div className="vertex-scroll-area">
                 {selectedObject.vertices.map((vertex, idx) => (
-                  <div key={vertex.id} className="vertex-color-item">
-                    <span className="vertex-label">V{idx}</span>
-                    <span className="vertex-coords">
-                      ({vertex.x.toFixed(1)}, {vertex.y.toFixed(1)})
-                    </span>
+                  <div key={vertex.id} className="property-row">
+                    <div className="label-group">
+                      <span className="vertex-label">V{idx}</span>
+                      <span className="vertex-coords">
+                        ({vertex.x.toFixed(2)}, {vertex.y.toFixed(2)})
+                      </span>
+                    </div>
                     <input
                       type="color"
                       value={vertex.color}
                       onFocus={() => handleVertexColorStart(vertex.id)}
                       onChange={(e) => handleVertexColorChange(vertex.id, e.currentTarget.value)}
                       onBlur={handleVertexColorEnd}
-                      className="color-input"
+                      className="color-preview-input"
                     />
                   </div>
                 ))}

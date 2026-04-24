@@ -10,7 +10,7 @@ interface CodeViewerProps {
 
 const CodeViewer = memo(function CodeViewer({ code, highlightTarget, isLessonMode }: CodeViewerProps) {
   const [copied, setCopied] = useState(false);
-  
+
   const lines = useMemo(() => code.split('\n'), [code]);
   const lineCount = lines.length;
 
@@ -29,23 +29,37 @@ const CodeViewer = memo(function CodeViewer({ code, highlightTarget, isLessonMod
     if (!highlightTarget) return highlighted;
 
     let inTargetBlock = false;
+
     lines.forEach((line, index) => {
+      // Highlight forward declarations and function calls (single line match)
       if (line.includes(`draw_${highlightTarget}()`)) {
          highlighted.add(index);
       }
+      
+      // Highlight the state struct declaration (single line match)
       if (line.includes(`state_${highlightTarget} `)) {
          highlighted.add(index);
       }
-      if (line.startsWith(`void draw_${highlightTarget}()`)) {
+
+      // Detect the start of the target's draw function block.
+      // Strict equality prevents accidental matching with the forward declaration (which ends in ';')
+      if (line.trim() === `void draw_${highlightTarget}()`) {
          inTargetBlock = true;
       }
+
+      // While inside the target block, highlight everything
       if (inTargetBlock) {
          highlighted.add(index);
-         if (line === '}') {
+         
+         // Terminate the highlight at the root closing brace.
+         // .trim() safely handles \r line endings on Windows.
+         // .startsWith('}') prevents premature termination on indented inner braces.
+         if (line.trim() === '}' && line.startsWith('}')) {
              inTargetBlock = false;
          }
       }
     });
+
     return highlighted;
   }, [lines, highlightTarget]);
 
@@ -53,7 +67,7 @@ const CodeViewer = memo(function CodeViewer({ code, highlightTarget, isLessonMod
     <div className={`code-viewer-container ${isLessonMode ? 'lesson-mode' : ''}`}>
       <div className="code-header">
         <span className="code-lang">C++ (OpenGL 1.5)</span>
-        {/* Hide copy button completely if in lesson mode */}
+        
         {!isLessonMode && (
           <button
             className={`copy-button ${copied ? 'copied' : ''}`}
