@@ -1,12 +1,8 @@
 @use '../../styles/tokens' as *;
 
 @keyframes highlight-pulse {
-  0% {
-    background-color: rgba(var(--accent-blue-rgb), 0.45);
-  }
-  100% {
-    background-color: rgba(var(--accent-blue-rgb), 0.15);
-  }
+  0% { background-color: rgba(var(--accent-blue-rgb), 0.45); }
+  100% { background-color: rgba(var(--accent-blue-rgb), 0.15); }
 }
 
 .code-viewer-container {
@@ -20,49 +16,153 @@
   background-color: $bg-dark;
 
   &.lesson-mode {
-    .code-content {
-      user-select: none;
-    }
+    .code-content { user-select: none; }
   }
 
   .code-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.4rem 1rem;
-    background-color: rgba(0, 0, 0, 0.15);
+    padding: 0.35rem 0.6rem 0.35rem 0.85rem;
+    background: linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.25),
+      rgba(0, 0, 0, 0.1)
+    );
     border-bottom: 1px solid $border-color;
     flex-shrink: 0;
+    gap: 0.5rem;
 
-    .code-lang {
-      font-family: $font-mono;
-      font-size: 0.8rem;
-      color: $text-dim;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-weight: 700;
+    .code-header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      min-width: 0;
+      flex: 1;
+
+      .code-lang {
+        font-family: $font-mono;
+        font-size: 0.8rem;
+        color: $text-dim;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 700;
+      }
+      .code-sep {
+        color: $text-dim;
+        font-size: 0.7rem;
+      }
+      .code-stat {
+        font-family: $font-mono;
+        font-size: 0.8rem;
+        color: $text-dim;
+      }
+      .code-focus {
+        margin-left: auto;
+        font-family: $font-mono;
+        font-size: 0.65rem;
+        color: var(--accent-blue-light);
+        background: rgba(var(--accent-blue-rgb), 0.12);
+        border: 1px solid rgba(var(--accent-blue-rgb), 0.28);
+        padding: 0.1rem 0.45rem;
+        border-radius: 3px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 160px;
+
+        code { font-family: inherit; }
+      }
+    }
+
+    .code-header-right {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      flex-shrink: 0;
+    }
+
+    .header-btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.3rem 0.45rem;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      color: $text-muted;
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: $text-main;
+        border-color: rgba(255, 255, 255, 0.08);
+      }
+    }
+
+    .code-search {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.5rem;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid $border-color;
+      border-radius: 4px;
+      min-width: 180px;
+
+      svg { color: $text-dim; flex-shrink: 0; }
+      input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: $text-main;
+        font-family: $font-mono;
+        font-size: 0.72rem;
+        min-width: 0;
+      }
+      input::placeholder { color: $text-dim; }
+      .search-count {
+        font-family: $font-mono;
+        font-size: 0.65rem;
+        color: var(--accent-blue-light);
+        background: rgba(var(--accent-blue-rgb), 0.15);
+        padding: 0 0.3rem;
+        border-radius: 3px;
+      }
+      .search-close {
+        background: transparent;
+        border: none;
+        color: $text-dim;
+        cursor: pointer;
+        padding: 2px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 2px;
+        &:hover { color: $text-main; background: rgba(255,255,255,0.06); }
+      }
     }
 
     .copy-button {
       display: flex;
       align-items: center;
-      gap: 0.35rem;
-      padding: 0.35rem 0.6rem;
+      gap: 0.3rem;
+      padding: 0.3rem 0.55rem;
       background-color: transparent;
       border: 1px solid transparent;
       border-radius: 4px;
       color: $text-muted;
       font-family: $font-mono;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.15s ease;
 
       &:hover {
         background-color: rgba(255, 255, 255, 0.05);
         color: $text-main;
         border-color: rgba(255, 255, 255, 0.1);
       }
-
       &.copied {
         color: $accent-green;
         background-color: rgba(var(--accent-green-rgb), 0.1);
@@ -76,17 +176,15 @@
     overflow: auto;
     display: flex;
     font-family: $font-mono;
-    font-size: 0.85rem;
-    line-height: 1.5;
+    font-size: 0.82rem;
+    line-height: 1.55;
     align-items: stretch;
     @include scrollbar;
 
-    &::-webkit-scrollbar-corner {
-      background: rgba(0, 0, 0, 0);
-    }
+    &::-webkit-scrollbar-corner { background: rgba(0, 0, 0, 0); }
 
     .line-numbers {
-      padding: 1rem 0;
+      padding: 0.85rem 0;
       text-align: right;
       color: $text-dim;
       user-select: none;
@@ -94,10 +192,16 @@
       background-color: rgba(var(--bg-panel-rgb), 0.5);
       min-height: 100%;
       height: fit-content;
+      position: sticky;
+      left: 0;
+      z-index: 1;
 
       .line-num {
-        padding: 0 0.5rem;
-        transition: background-color 0.3s ease, color 0.3s ease;
+        padding: 0 0.55rem;
+        transition: background-color 0.25s ease, color 0.25s ease;
+        /* Match the code-content font-size so row heights line up exactly */
+        font-size: inherit;
+        line-height: inherit;
 
         &.highlight {
           color: var(--accent-blue-light);
@@ -105,27 +209,62 @@
           font-weight: bold;
           animation: highlight-pulse 0.4s ease-out;
         }
+        &.match {
+          color: #fbbf24;
+          background-color: rgba(251, 191, 36, 0.1);
+        }
       }
     }
 
     pre {
       flex: 1;
       margin: 0;
-      padding: 1rem 0;
+      padding: 0.85rem 0;
       color: var(--code-content);
 
       .code-line {
         padding: 0 1rem;
         white-space: pre;
         border-left: 2px solid transparent;
-        transition: background-color 0.3s ease, border-left-color 0.3s ease;
+        transition: background-color 0.25s ease, border-left-color 0.25s ease;
 
         &.highlight {
-          background-color: rgba(var(--accent-blue-rgb), 0.15);
+          background-color: rgba(var(--accent-blue-rgb), 0.14);
           border-left-color: $accent-blue;
           animation: highlight-pulse 0.4s ease-out;
         }
+        &.match {
+          background-color: rgba(251, 191, 36, 0.07);
+          border-left-color: #fbbf24;
+        }
       }
     }
+  }
+
+  /* --- Syntax tokens --- */
+  .tk { white-space: pre; }
+  .tk-kw       { color: #c792ea; font-weight: 600; }   /* keywords */
+  .tk-pp       { color: #f78c6c; font-style: italic; } /* #include etc */
+  .tk-comment  { color: #5f7a8a; font-style: italic; }
+  .tk-string   { color: #c3e88d; }
+  .tk-num      { color: #f78c6c; }
+  .tk-const    { color: #ffcb6b; }                     /* GL_*, UPPER_CASE */
+  .tk-glfn     { color: #82aaff; font-weight: 500; }   /* glVertex3f, glutInit */
+  .tk-fn       { color: #82aaff; }
+  .tk-ident    { color: var(--code-content); }
+  .tk-punct    { color: $text-muted; }
+  .tk-op       { color: #89ddff; }
+  .tk-ws       { color: inherit; }
+
+  [data-theme='light'] & {
+    .tk-kw      { color: #7c4dff; }
+    .tk-pp      { color: #d84315; }
+    .tk-comment { color: #8796a5; }
+    .tk-string  { color: #388e3c; }
+    .tk-num     { color: #d84315; }
+    .tk-const   { color: #b26a00; }
+    .tk-glfn    { color: #0f4c75; font-weight: 600; }
+    .tk-fn      { color: #0f4c75; }
+    .tk-op      { color: #006064; }
   }
 }

@@ -1,23 +1,29 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { Square, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import {
+  Square,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle2,
+  GraduationCap,
+  PlayCircle,
+} from 'lucide-react';
 import { useVamsStore } from '@/core/store';
 import { LESSON_REGISTRY } from '../model/lesson-registry';
 import './lesson-bar.scss';
 
 export default function LessonBar() {
-  const { 
-    appMode, 
-    activeLessonId, 
-    currentStepIndex, 
-    setCurrentStep, 
-    setAppMode, 
+  const {
+    appMode,
+    activeLessonId,
+    currentStepIndex,
+    setCurrentStep,
+    setAppMode,
     clearLessonState,
   } = useVamsStore();
 
   const lesson = activeLessonId ? LESSON_REGISTRY[activeLessonId] : null;
   const step = lesson?.steps[currentStepIndex];
 
-  // Tracks the last executed step to prevent React Strict Mode double-firing
   const lastExecutedStepRef = useRef<string | null>(null);
 
   const isStepSuccess = useMemo(() => {
@@ -26,100 +32,121 @@ export default function LessonBar() {
     return step.successCheck(useVamsStore.getState());
   }, [step]);
 
-  // DETERMINISTIC SCENE REBUILDER
-  // Executes whenever the step changes (Next or Back)
   useEffect(() => {
     if (!lesson || !activeLessonId) return;
-
     const stepKey = `${activeLessonId}-${currentStepIndex}`;
-    
     if (lastExecutedStepRef.current !== stepKey) {
       lastExecutedStepRef.current = stepKey;
-      
       const store = useVamsStore.getState();
-
-      // Pause history tracking so our rapid rebuild doesn't flood the Undo stack
       store.startBatch();
-
-      // 1. Fully clear the canvas to ensure a clean slate
-      useVamsStore.setState({ 
-        objects: [], 
+      useVamsStore.setState({
+        objects: [],
         selectedObjectId: null,
-        interactionMode: 'SELECT' 
+        interactionMode: 'SELECT',
       });
-
-      // 2. Replay all actions from the initial state up to the current step.
-      // This guarantees absolute consistency even if the user manually destroyed the scene.
       for (let i = 0; i <= currentStepIndex; i++) {
         const pastStep = lesson.steps[i];
-        if (pastStep.action) {
-          // Pass a fresh getState() so each action sees the results of the previous one
-          pastStep.action(useVamsStore.getState());
-        }
+        if (pastStep.action) pastStep.action(useVamsStore.getState());
       }
-
-      // Resume history tracking
       store.endBatch();
     }
   }, [currentStepIndex, activeLessonId, lesson]);
 
-  if (appMode !== 'Lesson' || !lesson || !step) return null;
-
   const handleNext = () => {
-    if (currentStepIndex < lesson.steps.length - 1) {
+    if (lesson && currentStepIndex < lesson.steps.length - 1) {
       setCurrentStep(currentStepIndex + 1);
     }
   };
 
   const handleBack = () => {
-    if (currentStepIndex > 0) {
-      setCurrentStep(currentStepIndex - 1);
-    }
+    if (currentStepIndex > 0) setCurrentStep(currentStepIndex - 1);
   };
 
   const handleExit = () => {
     clearLessonState();
     setAppMode('Author');
-    lastExecutedStepRef.current = null; // Clear execution tracking on exit
+    lastExecutedStepRef.current = null;
   };
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (appMode !== 'Lesson' || !lesson || !step) return;
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (e.key === 'ArrowRight') {
+        const canAdvance = !step.waitForUser || isStepSuccess;
+        if (canAdvance) handleNext();
+      } else if (e.key === 'ArrowLeft') {
+        handleBack();
+      } else if (e.key === 'Escape') {
+        handleExit();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appMode, lesson, step, isStepSuccess, currentStepIndex]);
+
+  if (appMode !== 'Lesson' || !lesson || !step) return null;
 
   const isLastStep = currentStepIndex === lesson.steps.length - 1;
   const canAdvance = !step.waitForUser || isStepSuccess;
-  
   const progressPercent = ((currentStepIndex + 1) / lesson.steps.length) * 100;
 
+  const lessonTypeIcon =
+    lesson.type === 'exercise' ? (
+      <GraduationCap size={14} />
+    ) : (
+      <PlayCircle size={14} />
+    );
+
   return (
-    <div 
-      className="lesson-bar" 
+    <div
+      className="lesson-bar"
       style={{ '--progress': `${progressPercent}%` } as React.CSSProperties}
+      role="region"
+      aria-label="Lesson navigation"
     >
       <div className="lesson-info">
-        <span className="lesson-title">{lesson.title}</span>
-        <span className="step-counter">Step {currentStepIndex + 1} of {lesson.steps.length}</span>
+        <span className="lesson-type-chip">
+          {lessonTypeIcon}
+          <span>{lesson.type === 'exercise' ? 'Exercise' : 'Demo'}</span>
+        </span>
+        <span className="lesson-title" title={lesson.title}>
+          {lesson.title}
+        </span>
       </div>
-      
+
       <div className="lesson-narration">
-        <p>{step.narration}</p>
+        <p key={`${activeLessonId}-${currentStepIndex}`}>{step.narration}</p>
+        <span className="step-counter">
+          Step <strong>{currentStepIndex + 1}</strong> of {lesson.steps.length}
+        </span>
       </div>
 
       <div className="lesson-controls">
-        <button className="control-btn exit" onClick={handleExit}>
-          <Square size={14} /> Exit
+        <button className="control-btn exit" onClick={handleExit} title="Exit lesson (Esc)">
+          <Square size={13} />
+          <span>Exit</span>
         </button>
-        <button 
-          className="control-btn" 
-          onClick={handleBack} 
+        <button
+          className="control-btn"
+          onClick={handleBack}
           disabled={currentStepIndex === 0}
+          title="Previous step (←)"
         >
-          <ChevronLeft size={16} /> Back
+          <ChevronLeft size={15} />
+          <span>Back</span>
         </button>
-        <button 
-          className={`control-btn primary ${canAdvance ? 'ready' : ''}`} 
+        <button
+          className={`control-btn primary ${canAdvance ? 'ready' : ''}`}
           onClick={isLastStep ? handleExit : handleNext}
           disabled={!canAdvance}
+          title={isLastStep ? 'Finish lesson' : 'Next step (→)'}
         >
-          {isLastStep ? <CheckCircle2 size={16} /> : <ChevronRight size={16} />}
-          {isLastStep ? 'Finish' : 'Next'}
+          {isLastStep ? <CheckCircle2 size={15} /> : <ChevronRight size={15} />}
+          <span>{isLastStep ? 'Finish' : 'Next'}</span>
         </button>
       </div>
     </div>
