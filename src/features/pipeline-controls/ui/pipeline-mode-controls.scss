@@ -1,0 +1,34 @@
+@use '../../../shared/styles/tokens' as *;
+
+.mode-controls-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  .mode-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.75rem;
+    background-color: $bg-input;
+    border: 1px solid $border-color;
+    border-radius: 6px;
+    color: $text-muted;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--bg-panel-hover);
+      color: $text-main;
+      border-color: var(--border-highlight);
+    }
+
+    &.active {
+      background-color: rgba(var(--accent-blue-rgb), 0.15);
+      color: var(--accent-blue-light);
+      border-color: rgba(var(--accent-blue-rgb), 0.5);
+    }
+  }
+}

@@ -8,14 +8,19 @@ import { useGridSystem } from '@/shared/engine/pixi/hooks/useGridSystem';
 import { CanvasOverlays } from './ui/CanvasOverlays';
 import './vams-canvas.scss';
 
-export default function VamsCanvas() {
+interface VamsCanvasProps {
+  isHidden?: boolean;
+}
+
+export default function VamsCanvas({ isHidden = false }: VamsCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [coordinates, setCoordinates] = useState({ x: 0, y: 0 });
   const viewportLimits = useVamsStore((state) => state.viewportLimits);
   const interactionMode = useVamsStore((state) => state.interactionMode);
   const showCoordinateTracker = useVamsStore((state) => state.showCoordinateTracker);
-
+  
   const { pixiReady, appRef, worldRef, gridRef, overlayRef } = usePixiApp(canvasRef);
+  
   const { screenToWorld, applyViewportTransform } = useCanvasInteraction({
     pixiReady,
     appRef,
@@ -44,6 +49,9 @@ export default function VamsCanvas() {
   });
 
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    // Prevent coordinate updates if the view is obscured
+    if (isHidden) return;
+    
     const { x, y } = screenToWorld(event.clientX, event.clientY);
     setCoordinates({ x, y });
   };
@@ -53,7 +61,7 @@ export default function VamsCanvas() {
 
   return (
     <div
-      className="canvas-wrapper"
+      className={`canvas-wrapper ${isHidden ? 'hidden' : ''}`}
       ref={canvasRef}
       onPointerMove={handlePointerMove}
       onContextMenu={(event) => event.preventDefault()}

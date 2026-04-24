@@ -2,16 +2,15 @@ import './styles/app-shell.scss';
 import TopBar from '@/widgets/layout/top-bar';
 import LeftSidebar from '@/widgets/layout/left-sidebar';
 import RightSidebar from '@/widgets/layout/right-sidebar';
-import VamsCanvas from '@/widgets/canvas';
+import ViewportRouter from '@/widgets/canvas/ViewportRouter';
 import LessonBar from '@/features/lesson-engine/ui/LessonBar';
 import { useVamsStore } from '@/core/store';
 import { useKeyboardShortcuts } from '@/shared/hooks/useKeyboardShortcuts';
 
 export default function App() {
-  useKeyboardShortcuts(); // Initialize global listeners
-  // Use strict selectors instead of destructuring the whole store!
+  useKeyboardShortcuts();
   const theme = useVamsStore((state) => state.theme);
-  const appMode = useVamsStore((state) => state.appMode); 
+  const appMode = useVamsStore((state) => state.appMode);
 
   return (
     <div className="app-container" data-theme={theme}>
@@ -19,11 +18,11 @@ export default function App() {
       <div className="main-workspace">
         <LeftSidebar />
         <main className="canvas-area">
-          <VamsCanvas />
+          <ViewportRouter />
         </main>
         <RightSidebar />
       </div>
-      {/* If appMode is 'Lesson', this will mount */}
+      
       {appMode === 'Lesson' && <LessonBar />}
     </div>
   );

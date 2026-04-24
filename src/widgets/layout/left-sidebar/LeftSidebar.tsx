@@ -2,25 +2,25 @@ import { GitCommit, Shapes, Database, Move3d, Image as ImageIcon, BoxSelect } fr
 import { useVamsStore } from '@/core/store';
 import type { CurriculumSection } from '@/core/store/types';
 
+import PipelineModeControls from '@/features/pipeline-controls/ui/PipelineModeControls';
 import CustomShapeBuilderPanel from '@/features/custom-shapes/ui/CustomShapeBuilderPanel';
 import TextNodePanel from '@/features/text-nodes/ui/TextNodePanel';
 import SceneHierarchyPanel from '@/features/scene-hierarchy/ui/SceneHierarchyPanel';
 import ObjectTransformPanel from '@/features/object-transform/ui/ObjectTransformPanel';
 import ObjectAppearancePanel from '@/features/object-appearance/ui/ObjectAppearancePanel';
-
 import './left-sidebar.scss';
 
 export default function LeftSidebar() {
-  const { 
-    activeSection, 
-    setActiveSection, 
-    selectedObjectId, 
+  const {
+    activeSection,
+    setActiveSection,
+    selectedObjectId,
     objects,
     appMode,
     setAppMode,
     clearLessonState
   } = useVamsStore();
-  
+
   const selectedObject = objects.find((object) => object.id === selectedObjectId);
 
   const handleTabClick = (section: CurriculumSection) => {
@@ -42,6 +42,8 @@ export default function LeftSidebar() {
       case 'Pipeline':
         return (
           <div className="tab-pane">
+            <PipelineModeControls />
+            <div className="separator" />
             <SceneHierarchyPanel />
             {!selectedObject && <ObjectAppearancePanel />}
           </div>
@@ -49,18 +51,11 @@ export default function LeftSidebar() {
       case 'Primitives':
         return (
           <div className="tab-pane">
-            {/* 1. ANCHOR: The Hierarchy tells us what we have */}
             <SceneHierarchyPanel />
-            
             <div className="separator" />
-
-            {/* 2. ACTIONS: The tools to make more things */}
             <CustomShapeBuilderPanel />
             <TextNodePanel />
-
             <div className="separator" />
-
-            {/* 3. PROPERTIES: The details of the selection (or canvas) */}
             <ObjectAppearancePanel />
           </div>
         );

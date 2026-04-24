@@ -101,12 +101,17 @@ export interface HistorySlice {
 
 export type AppMode = 'Author' | 'Lesson';
 export type CurriculumSection = 'Pipeline' | 'Primitives' | 'Buffers' | 'Transforms' | 'Textures';
+export type PipelineMode = 'Diagram' | 'Playground' | 'RasterVector';
 
 export interface RuntimeSlice {
   appMode: AppMode;
   activeSection: CurriculumSection;
+  pipelineMode: PipelineMode;
+  activePipelineStage: number | null;
   setAppMode: (mode: AppMode) => void;
   setActiveSection: (section: CurriculumSection) => void;
+  setPipelineMode: (mode: PipelineMode) => void;
+  setActivePipelineStage: (stageIndex: number | null) => void;
 }
 
 export interface LessonSlice {
@@ -114,7 +119,7 @@ export interface LessonSlice {
   currentStepIndex: number;
   exerciseAnswers: Record<string, unknown>;
   isSuccess: boolean;
-  sceneBackup: SceneNode[] | null; // Added backup storage
+  sceneBackup: SceneNode[] | null;
   setActiveLesson: (lessonId: string | null) => void;
   setCurrentStep: (index: number) => void;
   setExerciseAnswer: (stepId: string, answer: unknown) => void;
