@@ -193,7 +193,7 @@ Covers: pipeline stages (vertex specification → vertex processing → primitiv
   - *Coordinate playground mode* — a coordinate grid where the student can place and move markers, reading their NDC positions.
   - *Raster/vector mode* — a split view illustrating the difference between raster and vector representations.
 - **Code Panel:** when the scene is empty, shows the complete GLUT boilerplate with hoverable line annotations.
-- **Math Panel:** live cursor NDC position, window-to-viewport mapping equation with live substitution, and a contextual note for the currently-highlighted pipeline stage.
+- **Math Panel:** live cursor NDC position and a contextual note for the currently-highlighted pipeline stage.
 
 ### Demos (minimum 4)
 

@@ -15,13 +15,15 @@ interface VamsCanvasProps {
 export default function VamsCanvas({ isHidden = false }: VamsCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [coordinates, setCoordinates] = useState({ x: 0, y: 0 });
+
   const viewportLimits = useVamsStore((state) => state.viewportLimits);
   const interactionMode = useVamsStore((state) => state.interactionMode);
   const showCoordinateTracker = useVamsStore((state) => state.showCoordinateTracker);
+  const activeSection = useVamsStore((state) => state.activeSection);
   const setCursorWorld = useVamsStore((state) => state.setCursorWorld);
 
   const { pixiReady, appRef, worldRef, gridRef, overlayRef } = usePixiApp(canvasRef);
-
+  
   const { screenToWorld, applyViewportTransform } = useCanvasInteraction({
     pixiReady,
     appRef,
@@ -33,7 +35,6 @@ export default function VamsCanvas({ isHidden = false }: VamsCanvasProps) {
   useGridSystem({ pixiReady, appRef, worldRef, gridRef });
   useCustomShapePreview({ pixiReady, worldRef });
 
-  // rAF-throttled cursor reporter
   const rafRef = useRef<number | null>(null);
   const pendingCoordRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -47,8 +48,10 @@ export default function VamsCanvas({ isHidden = false }: VamsCanvasProps) {
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (isHidden) return;
     const { x, y } = screenToWorld(event.clientX, event.clientY);
+    
     setCoordinates({ x, y });
     pendingCoordRef.current = { x, y };
+
     if (rafRef.current === null) {
       rafRef.current = requestAnimationFrame(() => {
         if (pendingCoordRef.current) setCursorWorld(pendingCoordRef.current);
@@ -62,6 +65,10 @@ export default function VamsCanvas({ isHidden = false }: VamsCanvasProps) {
   };
 
   const cursorStyle = interactionMode === 'VERTEX_PLACE' ? 'crosshair' : undefined;
+  
+  // Derive effective visibility: disable in Pipeline tab to prevent redundant UI, 
+  // but preserve the underlying user setting for when they switch tabs.
+  const effectiveShowCoordinateTracker = showCoordinateTracker && activeSection !== 'Pipeline';
 
   return (
     <div
@@ -76,7 +83,7 @@ export default function VamsCanvas({ isHidden = false }: VamsCanvasProps) {
         viewportLimits={viewportLimits}
         interactionMode={interactionMode}
         coordinates={coordinates}
-        showCoordinateTracker={showCoordinateTracker}
+        showCoordinateTracker={effectiveShowCoordinateTracker}
       />
     </div>
   );

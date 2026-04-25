@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useVamsStore } from '@/core/store';
 
 const STAGE_NOTES: Record<number, { title: string; note: string }> = {
@@ -13,62 +12,30 @@ const STAGE_NOTES: Record<number, { title: string; note: string }> = {
 
 export default function PipelineMathContent() {
   const cursor = useVamsStore((s) => s.cursorWorld);
-  const limits = useVamsStore((s) => s.viewportLimits);
   const activeStage = useVamsStore((s) => s.activePipelineStage);
   const pipelineMode = useVamsStore((s) => s.pipelineMode);
-  
-  const setShowCoordinateTracker = useVamsStore((s) => s.setShowCoordinateTracker);
 
-  // Automatically hide canvas NDC coordinates when entering the Pipeline tab to prevent redundancy
-  useEffect(() => {
-    setShowCoordinateTracker(false);
-  }, [setShowCoordinateTracker]);
-
-  const rangeX = (limits.maxX - limits.minX).toFixed(2);
-  const rangeY = (limits.maxY - limits.minY).toFixed(2);
+  // Removed the useEffect that was overwriting the user's coordinate tracker settings
 
   return (
     <div className="pipeline-math">
       {pipelineMode === 'Playground' && (
-        <>
-          <Section title="Cursor (NDC)">
-            {cursor ? (
-              <div className="ndc-readout">
-                <div className="coord-pair">
-                  <span className="axis x">x</span>
-                  <span className="value">{cursor.x.toFixed(3)}</span>
-                </div>
-                <div className="coord-pair">
-                  <span className="axis y">y</span>
-                  <span className="value">{cursor.y.toFixed(3)}</span>
-                </div>
+        <Section title="Cursor (NDC)">
+          {cursor ? (
+            <div className="ndc-readout">
+              <div className="coord-pair">
+                <span className="axis x">x</span>
+                <span className="value">{cursor.x.toFixed(3)}</span>
               </div>
-            ) : (
-              <div className="hint">Move your cursor over the canvas to see live coordinates.</div>
-            )}
-          </Section>
-
-          <Section title="Window → Viewport mapping">
-            <p className="explanation">
-              Pixel coordinates are remapped into a clean coordinate system called NDC
-              (Normalized Device Coordinates).
-            </p>
-            <div className="equation">
-              <code>
-                x<sub>ndc</sub> = {limits.minX} + (x<sub>px</sub> ÷ width) × {rangeX}
-              </code>
+              <div className="coord-pair">
+                <span className="axis y">y</span>
+                <span className="value">{cursor.y.toFixed(3)}</span>
+              </div>
             </div>
-            <div className="equation">
-              <code>
-                y<sub>ndc</sub> = {limits.minY} + ((height − y<sub>px</sub>) ÷ height) × {rangeY}
-              </code>
-            </div>
-            <div className="hint">
-              The y-axis is flipped because pixels count down from the top, while NDC
-              counts up from the bottom.
-            </div>
-          </Section>
-        </>
+          ) : (
+            <div className="hint">Move your cursor over the canvas to see live coordinates.</div>
+          )}
+        </Section>
       )}
 
       {pipelineMode === 'Diagram' && (

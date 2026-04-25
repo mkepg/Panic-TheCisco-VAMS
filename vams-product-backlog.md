@@ -28,7 +28,6 @@ Based on the `plan.md` and the current state of the repository, here is the comp
 - [x] **GLUT Boilerplate:** Display complete, annotated GLUT boilerplate for an empty scene.
 - [x] **Code Annotations:** Hoverable line annotations/tooltips for the GLUT boilerplate.
 - [x] **Math Panel - NDC:** Show live NDC coordinates that update as the cursor moves over the viewport.
-- [x] **Math Panel - Mapping:** Display the window-to-viewport mapping equation with live substitution.
 - [x] **Demo 1: From Vertex to Pixel:** Steps through the 7 pipeline stages (`pipeline-demo-1`).
 - [x] **Demo 2: Raster vs Vector:** Demonstrates the raster/vector split view.
 - [x] **Demo 3: Normalized Device Coordinates:** Marker placement and coordinate system narration.
