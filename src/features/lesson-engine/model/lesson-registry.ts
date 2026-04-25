@@ -237,6 +237,7 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
     title: 'Which Stage?',
     type: 'exercise',
     section: 'Pipeline',
+    shuffleRange: [1, 7],
     steps: [
       {
         narration: "Let's test your visual reasoning. We will go through 7 visual artifacts covering all stages of the graphics pipeline.",
@@ -261,7 +262,7 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
         },
       },
       {
-        narration: "Correct! Now observe the distorted and moved shape. Which stage applies matrices to transform vertices into their final positions?",
+        narration: "Observe the distorted and moved shape. Which stage applies matrices to transform vertices into their final positions?",
         waitForUser: true,
         action: (state) => state.setPipelineMode('Playground'),
         exercise: {
@@ -278,7 +279,7 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
         },
       },
       {
-        narration: "Exactly! Next, loose points are connected into a wireframe triangle. Which stage links vertices into geometric primitives?",
+        narration: "Notice how loose points are connected into a wireframe triangle. Which stage links vertices into geometric primitives?",
         waitForUser: true,
         action: (state) => state.setPipelineMode('Playground'),
         exercise: {
@@ -295,7 +296,7 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
         },
       },
       {
-        narration: "Spot on! Look at the geometry extending outside the viewport boundary being cut off. Which stage performs this operation to save GPU work?",
+        narration: "Look at the geometry extending outside the viewport boundary being cut off. Which stage performs this operation to save GPU work?",
         waitForUser: true,
         action: (state) => state.setPipelineMode('Playground'),
         exercise: {
@@ -312,7 +313,7 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
         },
       },
       {
-        narration: "You've got it. Notice the jagged, staircase-like edges on the diagonal line. Which stage converts smooth vector geometry into a discrete grid of fragments?",
+        narration: "Notice the jagged, staircase-like edges on the diagonal line. Which stage converts smooth vector geometry into a discrete grid of fragments?",
         waitForUser: true,
         action: (state) => state.setPipelineMode('Playground'),
         exercise: {
@@ -329,7 +330,7 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
         },
       },
       {
-        narration: "Correct! Next, observe the smooth color interpolation across the surface. Which stage computes the final color of each individual fragment?",
+        narration: "Observe the smooth color interpolation across the surface. Which stage computes the final color of each individual fragment?",
         waitForUser: true,
         action: (state) => state.setPipelineMode('Playground'),
         exercise: {
@@ -346,7 +347,7 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
         },
       },
       {
-        narration: "Outstanding! Finally, the hidden part of the red triangle is discarded because it fails the depth test. Which stage performs these final visibility checks?",
+        narration: "The hidden part of the red triangle is discarded because it fails the depth test. Which stage performs these final visibility checks?",
         waitForUser: true,
         action: (state) => state.setPipelineMode('Playground'),
         exercise: {

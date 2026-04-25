@@ -23,33 +23,73 @@ export default function LessonBar() {
     clearLessonState,
   } = useVamsStore();
 
-  const lesson = activeLessonId ? LESSON_REGISTRY[activeLessonId] : null;
-  const step = lesson?.steps[currentStepIndex];
+  const [sessionSeed, setSessionSeed] = useState(0);
   const objects = useVamsStore((s) => s.objects);
-
   const lastExecutedStepRef = useRef<string | null>(null);
   const lastStepIndexRef = useRef<number>(-1);
 
   const [mcAnswer, setMcAnswer] = useState<string | null>(null);
   const [orderAnswer, setOrderAnswer] = useState<string[] | null>(null);
 
+  // Generate a fresh session seed whenever a new lesson is opened to randomize the shuffle
   useEffect(() => {
-    setMcAnswer(null);
-    if (step?.exercise?.kind === 'ordered-list') {
-      const seed = `${activeLessonId}-${currentStepIndex}`;
-      const arr = [...step.exercise.items].map((i) => i.id);
+    if (activeLessonId) {
+      setSessionSeed(Math.random());
+    }
+  }, [activeLessonId]);
 
-      let h = 0;
-      for (const c of seed) h = (h * 31 + c.charCodeAt(0)) | 0;
+  // Intercept the static registry lesson and dynamically inject shuffled steps
+  const lesson = useMemo(() => {
+    if (!activeLessonId) return null;
+    const baseLesson = LESSON_REGISTRY[activeLessonId];
+    if (!baseLesson) return null;
+
+    if (baseLesson.shuffleRange) {
+      const [start, end] = baseLesson.shuffleRange;
+      const cloned = { ...baseLesson, steps: [...baseLesson.steps] };
+      const range = cloned.steps.slice(start, end + 1);
+
+      let h = Math.floor(sessionSeed * 1000000);
       const rng = () => {
         h = (h * 1664525 + 1013904223) | 0;
         return ((h >>> 0) % 1000) / 1000;
       };
 
-      for (let i = arr.length - 1; i > 0; i--) {
+      for (let i = range.length - 1; i > 0; i--) {
         const j = Math.floor(rng() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
+        [range[i], range[j]] = [range[j], range[i]];
       }
+
+      cloned.steps.splice(start, range.length, ...range);
+      return cloned;
+    }
+
+    return baseLesson;
+  }, [activeLessonId, sessionSeed]);
+
+  const step = lesson?.steps[currentStepIndex];
+
+  useEffect(() => {
+    setMcAnswer(null);
+    if (step?.exercise?.kind === 'ordered-list') {
+      const expected = step.exercise.correctOrder;
+      const arr = [...step.exercise.items].map((i) => i.id);
+      
+      // Enforce a complete derangement: absolutely NO item is allowed to 
+      // start in its correct position. 
+      let hasAnyCorrect = true;
+
+      while (hasAnyCorrect) {
+        // Fisher-Yates shuffle
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        
+        // If even a single item accidentally matches its target position, shuffle again
+        hasAnyCorrect = arr.some((val, index) => val === expected[index]);
+      }
+
       setOrderAnswer(arr);
     } else {
       setOrderAnswer(null);
@@ -103,8 +143,6 @@ export default function LessonBar() {
       }
     }
     if (step.successCheck) {
-      // Safely reference 'objects' to satisfy the exhaustive-deps rule 
-      // ensuring re-evaluation on scene changes while relying on getState()
       void objects; 
       return step.successCheck(useVamsStore.getState());
     }

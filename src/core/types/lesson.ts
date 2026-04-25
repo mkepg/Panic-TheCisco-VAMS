@@ -37,5 +37,6 @@ export interface Lesson {
   title: string;
   type: 'demo' | 'exercise';
   section: CurriculumSection;
+  shuffleRange?: [number, number];
   steps: LessonStep[];
 }

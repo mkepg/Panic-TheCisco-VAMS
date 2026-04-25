@@ -121,8 +121,8 @@ const VisualArtifactRenderer = ({ type }: { type: VisualArtifactType }) => {
 export default function MultipleChoiceWidget({
   prompt, options, selectedId, correctId, onSelect, visualArtifact
 }: Props) {
-  
-  // Randomize the order of the options to prevent memorization patterns using a pure, seeded PRNG
+
+  // Derive randomized options securely during render using a pure, seeded PRNG
   const randomizedOptions = useMemo(() => {
     const arr = [...options];
     
