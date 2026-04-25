@@ -25,17 +25,17 @@ Based on the `plan.md` and the current state of the repository, here is the comp
 - [x] **Pipeline Diagram View:** Step-through visual diagram of the seven pipeline stages.
 - [x] **Raster/Vector View:** Split view illustrating raster vs. vector representations.
 - [x] **Coordinate Playground View:** Interactive grid for placing markers and reading NDC positions.
-- [ ] **GLUT Boilerplate:** Display complete, annotated GLUT boilerplate for an empty scene.
-- [ ] **Code Annotations:** Hoverable line annotations/tooltips for the GLUT boilerplate.
-- [ ] **Math Panel - NDC:** Show live NDC coordinates that update as the cursor moves over the viewport.
-- [ ] **Math Panel - Mapping:** Display the window-to-viewport mapping equation with live substitution.
-- [ ] **Demo 1: From Vertex to Pixel:** Steps through the 7 pipeline stages (`pipeline-demo-1`).
-- [ ] **Demo 2: Raster vs Vector:** Demonstrates the raster/vector split view.
-- [ ] **Demo 3: Normalized Device Coordinates:** Marker placement and coordinate system narration.
-- [ ] **Demo 4: Anatomy of a GLUT Program:** Steps through the boilerplate line by line.
-- [ ] **Exercise 1: Place the Point:** Student places a marker at a specified NDC coordinate.
-- [ ] **Exercise 2: Which Stage?:** Identify the pipeline stage from visual artifacts.
-- [ ] **Exercise 3: Order the Pipeline:** Reorder scrambled pipeline stage names.
+- [x] **GLUT Boilerplate:** Display complete, annotated GLUT boilerplate for an empty scene.
+- [x] **Code Annotations:** Hoverable line annotations/tooltips for the GLUT boilerplate.
+- [x] **Math Panel - NDC:** Show live NDC coordinates that update as the cursor moves over the viewport.
+- [x] **Math Panel - Mapping:** Display the window-to-viewport mapping equation with live substitution.
+- [x] **Demo 1: From Vertex to Pixel:** Steps through the 7 pipeline stages (`pipeline-demo-1`).
+- [x] **Demo 2: Raster vs Vector:** Demonstrates the raster/vector split view.
+- [x] **Demo 3: Normalized Device Coordinates:** Marker placement and coordinate system narration.
+- [x] **Demo 4: Anatomy of a GLUT Program:** Steps through the boilerplate line by line.
+- [x] **Exercise 1: Place the Point:** Student places a marker at a specified NDC coordinate.
+- [x] **Exercise 2: Which Stage?:** Identify the pipeline stage from visual artifacts.
+- [x] **Exercise 3: Order the Pipeline:** Reorder scrambled pipeline stage names.
 
 ---
 
