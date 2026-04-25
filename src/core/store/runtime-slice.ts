@@ -6,19 +6,20 @@ export const createRuntimeSlice: StateCreator<VamsState, [], [], RuntimeSlice> =
   activeSection: 'Pipeline',
   pipelineMode: 'Playground',
   activePipelineStage: null,
+  cursorWorld: null,
 
   setAppMode: (mode) => set({ appMode: mode }),
-  
+
   setActiveSection: (section) => set((state) => {
     if (state.activeSection === section) return {};
-    
-    return { 
+    return {
       activeSection: section,
       pipelineMode: 'Playground',
-      activePipelineStage: null
+      activePipelineStage: null,
     };
   }),
 
   setPipelineMode: (mode) => set({ pipelineMode: mode }),
   setActivePipelineStage: (stageIndex) => set({ activePipelineStage: stageIndex }),
+  setCursorWorld: (pos) => set({ cursorWorld: pos }),
 });

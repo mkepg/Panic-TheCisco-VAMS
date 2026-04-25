@@ -108,10 +108,12 @@ export interface RuntimeSlice {
   activeSection: CurriculumSection;
   pipelineMode: PipelineMode;
   activePipelineStage: number | null;
+  cursorWorld: { x: number; y: number } | null;
   setAppMode: (mode: AppMode) => void;
   setActiveSection: (section: CurriculumSection) => void;
   setPipelineMode: (mode: PipelineMode) => void;
   setActivePipelineStage: (stageIndex: number | null) => void;
+  setCursorWorld: (pos: { x: number; y: number } | null) => void;
 }
 
 export interface LessonSlice {

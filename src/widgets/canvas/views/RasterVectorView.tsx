@@ -29,8 +29,8 @@ export default function RasterVectorView() {
             <span className="pane-tag">math</span>
           </div>
           <p className="pane-caption">
-            Defined by exact coordinates and equations. Resolution-independent — zoom
-            forever, edges stay crisp.
+            Made of math: a few points and lines. No matter how far you zoom in, the edges
+            stay perfectly sharp.
           </p>
           <div className="visualization">
             <svg viewBox="0 0 200 200" className="rv-svg" aria-label="Vector triangle">
@@ -59,8 +59,8 @@ export default function RasterVectorView() {
             <span className="pane-tag">pixels</span>
           </div>
           <p className="pane-caption">
-            The same shape after rasterization — sliced into a finite grid of fragments.
-            Coverage determines each fragment's intensity.
+            The same triangle, redrawn as a grid of tiny squares. Each square is a
+            <em> fragment </em>— what your screen actually displays.
           </p>
           <div className="visualization">
             <svg viewBox="0 0 200 200" className="rv-svg" aria-label="Rasterized triangle">

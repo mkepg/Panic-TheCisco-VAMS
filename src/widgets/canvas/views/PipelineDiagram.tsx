@@ -29,41 +29,45 @@ const PIPELINE_STAGES: PipelineStage[] = [
   {
     title: 'Vertex Specification',
     short: 'Input',
-    desc: 'Application defines geometry (glBegin, glVertex, glColor) and sends it to OpenGL.',
-    detail: 'Your C++ code feeds raw vertex data — positions, colors, normals — into the GL state machine.',
+    desc: 'Your code lists the corner points (vertices) that describe each shape.',
+    detail:
+      'This is where every shape begins. Your program hands OpenGL a list of vertices — each with a position and color — that the rest of the pipeline turns into pixels.',
     icon: <Pencil size={16} strokeWidth={2.2} />,
     kind: 'input',
-    inputType: 'C++ data',
+    inputType: 'C++ vertex list',
     outputType: 'Vertex stream',
     glApis: ['glBegin', 'glVertex3f', 'glColor3f', 'glEnd'],
   },
   {
     title: 'Vertex Processing',
     short: 'Transform',
-    desc: 'Per-vertex operations run, including transform matrices (ModelView/Projection).',
-    detail: 'Each vertex is multiplied through ModelView × Projection to land in clip space.',
+    desc: 'Each vertex is moved, rotated, or scaled into its final position.',
+    detail:
+      'Each vertex is multiplied by transformation matrices to land where it should — translated, rotated, scaled, and projected into the visible viewing area.',
     icon: <Move3d size={16} strokeWidth={2.2} />,
     kind: 'process',
     inputType: 'Vertex stream',
-    outputType: 'Clip-space verts',
+    outputType: 'Positioned verts',
     glApis: ['glMatrixMode', 'glLoadIdentity', 'glTranslatef', 'glRotatef'],
   },
   {
     title: 'Primitive Assembly',
     short: 'Assemble',
-    desc: 'Vertices are grouped into primitives like lines, triangles, and polygons.',
-    detail: 'Vertices are stitched into primitives according to the GL_* mode you chose in glBegin.',
+    desc: 'Vertices are connected into shapes — points, lines, or triangles.',
+    detail:
+      'Loose vertices are stitched into actual primitives. Three vertices may become a triangle, two may form a line — depending on the GL_* mode you chose.',
     icon: <Triangle size={16} strokeWidth={2.2} />,
     kind: 'assembly',
-    inputType: 'Clip-space verts',
+    inputType: 'Positioned verts',
     outputType: 'Primitives',
     glApis: ['GL_TRIANGLES', 'GL_LINES', 'GL_QUADS', 'GL_POLYGON'],
   },
   {
-    title: 'Clipping & Culling',
+    title: 'Clipping',
     short: 'Clip',
-    desc: 'Primitives outside the view volume are clipped. Back-facing primitives are discarded.',
-    detail: 'Anything outside the view frustum is clipped; back-facing triangles are culled away.',
+    desc: 'Anything outside the viewable area gets cut away.',
+    detail:
+      'Shapes that sit partly outside the visible window have their offscreen parts sliced off. Triangles facing away from the camera may be discarded too, to save work.',
     icon: <Scissors size={16} strokeWidth={2.2} />,
     kind: 'clip',
     inputType: 'Primitives',
@@ -73,8 +77,9 @@ const PIPELINE_STAGES: PipelineStage[] = [
   {
     title: 'Rasterization',
     short: 'Raster',
-    desc: 'Continuous vector geometry is converted into a discrete grid of potential pixels (fragments).',
-    detail: 'Smooth vector shapes are sliced into a grid of fragments — potential pixels.',
+    desc: 'Smooth shapes are sliced into a grid of square fragments.',
+    detail:
+      'This is where vector becomes raster. Every visible primitive is broken down into a grid of fragments — small candidate units that may eventually become pixels.',
     icon: <Grid3x3 size={16} strokeWidth={2.2} />,
     kind: 'raster',
     inputType: 'Visible prims',
@@ -84,23 +89,25 @@ const PIPELINE_STAGES: PipelineStage[] = [
   {
     title: 'Fragment Processing',
     short: 'Shade',
-    desc: 'Per-fragment operations run, including texturing, fog, and color calculations.',
-    detail: 'Each fragment gets shaded: texture lookup, lighting, fog and final color are computed.',
+    desc: 'Each fragment receives its final color.',
+    detail:
+      'Each fragment is colored individually. Textures and effects are applied here to decide what the fragment will actually look like on screen.',
     icon: <Droplet size={16} strokeWidth={2.2} />,
     kind: 'fragment',
     inputType: 'Fragments',
-    outputType: 'Shaded frags',
-    glApis: ['glTexImage2D', 'glLightfv', 'glFogf', 'glBlendFunc'],
+    outputType: 'Colored frags',
+    glApis: ['glTexImage2D', 'glFogf', 'glBlendFunc'],
   },
   {
     title: 'Per-Sample Operations',
     short: 'Output',
-    desc: 'Final tests (Depth, Stencil, Alpha) run. Surviving fragments are written to the Framebuffer.',
-    detail: 'Depth, stencil, and blend tests decide which fragments survive and reach the framebuffer.',
+    desc: 'Final checks decide which fragments become real pixels on screen.',
+    detail:
+      'The last gate before the screen. Fragments that pass depth and stencil tests are written to the framebuffer — and that is what you see.',
     icon: <Layers size={16} strokeWidth={2.2} />,
     kind: 'output',
-    inputType: 'Shaded frags',
-    outputType: 'Pixels',
+    inputType: 'Colored frags',
+    outputType: 'Screen pixels',
     glApis: ['glDepthFunc', 'glStencilFunc', 'glClear', 'glFlush'],
   },
 ];
@@ -131,11 +138,11 @@ export default function PipelineDiagram() {
     >
       <div className="diagram-container flowchart">
         <header className="diagram-header">
-          <span className="eyebrow">OpenGL Fixed-Function Pipeline</span>
+          <span className="eyebrow">The OpenGL Rendering Pipeline</span>
           <h2>From Vertex to Pixel</h2>
           <p className="subheading">
-            Seven stages transform raw geometry into the pixels on your screen. Click any
-            stage to inspect its inputs, outputs, and relevant GL calls.
+            Seven steps turn the points you describe in code into the pixels you see
+            on screen. Click any step to see what happens inside it.
           </p>
         </header>
 

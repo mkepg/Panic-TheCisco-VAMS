@@ -1,17 +1,13 @@
 @use '../../../shared/styles/tokens' as *;
 
 .lesson-bar {
-  display: grid;
-  grid-template-columns: minmax(200px, 22%) 1fr minmax(260px, 22%);
-  gap: 1.25rem;
-  align-items: center;
-  min-height: 6.25rem;
+  display: flex;
+  flex-direction: column;
   flex-shrink: 0;
   background:
     linear-gradient(180deg, rgba(var(--accent-blue-rgb), 0.04), transparent 70%),
     $bg-dark;
   position: relative;
-  padding: 1rem 1.5rem;
   box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.45);
   z-index: 1000;
   border-top: 1px solid rgba(var(--accent-blue-rgb), 0.18);
@@ -31,6 +27,32 @@
     width: var(--progress, 0%);
     transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 0 12px rgba(var(--accent-blue-rgb), 0.55);
+  }
+
+  .lesson-exercise-area {
+    width: 100%;
+    padding: 1rem 1.5rem 0.4rem;
+    display: flex;
+    justify-content: center;
+    animation: exercise-enter 0.28s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  }
+
+  @keyframes exercise-enter {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .lesson-bar-main {
+    display: grid;
+    grid-template-columns: minmax(200px, 22%) 1fr minmax(260px, 22%);
+    gap: 1.25rem;
+    align-items: center;
+    min-height: 6.25rem;
+    padding: 1rem 1.5rem;
+  }
+
+  &.has-exercise .lesson-bar-main {
+    min-height: 5rem;
   }
 
   .lesson-info {
@@ -85,10 +107,7 @@
       font-weight: 400;
       animation: narration-slide 0.3s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 
-      /* Use a single accented lead color to keep things calm */
-      &::first-line {
-        color: var(--accent-blue-light);
-      }
+      &::first-line { color: var(--accent-blue-light); }
     }
 
     .step-counter {
@@ -99,16 +118,13 @@
       color: $text-dim;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      strong {
-        color: var(--accent-blue-light);
-        font-weight: 600;
-      }
+      strong { color: var(--accent-blue-light); font-weight: 600; }
     }
   }
 
   @keyframes narration-slide {
     from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 
   .lesson-controls {
@@ -139,15 +155,8 @@
         border-color: rgba(255, 255, 255, 0.22);
         transform: translateY(-1px);
       }
-
-      &:active:not(:disabled) {
-        transform: translateY(0);
-      }
-
-      &:disabled {
-        opacity: 0.3;
-        cursor: not-allowed;
-      }
+      &:active:not(:disabled) { transform: translateY(0); }
+      &:disabled { opacity: 0.3; cursor: not-allowed; }
 
       &.primary {
         background-color: rgba(var(--accent-blue-rgb), 0.15);
@@ -183,17 +192,17 @@
   }
 
   @media (max-width: 960px) {
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
-    min-height: unset;
-    padding: 0.85rem 1rem 1rem;
-
+    .lesson-bar-main {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+      min-height: unset;
+      padding: 0.85rem 1rem 1rem;
+    }
     .lesson-info {
       flex-direction: row;
       flex-wrap: wrap;
       align-items: center;
       gap: 0.5rem 0.75rem;
-      .step-dots { margin-left: auto; }
     }
     .lesson-narration {
       padding: 0;

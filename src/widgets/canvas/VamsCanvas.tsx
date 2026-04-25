@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useVamsStore } from '@/core/store';
 import { usePixiApp } from '@/shared/engine/pixi/hooks/usePixiApp';
 import { useCanvasInteraction } from '@/features/scene-interaction/model/useCanvasInteraction';
@@ -18,9 +18,10 @@ export default function VamsCanvas({ isHidden = false }: VamsCanvasProps) {
   const viewportLimits = useVamsStore((state) => state.viewportLimits);
   const interactionMode = useVamsStore((state) => state.interactionMode);
   const showCoordinateTracker = useVamsStore((state) => state.showCoordinateTracker);
-  
+  const setCursorWorld = useVamsStore((state) => state.setCursorWorld);
+
   const { pixiReady, appRef, worldRef, gridRef, overlayRef } = usePixiApp(canvasRef);
-  
+
   const { screenToWorld, applyViewportTransform } = useCanvasInteraction({
     pixiReady,
     appRef,
@@ -28,42 +29,46 @@ export default function VamsCanvas({ isHidden = false }: VamsCanvasProps) {
     canvasRef,
   });
 
-  useSceneRenderer({
-    pixiReady,
-    appRef,
-    worldRef,
-    overlayRef,
-    applyViewportTransform,
-  });
+  useSceneRenderer({ pixiReady, appRef, worldRef, overlayRef, applyViewportTransform });
+  useGridSystem({ pixiReady, appRef, worldRef, gridRef });
+  useCustomShapePreview({ pixiReady, worldRef });
 
-  useGridSystem({
-    pixiReady,
-    appRef,
-    worldRef,
-    gridRef,
-  });
+  // rAF-throttled cursor reporter
+  const rafRef = useRef<number | null>(null);
+  const pendingCoordRef = useRef<{ x: number; y: number } | null>(null);
 
-  useCustomShapePreview({
-    pixiReady,
-    worldRef,
-  });
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      setCursorWorld(null);
+    };
+  }, [setCursorWorld]);
 
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    // Prevent coordinate updates if the view is obscured
     if (isHidden) return;
-    
     const { x, y } = screenToWorld(event.clientX, event.clientY);
     setCoordinates({ x, y });
+    pendingCoordRef.current = { x, y };
+    if (rafRef.current === null) {
+      rafRef.current = requestAnimationFrame(() => {
+        if (pendingCoordRef.current) setCursorWorld(pendingCoordRef.current);
+        rafRef.current = null;
+      });
+    }
   };
 
-  const cursorStyle =
-    interactionMode === 'VERTEX_PLACE' ? 'crosshair' : undefined;
+  const handlePointerLeave = () => {
+    setCursorWorld(null);
+  };
+
+  const cursorStyle = interactionMode === 'VERTEX_PLACE' ? 'crosshair' : undefined;
 
   return (
     <div
       className={`canvas-wrapper ${isHidden ? 'hidden' : ''}`}
       ref={canvasRef}
       onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
       onContextMenu={(event) => event.preventDefault()}
       style={{ cursor: cursorStyle }}
     >

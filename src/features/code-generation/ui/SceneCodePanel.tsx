@@ -5,6 +5,7 @@ import { generateAppOutput } from '@/features/code-generation/model/code-generat
 import { useCanvasSize } from '@/features/code-generation/model/useCanvasSize';
 import type { SceneNode } from "@/core/types/scene";
 import { sanitizeName } from '@/features/code-generation/model/generator/utils';
+import { GLUT_BOILERPLATE_ANNOTATIONS } from '@/features/code-generation/model/glut-annotations';
 
 function getEffectivelyVisibleObjects(objects: SceneNode[]): SceneNode[] {
   const byId = new Map(objects.map(o => [o.id, o]));
@@ -24,6 +25,7 @@ export default function SceneCodePanel() {
   const selectedObjectId = useVamsStore(s => s.selectedObjectId);
   const canvasBackgroundColor = useVamsStore(s => s.canvasBackgroundColor);
   const appMode = useVamsStore(s => s.appMode);
+  const activeSection = useVamsStore(s => s.activeSection);
   const canvasSize = useCanvasSize();
 
   const selectedObject = objects.find(o => o.id === selectedObjectId);
@@ -44,11 +46,17 @@ export default function SceneCodePanel() {
     );
   }, [objects, canvasBackgroundColor, canvasSize]);
 
+  // Show GLUT-boilerplate annotations only when the scene is empty AND the user
+  // is in the Pipeline section — that's the pedagogical context where they're
+  // learning the program structure.
+  const showAnnotations = activeSection === 'Pipeline' && objects.length === 0;
+
   return (
-    <CodeViewer 
-      code={generatedCode} 
-      highlightTarget={highlightTarget} 
-      isLessonMode={appMode === 'Lesson'} 
+    <CodeViewer
+      code={generatedCode}
+      highlightTarget={highlightTarget}
+      isLessonMode={appMode === 'Lesson'}
+      annotations={showAnnotations ? GLUT_BOILERPLATE_ANNOTATIONS : undefined}
     />
   );
 }

@@ -630,3 +630,11 @@
     );
   }
 }
+
+.raster-vector-view .pane-caption em {
+  font-style: normal;
+  color: var(--accent-blue-light);
+  background: rgba(var(--accent-blue-rgb), 0.08);
+  padding: 0 4px;
+  border-radius: 3px;
+}

@@ -2,18 +2,16 @@
 
 .math-panel-container {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  background-color: $bg-dark; /* Restored to match the Code Viewer */
+  background-color: $bg-dark;
   border-top: 1px solid $border-color;
 
   .math-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     padding: 0.4rem 1rem;
     background-color: rgba(0, 0, 0, 0.15);
     border-bottom: 1px solid $border-color;
@@ -27,18 +25,25 @@
       letter-spacing: 0.05em;
       font-weight: 700;
     }
+    .math-section-tag {
+      font-family: $font-mono;
+      font-size: 0.6rem;
+      color: var(--accent-blue-light);
+      background: rgba(var(--accent-blue-rgb), 0.12);
+      border: 1px solid rgba(var(--accent-blue-rgb), 0.28);
+      padding: 0.1rem 0.45rem;
+      border-radius: 999px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
   }
 
   .math-content {
     flex: 1;
-    padding: 1rem;
+    padding: 0.85rem 1rem 1.25rem;
     overflow-y: auto;
     color: $text-main;
     font-size: 0.85rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     @include scrollbar;
 
     .empty-state {
@@ -46,11 +51,102 @@
       font-style: italic;
       text-align: center;
       padding: 1.5rem;
-      border: 1px dashed rgba(255, 255, 255, 0.1); /* Subtle dashed border */
+      border: 1px dashed rgba(255, 255, 255, 0.1);
       border-radius: 6px;
-      background-color: rgba(255, 255, 255, 0.03); /* Barely visible contrast against bg-dark */
+      background-color: rgba(255, 255, 255, 0.03);
       max-width: 80%;
       line-height: 1.5;
+      margin: auto;
+    }
+  }
+
+  /* Pipeline-section-specific content */
+  .pipeline-math {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+
+    .math-section {
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid $border-color;
+      border-radius: 6px;
+      padding: 0.7rem 0.85rem;
+
+      .math-section-title {
+        margin: 0 0 0.5rem 0;
+        font-family: $font-mono;
+        font-size: 0.7rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent-blue-light);
+      }
+
+      .math-section-body { display: flex; flex-direction: column; gap: 0.4rem; }
+
+      .explanation {
+        margin: 0;
+        font-size: 0.8rem;
+        line-height: 1.5;
+        color: $text-muted;
+        strong { color: $text-main; font-weight: 600; }
+      }
+
+      .hint {
+        font-size: 0.72rem;
+        color: $text-dim;
+        font-style: italic;
+        line-height: 1.45;
+      }
+
+      .ndc-readout {
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+
+        .coord-pair {
+          display: inline-flex;
+          align-items: baseline;
+          gap: 0.4rem;
+          padding: 0.35rem 0.65rem;
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid $border-color;
+          border-radius: 4px;
+          font-family: $font-mono;
+          flex: 1;
+          min-width: 0;
+
+          .axis {
+            font-size: 0.62rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 700;
+            &.x { color: #f87171; }
+            &.y { color: #4ade80; }
+          }
+          .value {
+            font-size: 0.95rem;
+            color: $text-main;
+            font-variant-numeric: tabular-nums;
+          }
+        }
+      }
+
+      .equation {
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid $border-color;
+        border-radius: 4px;
+        padding: 0.45rem 0.6rem;
+        overflow-x: auto;
+        @include scrollbar;
+
+        code {
+          font-family: $font-mono;
+          font-size: 0.74rem;
+          color: var(--code-content);
+          white-space: nowrap;
+          sub { font-size: 0.65em; color: $text-dim; }
+        }
+      }
     }
   }
 }

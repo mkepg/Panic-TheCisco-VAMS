@@ -25,6 +25,11 @@
     display: flex;
     align-items: center;
     position: relative;
+
+    .brand-launcher {
+      margin-left: 1.25rem;
+    }
+
     .logo-container {
       position: relative;
       padding: 0 4px;
