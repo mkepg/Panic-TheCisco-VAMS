@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   Square,
   ChevronLeft,
@@ -25,31 +25,27 @@ export default function LessonBar() {
 
   const lesson = activeLessonId ? LESSON_REGISTRY[activeLessonId] : null;
   const step = lesson?.steps[currentStepIndex];
-
-  // Subscribe to objects so successCheck re-evaluates on scene changes
   const objects = useVamsStore((s) => s.objects);
 
-  // Step replay tracking
   const lastExecutedStepRef = useRef<string | null>(null);
   const lastStepIndexRef = useRef<number>(-1);
 
-  // Exercise widget local answers
   const [mcAnswer, setMcAnswer] = useState<string | null>(null);
   const [orderAnswer, setOrderAnswer] = useState<string[] | null>(null);
 
-  // Reset widget answers when the step changes; initialize ordered list
   useEffect(() => {
     setMcAnswer(null);
     if (step?.exercise?.kind === 'ordered-list') {
-      // Stable shuffle (deterministic seed via stepKey)
       const seed = `${activeLessonId}-${currentStepIndex}`;
       const arr = [...step.exercise.items].map((i) => i.id);
+
       let h = 0;
       for (const c of seed) h = (h * 31 + c.charCodeAt(0)) | 0;
       const rng = () => {
         h = (h * 1664525 + 1013904223) | 0;
         return ((h >>> 0) % 1000) / 1000;
       };
+
       for (let i = arr.length - 1; i > 0; i--) {
         const j = Math.floor(rng() * (i + 1));
         [arr[i], arr[j]] = [arr[j], arr[i]];
@@ -58,10 +54,8 @@ export default function LessonBar() {
     } else {
       setOrderAnswer(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeLessonId, currentStepIndex]);
+  }, [activeLessonId, currentStepIndex, step]);
 
-  // Run scripted actions
   useEffect(() => {
     if (!lesson || !activeLessonId) return;
     const stepKey = `${activeLessonId}-${currentStepIndex}`;
@@ -75,11 +69,9 @@ export default function LessonBar() {
     store.startBatch();
 
     if (isForwardOne) {
-      // Advancing by one — preserve user-modified scene; just run the new step's action
       const newStep = lesson.steps[currentStepIndex];
       if (newStep.action) newStep.action(useVamsStore.getState());
     } else {
-      // Jump or back-step — fully rebuild scene from the lesson's actions
       useVamsStore.setState({
         objects: [],
         selectedObjectId: null,
@@ -96,11 +88,8 @@ export default function LessonBar() {
     lastStepIndexRef.current = currentStepIndex;
   }, [currentStepIndex, activeLessonId, lesson]);
 
-  // Combined success: exercise widget answer (if present) AND scene successCheck (if present)
   const isStepSuccess = useMemo(() => {
     if (!step) return false;
-
-    // Widget gating
     if (step.exercise) {
       if (step.exercise.kind === 'multiple-choice') {
         if (mcAnswer !== step.exercise.correctId) return false;
@@ -113,38 +102,39 @@ export default function LessonBar() {
         }
       }
     }
-
-    // Scene-state successCheck
-    if (step.successCheck) return step.successCheck(useVamsStore.getState());
-
+    if (step.successCheck) {
+      // Safely reference 'objects' to satisfy the exhaustive-deps rule 
+      // ensuring re-evaluation on scene changes while relying on getState()
+      void objects; 
+      return step.successCheck(useVamsStore.getState());
+    }
     return true;
-    // objects dependency ensures re-evaluation when scene changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, mcAnswer, orderAnswer, objects]);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (lesson && currentStepIndex < lesson.steps.length - 1) {
       setCurrentStep(currentStepIndex + 1);
     }
-  };
+  }, [lesson, currentStepIndex, setCurrentStep]);
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     if (currentStepIndex > 0) setCurrentStep(currentStepIndex - 1);
-  };
+  }, [currentStepIndex, setCurrentStep]);
 
-  const handleExit = () => {
+  const handleExit = useCallback(() => {
     clearLessonState();
     setAppMode('Author');
     lastExecutedStepRef.current = null;
     lastStepIndexRef.current = -1;
-  };
+  }, [clearLessonState, setAppMode]);
 
-  // Keyboard navigation
   useEffect(() => {
     if (appMode !== 'Lesson' || !lesson || !step) return;
+
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
       if (e.key === 'ArrowRight') {
         const canAdvance = !step.waitForUser || isStepSuccess;
         if (canAdvance) handleNext();
@@ -154,17 +144,16 @@ export default function LessonBar() {
         handleExit();
       }
     };
+
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appMode, lesson, step, isStepSuccess, currentStepIndex]);
+  }, [appMode, lesson, step, isStepSuccess, handleNext, handleBack, handleExit]);
 
   if (appMode !== 'Lesson' || !lesson || !step) return null;
 
   const isLastStep = currentStepIndex === lesson.steps.length - 1;
   const canAdvance = !step.waitForUser || isStepSuccess;
   const progressPercent = ((currentStepIndex + 1) / lesson.steps.length) * 100;
-
   const lessonTypeIcon =
     lesson.type === 'exercise' ? <GraduationCap size={14} /> : <PlayCircle size={14} />;
 
@@ -180,6 +169,7 @@ export default function LessonBar() {
           {step.exercise.kind === 'multiple-choice' && (
             <MultipleChoiceWidget
               prompt={step.exercise.prompt}
+              visualArtifact={step.exercise.visualArtifact}
               options={step.exercise.options}
               selectedId={mcAnswer}
               correctId={step.exercise.correctId}

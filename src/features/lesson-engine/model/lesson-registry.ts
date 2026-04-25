@@ -36,7 +36,6 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
       },
     ],
   },
-
   'pipeline-demo-1': {
     id: 'pipeline-demo-1',
     title: 'From Vertex to Pixel',
@@ -101,7 +100,6 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
       },
     ],
   },
-
   'pipeline-demo-2': {
     id: 'pipeline-demo-2',
     title: 'Vector vs Raster',
@@ -131,7 +129,6 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
       },
     ],
   },
-
   'pipeline-demo-3': {
     id: 'pipeline-demo-3',
     title: 'Normalized Device Coordinates',
@@ -161,7 +158,6 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
       },
     ],
   },
-
   'pipeline-demo-4': {
     id: 'pipeline-demo-4',
     title: 'Anatomy of a GLUT Program',
@@ -201,7 +197,6 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
       },
     ],
   },
-
   'pipeline-exercise-1': {
     id: 'pipeline-exercise-1',
     title: 'Place the Point',
@@ -237,85 +232,143 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
       },
     ],
   },
-
-  'pipeline-exercise-2': {
+'pipeline-exercise-2': {
     id: 'pipeline-exercise-2',
     title: 'Which Stage?',
     type: 'exercise',
     section: 'Pipeline',
     steps: [
       {
-        narration: "Let's test your memory without the diagram. Which stage converts smooth shapes into a grid of fragments?",
+        narration: "Let's test your visual reasoning. We will go through 7 visual artifacts covering all stages of the graphics pipeline.",
+        waitForUser: true,
+        action: (state) => state.setPipelineMode('Playground'),
+      },
+      {
+        narration: "Look at the raw data coordinates mapping to a vertex in memory. Which stage handles this initial data intake?",
         waitForUser: true,
         action: (state) => state.setPipelineMode('Playground'),
         exercise: {
           kind: 'multiple-choice',
-          prompt: 'Which stage converts vector geometry into fragments?',
+          prompt: 'Which stage parses raw input into individual points in memory?',
+          visualArtifact: 'vertex-specification',
           options: [
-            { id: 'a', label: 'Vertex Processing' },
-            { id: 'b', label: 'Primitive Assembly' },
-            { id: 'c', label: 'Rasterization' },
-            { id: 'd', label: 'Per-Sample Operations' },
+            { id: 'vspec', label: 'Vertex Specification' },
+            { id: 'prim', label: 'Primitive Assembly' },
+            { id: 'clip', label: 'Clipping' },
+            { id: 'frag', label: 'Fragment Processing' },
           ],
-          correctId: 'c',
+          correctId: 'vspec',
         },
       },
       {
-        narration: "Correct! Rasterization creates fragments. Now, which stage applies transformation matrices to move vertices into their final position?",
+        narration: "Correct! Now observe the distorted and moved shape. Which stage applies matrices to transform vertices into their final positions?",
         waitForUser: true,
         action: (state) => state.setPipelineMode('Playground'),
         exercise: {
           kind: 'multiple-choice',
           prompt: 'Which stage applies transformation matrices?',
+          visualArtifact: 'vertex-processing',
           options: [
-            { id: 'a', label: 'Vertex Specification' },
-            { id: 'b', label: 'Vertex Processing' },
-            { id: 'c', label: 'Fragment Processing' },
-            { id: 'd', label: 'Primitive Assembly' },
+            { id: 'vproc', label: 'Vertex Processing' },
+            { id: 'rast', label: 'Rasterization' },
+            { id: 'out', label: 'Per-Sample Operations' },
+            { id: 'vspec', label: 'Vertex Specification' },
           ],
-          correctId: 'b',
+          correctId: 'vproc',
         },
       },
       {
-        narration: "Exactly! Vertex Processing handles the math. Next: which stage cuts away geometry that falls outside the visible window?",
+        narration: "Exactly! Next, loose points are connected into a wireframe triangle. Which stage links vertices into geometric primitives?",
+        waitForUser: true,
+        action: (state) => state.setPipelineMode('Playground'),
+        exercise: {
+          kind: 'multiple-choice',
+          prompt: 'Which stage builds lines and polygons from loose points?',
+          visualArtifact: 'primitive-assembly',
+          options: [
+            { id: 'prim', label: 'Primitive Assembly' },
+            { id: 'vproc', label: 'Vertex Processing' },
+            { id: 'frag', label: 'Fragment Processing' },
+            { id: 'clip', label: 'Clipping' },
+          ],
+          correctId: 'prim',
+        },
+      },
+      {
+        narration: "Spot on! Look at the geometry extending outside the viewport boundary being cut off. Which stage performs this operation to save GPU work?",
         waitForUser: true,
         action: (state) => state.setPipelineMode('Playground'),
         exercise: {
           kind: 'multiple-choice',
           prompt: 'Which stage cuts away offscreen geometry?',
+          visualArtifact: 'clipping',
           options: [
-            { id: 'a', label: 'Clipping' },
-            { id: 'b', label: 'Rasterization' },
-            { id: 'c', label: 'Per-Sample Operations' },
-            { id: 'd', label: 'Vertex Processing' },
+            { id: 'clip', label: 'Clipping' },
+            { id: 'rast', label: 'Rasterization' },
+            { id: 'vspec', label: 'Vertex Specification' },
+            { id: 'prim', label: 'Primitive Assembly' },
           ],
-          correctId: 'a',
+          correctId: 'clip',
         },
       },
       {
-        narration: "Spot on! Clipping saves the GPU from doing useless work. Finally: which stage applies colors, textures, and effects to individual pixel candidates?",
+        narration: "You've got it. Notice the jagged, staircase-like edges on the diagonal line. Which stage converts smooth vector geometry into a discrete grid of fragments?",
         waitForUser: true,
         action: (state) => state.setPipelineMode('Playground'),
         exercise: {
           kind: 'multiple-choice',
-          prompt: 'Which stage determines the final color of fragments?',
+          prompt: 'Which stage binds continuous shapes to a pixel grid?',
+          visualArtifact: 'rasterization',
           options: [
-            { id: 'a', label: 'Rasterization' },
-            { id: 'b', label: 'Primitive Assembly' },
-            { id: 'c', label: 'Fragment Processing' },
-            { id: 'd', label: 'Per-Sample Operations' },
+            { id: 'rast', label: 'Rasterization' },
+            { id: 'vproc', label: 'Vertex Processing' },
+            { id: 'out', label: 'Per-Sample Operations' },
+            { id: 'frag', label: 'Fragment Processing' },
           ],
-          correctId: 'c',
+          correctId: 'rast',
         },
       },
       {
-        narration: "Excellent! You've got a solid grasp of what happens inside the pipeline.",
+        narration: "Correct! Next, observe the smooth color interpolation across the surface. Which stage computes the final color of each individual fragment?",
+        waitForUser: true,
+        action: (state) => state.setPipelineMode('Playground'),
+        exercise: {
+          kind: 'multiple-choice',
+          prompt: 'Which stage determines the texture and color of fragments?',
+          visualArtifact: 'fragment-processing',
+          options: [
+            { id: 'frag', label: 'Fragment Processing' },
+            { id: 'clip', label: 'Clipping' },
+            { id: 'prim', label: 'Primitive Assembly' },
+            { id: 'rast', label: 'Rasterization' },
+          ],
+          correctId: 'frag',
+        },
+      },
+      {
+        narration: "Outstanding! Finally, the hidden part of the red triangle is discarded because it fails the depth test. Which stage performs these final visibility checks?",
+        waitForUser: true,
+        action: (state) => state.setPipelineMode('Playground'),
+        exercise: {
+          kind: 'multiple-choice',
+          prompt: 'Which stage performs depth testing and discards hidden fragments?',
+          visualArtifact: 'per-sample-operations',
+          options: [
+            { id: 'out', label: 'Per-Sample Operations' },
+            { id: 'vspec', label: 'Vertex Specification' },
+            { id: 'vproc', label: 'Vertex Processing' },
+            { id: 'clip', label: 'Clipping' },
+          ],
+          correctId: 'out',
+        },
+      },
+      {
+        narration: "Excellent! By connecting visual artifacts directly to pipeline stages, you've leveled up your rendering debugging skills.",
         waitForUser: true,
         action: (state) => state.setPipelineMode('Diagram'),
       },
     ],
   },
-
   'pipeline-exercise-3': {
     id: 'pipeline-exercise-3',
     title: 'Order the Pipeline',

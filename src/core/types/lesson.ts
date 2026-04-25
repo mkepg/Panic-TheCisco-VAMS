@@ -5,6 +5,14 @@ export type ExerciseWidget =
   | {
       kind: 'multiple-choice';
       prompt: string;
+      visualArtifact?: 
+        | 'vertex-specification' 
+        | 'vertex-processing' 
+        | 'primitive-assembly' 
+        | 'clipping' 
+        | 'rasterization' 
+        | 'fragment-processing' 
+        | 'per-sample-operations';
       options: { id: string; label: string }[];
       correctId: string;
     }
@@ -18,13 +26,9 @@ export type ExerciseWidget =
 export interface LessonStep {
   narration: string;
   waitForUser?: boolean;
-  /** A scripted scene mutation that fires when this step is reached */
   action?: (state: VamsState) => void;
-  /** A pure function to check if the student has met the exercise goal */
   successCheck?: (state: VamsState) => boolean;
-  /** The sanitized name of the object to highlight in the code panel */
   codeHighlightTarget?: string;
-  /** An optional inline exercise widget (multiple choice, ordered list, etc.) */
   exercise?: ExerciseWidget;
 }
 
