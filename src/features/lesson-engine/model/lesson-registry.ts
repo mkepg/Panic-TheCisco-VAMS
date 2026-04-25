@@ -1,9 +1,6 @@
 import type { Lesson } from '@/core/types/lesson';
 
 export const LESSON_REGISTRY: Record<string, Lesson> = {
-  /* ------------------------------------------------------------------ */
-  /* PROOF OF CONCEPT (kept for backward compat)                         */
-  /* ------------------------------------------------------------------ */
   'poc-demo-1': {
     id: 'poc-demo-1',
     title: 'Proof of Concept: Drawing a Triangle',
@@ -40,9 +37,6 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
     ],
   },
 
-  /* ------------------------------------------------------------------ */
-  /* PIPELINE — DEMOS                                                    */
-  /* ------------------------------------------------------------------ */
   'pipeline-demo-1': {
     id: 'pipeline-demo-1',
     title: 'From Vertex to Pixel',
@@ -208,9 +202,6 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
     ],
   },
 
-  /* ------------------------------------------------------------------ */
-  /* PIPELINE — EXERCISES                                                */
-  /* ------------------------------------------------------------------ */
   'pipeline-exercise-1': {
     id: 'pipeline-exercise-1',
     title: 'Place the Point',
@@ -223,21 +214,20 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
         waitForUser: true,
         action: (state) => {
           state.setPipelineMode('Playground');
-          // Pre-populate a point if one isn't already in the scene
           const exists = state.objects.find((o) => o.type === 'POINTS');
           if (!exists) state.addCustomObject('POINTS', [{ x: 0, y: 0 }]);
         },
       },
       {
         narration:
-          "Drag the point — or use the position fields in the Transforms section — to land on (0.5, 0.5). Get within 0.05.",
+          "Drag the point to land on (0.5, 0.5). Just get reasonably close. Once you’ve placed it, release the point.",
         waitForUser: true,
         successCheck: (state) => {
           const pt = state.objects.find((o) => o.type === 'POINTS');
           if (!pt) return false;
           const dx = pt.transform.translateX - 0.5;
           const dy = pt.transform.translateY - 0.5;
-          return Math.abs(dx) < 0.05 && Math.abs(dy) < 0.05;
+          return Math.abs(dx) < 0.15 && Math.abs(dy) < 0.15;
         },
       },
       {

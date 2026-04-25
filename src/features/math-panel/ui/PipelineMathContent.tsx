@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useVamsStore } from '@/core/store';
 
 const STAGE_NOTES: Record<number, { title: string; note: string }> = {
@@ -15,6 +16,13 @@ export default function PipelineMathContent() {
   const limits = useVamsStore((s) => s.viewportLimits);
   const activeStage = useVamsStore((s) => s.activePipelineStage);
   const pipelineMode = useVamsStore((s) => s.pipelineMode);
+  
+  const setShowCoordinateTracker = useVamsStore((s) => s.setShowCoordinateTracker);
+
+  // Automatically hide canvas NDC coordinates when entering the Pipeline tab to prevent redundancy
+  useEffect(() => {
+    setShowCoordinateTracker(false);
+  }, [setShowCoordinateTracker]);
 
   const rangeX = (limits.maxX - limits.minX).toFixed(2);
   const rangeY = (limits.maxY - limits.minY).toFixed(2);

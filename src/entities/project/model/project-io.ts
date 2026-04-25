@@ -55,7 +55,7 @@ const DEFAULT_DATA: VamsProjectData = {
   objects: [],
   viewportLimits: DEFAULT_VIEWPORT,
   axisVisibility: DEFAULT_AXIS,
-  showCoordinateTracker: true,
+  showCoordinateTracker: false, // Default changed here as well
   learningSettings: DEFAULT_LEARNING,
   theme: 'dark',
   canvasBackgroundColor: '#000000',
@@ -74,13 +74,11 @@ function toBoolean(v: unknown, fallback: boolean): boolean { return typeof v ===
 function toString(v: unknown, fallback: string): string { return typeof v === 'string' ? v : fallback; }
 function toTheme(v: unknown): 'dark' | 'light' { return v === 'light' ? 'light' : 'dark'; }
 function toShading(v: unknown): ShadingModel { return v === 'FLAT' ? 'FLAT' : 'SMOOTH'; }
-
 function toInteractionMode(v: unknown): InteractionMode {
   if (v === 'CUSTOM_SHAPE_PLACE') return 'VERTEX_PLACE';
   const allowed: InteractionMode[] = ['SELECT', 'VERTEX_PLACE', 'VERTEX_EDIT'];
   return allowed.includes(v as InteractionMode) ? (v as InteractionMode) : 'SELECT';
 }
-
 function toPrimitiveType(v: unknown): PrimitiveType | null {
   if (typeof v !== 'string') return null;
   const allowed: PrimitiveType[] = [
@@ -95,17 +93,14 @@ function sanitizeViewport(v: unknown): ViewportLimits {
   if (!isRecord(v)) return DEFAULT_VIEWPORT;
   return { minX: toNumber(v.minX, DEFAULT_VIEWPORT.minX), maxX: toNumber(v.maxX, DEFAULT_VIEWPORT.maxX), minY: toNumber(v.minY, DEFAULT_VIEWPORT.minY), maxY: toNumber(v.maxY, DEFAULT_VIEWPORT.maxY) };
 }
-
 function sanitizeAxis(v: unknown): AxisVisibility {
   if (!isRecord(v)) return DEFAULT_AXIS;
   return { showGlobalAxes: toBoolean(v.showGlobalAxes, DEFAULT_AXIS.showGlobalAxes), showLocalAxes: toBoolean(v.showLocalAxes, DEFAULT_AXIS.showLocalAxes), showOriginMarker: toBoolean(v.showOriginMarker, DEFAULT_AXIS.showOriginMarker), showGridlines: toBoolean(v.showGridlines, DEFAULT_AXIS.showGridlines) };
 }
-
 function sanitizeLearning(v: unknown): LearningSettings {
   if (!isRecord(v)) return DEFAULT_LEARNING;
   return { gridSnapping: toBoolean(v.gridSnapping, DEFAULT_LEARNING.gridSnapping), snapIncrement: toNumber(v.snapIncrement, DEFAULT_LEARNING.snapIncrement) };
 }
-
 function sanitizeTransform(v: unknown): TransformState {
   if (!isRecord(v)) return DEFAULT_TRANSFORM;
   return {
@@ -116,7 +111,6 @@ function sanitizeTransform(v: unknown): TransformState {
     scaleY:     toNumber(v.scaleY ?? v.scale, DEFAULT_TRANSFORM.scaleY),
   };
 }
-
 function sanitizeVertex(v: unknown, idx: number): Vertex {
   if (!isRecord(v)) return { id: `v${idx}`, x: 0, y: 0, color: '#ffffff' };
   return { id: toString(v.id, `v${idx}`), x: toNumber(v.x, 0), y: toNumber(v.y, 0), color: toString(v.color, '#ffffff') };
@@ -129,7 +123,6 @@ function sanitizeObject(v: unknown, idx: number): SceneNode | null {
   if (!ALLOWED_OBJECT_TYPES.has(type)) return null;
 
   const verticesRaw = Array.isArray(v.vertices) ? v.vertices : [];
-  // Accept legacy `isVisible` and `childIds` from v1 files.
   const visibleRaw = v.visible ?? v.isVisible;
   const childrenRaw = Array.isArray(v.children)
     ? v.children
@@ -178,7 +171,6 @@ export function buildProjectFile(state: VamsState): VamsProjectFile {
     pendingMinVertices: state.pendingMinVertices,
     pendingVertexStride: state.pendingVertexStride,
   };
-
   return {
     app: 'VAMS',
     schemaVersion: VAMS_PROJECT_SCHEMA_VERSION,
@@ -244,11 +236,13 @@ export async function parseProjectFromFile(file: File): Promise<VamsProjectData>
         reject(new Error(e.data.error));
       }
     };
+
     worker.onerror = (err) => {
       URL.revokeObjectURL(workerUrl);
       worker.terminate();
       reject(err);
     };
+
     worker.postMessage(file);
   });
 }
@@ -264,8 +258,8 @@ export function sanitizeProjectData(raw: unknown): VamsProjectData {
   const viewportLimits = sanitizeViewport(raw.viewportLimits);
   const axisVisibility = sanitizeAxis(raw.axisVisibility);
   const learningSettings = sanitizeLearning(raw.learningSettings);
-
   const pendingShapeType = toPrimitiveType(raw.pendingShapeType);
+
   const pendingVertices = Array.isArray(raw.pendingVertices)
     ? raw.pendingVertices
         .filter(isRecord)
