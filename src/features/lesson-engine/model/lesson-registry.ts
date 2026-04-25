@@ -220,7 +220,7 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
       },
       {
         narration:
-          "Drag the point to land on (0.5, 0.5). Just get reasonably close. Once you’ve placed it, release the point.",
+          "Drag the point to land on (0.5, 0.5). Just get reasonably close.",
         waitForUser: true,
         successCheck: (state) => {
           const pt = state.objects.find((o) => o.type === 'POINTS');
@@ -245,9 +245,9 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
     section: 'Pipeline',
     steps: [
       {
-        narration: "Look at the diagram. Which stage converts smooth shapes into a grid of fragments?",
+        narration: "Let's test your memory without the diagram. Which stage converts smooth shapes into a grid of fragments?",
         waitForUser: true,
-        action: (state) => state.setPipelineMode('Diagram'),
+        action: (state) => state.setPipelineMode('Playground'),
         exercise: {
           kind: 'multiple-choice',
           prompt: 'Which stage converts vector geometry into fragments?',
@@ -261,9 +261,57 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
         },
       },
       {
-        narration:
-          "Correct! Rasterization is the moment vector geometry becomes raster fragments — the threshold between the two worlds.",
+        narration: "Correct! Rasterization creates fragments. Now, which stage applies transformation matrices to move vertices into their final position?",
         waitForUser: true,
+        action: (state) => state.setPipelineMode('Playground'),
+        exercise: {
+          kind: 'multiple-choice',
+          prompt: 'Which stage applies transformation matrices?',
+          options: [
+            { id: 'a', label: 'Vertex Specification' },
+            { id: 'b', label: 'Vertex Processing' },
+            { id: 'c', label: 'Fragment Processing' },
+            { id: 'd', label: 'Primitive Assembly' },
+          ],
+          correctId: 'b',
+        },
+      },
+      {
+        narration: "Exactly! Vertex Processing handles the math. Next: which stage cuts away geometry that falls outside the visible window?",
+        waitForUser: true,
+        action: (state) => state.setPipelineMode('Playground'),
+        exercise: {
+          kind: 'multiple-choice',
+          prompt: 'Which stage cuts away offscreen geometry?',
+          options: [
+            { id: 'a', label: 'Clipping' },
+            { id: 'b', label: 'Rasterization' },
+            { id: 'c', label: 'Per-Sample Operations' },
+            { id: 'd', label: 'Vertex Processing' },
+          ],
+          correctId: 'a',
+        },
+      },
+      {
+        narration: "Spot on! Clipping saves the GPU from doing useless work. Finally: which stage applies colors, textures, and effects to individual pixel candidates?",
+        waitForUser: true,
+        action: (state) => state.setPipelineMode('Playground'),
+        exercise: {
+          kind: 'multiple-choice',
+          prompt: 'Which stage determines the final color of fragments?',
+          options: [
+            { id: 'a', label: 'Rasterization' },
+            { id: 'b', label: 'Primitive Assembly' },
+            { id: 'c', label: 'Fragment Processing' },
+            { id: 'd', label: 'Per-Sample Operations' },
+          ],
+          correctId: 'c',
+        },
+      },
+      {
+        narration: "Excellent! You've got a solid grasp of what happens inside the pipeline.",
+        waitForUser: true,
+        action: (state) => state.setPipelineMode('Diagram'),
       },
     ],
   },
@@ -276,9 +324,9 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
     steps: [
       {
         narration:
-          "Drag the stages into the order they actually run. The first stage receives data straight from your code.",
+          "Let's see if you can remember the correct order without looking at the diagram.",
         waitForUser: true,
-        action: (state) => state.setPipelineMode('Diagram'),
+        action: (state) => state.setPipelineMode('Playground'),
         exercise: {
           kind: 'ordered-list',
           prompt: 'Drag stages into the correct execution order:',
@@ -297,6 +345,7 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
       {
         narration: "Perfect! That's the OpenGL pipeline from start to finish.",
         waitForUser: true,
+        action: (state) => state.setPipelineMode('Diagram'),
       },
     ],
   },
