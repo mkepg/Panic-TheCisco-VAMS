@@ -1,16 +1,6 @@
 import type { Lesson } from '@/core/types/lesson';
 
-/**
- * Stage 2 — Primitives lessons.
- *
- * Each lesson uses only mutations that are reachable through the GUI:
- * adding shapes, recoloring, toggling color modes, adjusting line styling,
- * and registering callback handlers. Success checks read scene state directly.
- */
 export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
-
-  /* ----------------------------- DEMOS --------------------------------- */
-
   'primitives-demo-1': {
     id: 'primitives-demo-1',
     title: 'Drawing a Triangle',
@@ -27,7 +17,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
           "Watch the code panel as we add the first vertex.",
         waitForUser: true,
         action: (state) => {
-          // Build the triangle one vertex at a time using the same builder the GUI uses.
           state.startCustomShape('TRIANGLES', 3, 3);
           state.addPendingVertex(0, 0.5);
         },
@@ -43,8 +32,8 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
           "And the third vertex closes the primitive.",
         waitForUser: true,
         action: (state) => {
-          state.addPendingVertex(0.5, -0.5);
-          state.addCustomObject('TRIANGLES', state.pendingVertices);
+          // Fix applied here: construct the array inline to bypass state closure issues
+          state.addCustomObject('TRIANGLES', [...state.pendingVertices, { x: 0.5, y: -0.5 }]);
         },
       },
       {
@@ -54,7 +43,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
       },
     ],
   },
-
   'primitives-demo-2': {
     id: 'primitives-demo-2',
     title: 'Float vs Byte Colors',
@@ -94,7 +82,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
       },
     ],
   },
-
   'primitives-demo-3': {
     id: 'primitives-demo-3',
     title: 'Barycentric Color Across a Triangle',
@@ -130,7 +117,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
       },
     ],
   },
-
   'primitives-demo-4': {
     id: 'primitives-demo-4',
     title: 'Line Stippling',
@@ -181,7 +167,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
       },
     ],
   },
-
   'primitives-demo-5': {
     id: 'primitives-demo-5',
     title: 'Keyboard Callback',
@@ -211,9 +196,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
       },
     ],
   },
-
-  /* --------------------------- EXERCISES ------------------------------- */
-
   'primitives-exercise-1': {
     id: 'primitives-exercise-1',
     title: 'Build a Triangle',
@@ -234,7 +216,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
       },
     ],
   },
-
   'primitives-exercise-2': {
     id: 'primitives-exercise-2',
     title: 'Match the Color',
@@ -256,7 +237,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
           const obj = state.objects.find((o) => o.type === 'TRIANGLES');
           if (!obj) return false;
           const target: [number, number, number] = [0xf5, 0x9e, 0x0b];
-          // Tolerance ±12 per channel — students don't need to type the hex exactly.
           return obj.vertices.every((v) => {
             const r = parseInt(v.color.slice(1, 3), 16);
             const g = parseInt(v.color.slice(3, 5), 16);
@@ -275,7 +255,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
       },
     ],
   },
-
   'primitives-exercise-3': {
     id: 'primitives-exercise-3',
     title: 'Toggle to Byte Color',
@@ -305,7 +284,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
       },
     ],
   },
-
   'primitives-exercise-4': {
     id: 'primitives-exercise-4',
     title: 'Enable Stippling',
@@ -338,7 +316,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
       },
     ],
   },
-
   'primitives-exercise-5': {
     id: 'primitives-exercise-5',
     title: 'Register a Mouse Handler',
