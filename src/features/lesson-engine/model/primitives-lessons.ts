@@ -1,321 +1,418 @@
 import type { Lesson } from '@/core/types/lesson';
+import { useVamsStore } from '@/core/store';
 
 export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
-  'primitives-demo-1': {
-    id: 'primitives-demo-1',
-    title: 'Drawing a Triangle',
+  'poc-demo-1': {
+    id: 'poc-demo-1',
+    title: 'Proof of Concept: Drawing a Triangle',
     type: 'demo',
     section: 'Primitives',
     steps: [
       {
-        narration: "Every triangle starts the same way: three vertices, fed to OpenGL between glBegin and glEnd.",
+        narration: "Welcome to VAMS! In this demo, we'll see how scene actions reflect in the code panel.",
         waitForUser: true,
       },
       {
-        narration: "Watch the code panel as we add the first vertex.",
+        narration: "Let's automatically add a triangle to the scene.",
         waitForUser: true,
-        focusPanel: 'primitive-palette',
         action: (state) => {
-          state.startCustomShape('TRIANGLES', 3, 3);
-          state.addPendingVertex(0, 0.5);
+          state.addCustomObject('TRIANGLES', [
+            { x: 0, y: 0.5 },
+            { x: -0.5, y: -0.5 },
+            { x: 0.5, y: -0.5 },
+          ]);
+          
+          const freshState = useVamsStore.getState();
+          const newObj = freshState.objects[0];
+          if (newObj) freshState.selectObject(newObj.id);
         },
       },
       {
-        narration: "Second vertex — notice glVertex2f appearing in the draw block.",
+        narration: "Notice how the C++ code updated? Let's hide the triangle.",
         waitForUser: true,
-        action: (state) => state.addPendingVertex(-0.5, -0.5),
-      },
-      {
-        narration: "And the third vertex closes the primitive.",
-        waitForUser: true,
-        focusPanel: 'primitive-palette',
+        focusPanel: 'scene-hierarchy',
         action: (state) => {
-          state.addCustomObject('TRIANGLES', [...state.pendingVertices, { x: 0.5, y: -0.5 }]);
+          const triangle = state.objects.find((o) => o.type === 'TRIANGLES');
+          if (triangle) state.toggleObjectVisibility(triangle.id);
         },
       },
       {
-        narration: "That's it — three points, one GL_TRIANGLES primitive. The vertex data lives in the draw function alongside the corresponding glColor3f and glVertex2f calls.",
+        narration: "Hidden objects are excluded from the display loop. You've completed the demo!",
         waitForUser: true,
       },
+    ],
+  },
+  'primitives-demo-1': {
+    id: 'primitives-demo-1',
+    title: 'The Geometry Alphabet: Points to Polygons',
+    type: 'demo',
+    section: 'Primitives',
+    steps: [
+      {
+        narration: "Welcome to Primitives! Everything in OpenGL 1.x is drawn by sending vertices (points in 2D space) to the GPU.",
+        waitForUser: true,
+      },
+      {
+        narration: "How those vertices are connected depends on the primitive mode. Let's look at GL_POINTS.",
+        waitForUser: true,
+        action: (state) => {
+          state.addCustomObject('POINTS', [
+            { x: -0.5, y: 0.5 }, { x: 0, y: 0.5 }, { x: 0.5, y: 0.5 }
+          ]);
+          
+          const freshState = useVamsStore.getState();
+          const obj = freshState.objects[0];
+          if (obj) freshState.selectObject(obj.id);
+        }
+      },
+      {
+        narration: "Check the Code Panel. Notice how the vertices are wrapped between glBegin(GL_POINTS) and glEnd(). Each vertex is rendered as an independent dot.",
+        waitForUser: true,
+      },
+      {
+        narration: "Now, let's see GL_LINE_STRIP using the exact same three vertices.",
+        waitForUser: true,
+        action: (state) => {
+          state.deleteObject(state.objects[0]?.id);
+          state.addCustomObject('LINE_STRIP', [
+            { x: -0.5, y: 0 }, { x: 0, y: -0.5 }, { x: 0.5, y: 0 }
+          ]);
+          
+          const freshState = useVamsStore.getState();
+          const obj = freshState.objects[0];
+          if (obj) freshState.selectObject(obj.id);
+        }
+      },
+      {
+        narration: "The code changed to glBegin(GL_LINE_STRIP). Instead of independent dots, OpenGL now connects each new vertex to the previous one.",
+        waitForUser: true,
+      },
+      {
+        narration: "Finally, let's build a solid surface using GL_TRIANGLES.",
+        waitForUser: true,
+        action: (state) => {
+          state.deleteObject(state.objects[0]?.id);
+          state.addCustomObject('TRIANGLES', [
+            { x: 0, y: 0.5 }, { x: -0.5, y: -0.5 }, { x: 0.5, y: -0.5 }
+          ]);
+          
+          const freshState = useVamsStore.getState();
+          const obj = freshState.objects[0];
+          if (obj) freshState.selectObject(obj.id);
+        }
+      },
+      {
+        narration: "With GL_TRIANGLES, OpenGL consumes vertices in groups of three to draw filled shapes. This is the absolute foundation of all computer graphics.",
+        waitForUser: true,
+      }
     ],
   },
   'primitives-demo-2': {
     id: 'primitives-demo-2',
-    title: 'Float vs Byte Colors',
+    title: 'Painting with Barycentrics',
     type: 'demo',
     section: 'Primitives',
     steps: [
       {
-        narration: "OpenGL accepts colors in two flavors: normalized floats from 0.0–1.0, or unsigned bytes from 0–255.",
+        narration: "Colors in OpenGL can be applied to a whole object, or to individual vertices. Let's start with a basic triangle.",
         waitForUser: true,
         action: (state) => {
           state.addCustomObject('TRIANGLES', [
-            { x: 0, y: 0.4 }, { x: -0.4, y: -0.3 }, { x: 0.4, y: -0.3 },
+            { x: 0, y: 0.5 }, { x: -0.5, y: -0.4 }, { x: 0.5, y: -0.4 }
           ]);
-          const obj = state.objects[0];
-          if (obj) state.setAllVertexColors(obj.id, '#3b82f6');
-        },
+          
+          const freshState = useVamsStore.getState();
+          const obj = freshState.objects[0];
+          if (obj) freshState.selectObject(obj.id);
+        }
       },
       {
-        narration: "By default, the generator emits glColor3f. Floats are easy to interpolate and feel natural for math.",
-        waitForUser: true,
-      },
-      {
-        narration: "Watch what happens when we switch the same triangle to byte mode.",
+        narration: "Right now, the whole triangle is white. Let's switch to 'Per Vertex' mode and paint the top vertex Red.",
         waitForUser: true,
         focusPanel: 'appearance-panel',
         action: (state) => {
           const obj = state.objects[0];
-          if (obj) state.updateObjectColorMode(obj.id, 'BYTE');
-        },
+          if (obj) state.updateVertexColor(obj.id, obj.vertices[0].id, '#ef4444');
+        }
       },
       {
-        narration: "glColor3ub now appears in the code — same color visually, different representation. The math panel shows the conversion: byte ÷ 255 = float.",
-        waitForUser: true,
-      },
-    ],
-  },
-  'primitives-demo-3': {
-    id: 'primitives-demo-3',
-    title: 'Barycentric Color Across a Triangle',
-    type: 'demo',
-    section: 'Primitives',
-    steps: [
-      {
-        narration: "Per-vertex colors unlock smooth gradients. The trick is barycentric interpolation — each pixel mixes the three corner colors.",
-        waitForUser: true,
-        action: (state) => {
-          state.addCustomObject('TRIANGLES', [
-            { x: 0, y: 0.5 }, { x: -0.5, y: -0.4 }, { x: 0.5, y: -0.4 },
-          ]);
-        },
-      },
-      {
-        narration: "Let's paint each vertex a different color.",
+        narration: "Look closely at the canvas. OpenGL automatically blends the red vertex into the white ones. Let's color the bottom two vertices Green and Blue.",
         waitForUser: true,
         focusPanel: 'appearance-panel',
         action: (state) => {
           const obj = state.objects[0];
           if (!obj) return;
-          state.updateVertexColor(obj.id, obj.vertices[0].id, '#ef4444');
           state.updateVertexColor(obj.id, obj.vertices[1].id, '#22c55e');
           state.updateVertexColor(obj.id, obj.vertices[2].id, '#3b82f6');
-        },
+        }
       },
       {
-        narration: "The fragment processor blends these corner colors smoothly. The math panel shows the formula: C = α·C₀ + β·C₁ + γ·C₂, with the weights summing to 1.",
+        narration: "This hardware-accelerated blending is called Barycentric Interpolation. Check the Math Panel below the code to see the exact formula the GPU uses to calculate every pixel's color.",
         waitForUser: true,
+      }
+    ],
+  },
+  'primitives-demo-3': {
+    id: 'primitives-demo-3',
+    title: 'Styling Lines (Width & Stipple)',
+    type: 'demo',
+    section: 'Primitives',
+    steps: [
+      {
+        narration: "Lines don't have to be 1-pixel wide and solid. Let's manipulate a GL_LINE_LOOP.",
+        waitForUser: true,
+        action: (state) => {
+          state.addCustomObject('LINE_LOOP', [
+            { x: -0.5, y: 0.5 }, { x: 0.5, y: 0.5 }, { x: 0.5, y: -0.5 }, { x: -0.5, y: -0.5 }
+          ]);
+          
+          const freshState = useVamsStore.getState();
+          const obj = freshState.objects[0];
+          if (obj) freshState.selectObject(obj.id);
+        }
       },
+      {
+        narration: "First, let's make it thicker using glLineWidth().",
+        waitForUser: true,
+        focusPanel: 'line-style-panel',
+        action: (state) => {
+          const obj = state.objects[0];
+          if (obj) state.updateLineWidth(obj.id, 5);
+        }
+      },
+      {
+        narration: "Now, let's turn it into a dashed line. This is called 'Stippling'. We apply a 16-bit pattern where 1 draws a pixel and 0 skips it.",
+        waitForUser: true,
+        focusPanel: 'line-style-panel',
+        action: (state) => {
+          const obj = state.objects[0];
+          if (obj) state.updateLineStipple(obj.id, { factor: 2, pattern: 0x00FF });
+        }
+      },
+      {
+        narration: "Look at the Code Panel. Stippling requires us to turn the feature on and off using glEnable(GL_LINE_STIPPLE) and glDisable(GL_LINE_STIPPLE).",
+        waitForUser: true,
+      }
     ],
   },
   'primitives-demo-4': {
     id: 'primitives-demo-4',
-    title: 'Line Stippling',
+    title: 'Rendering Text in OpenGL',
     type: 'demo',
     section: 'Primitives',
     steps: [
       {
-        narration: "Stippling turns a solid line into a repeating dot/dash pattern using a 16-bit mask.",
+        narration: "Drawing text in pure OpenGL 1.x is notoriously tricky, but GLUT provides a helpful shortcut using bitmap characters.",
         waitForUser: true,
+        focusPanel: 'text-node-panel',
         action: (state) => {
-          state.addCustomObject('LINE_STRIP', [
-            { x: -0.7, y: 0 }, { x: 0, y: 0.4 }, { x: 0.7, y: 0 },
-          ]);
-        },
+          state.addTextObject('Hello\nOpenGL!', -0.3, 0);
+          
+          const freshState = useVamsStore.getState();
+          const obj = freshState.objects[0];
+          if (obj) freshState.selectObject(obj.id);
+        }
       },
       {
-        narration: "We'll thicken the line first so the pattern is easy to see.",
+        narration: "Take a look at the Code Panel. Notice that text doesn't use glBegin or glEnd.",
         waitForUser: true,
-        focusPanel: 'line-style-panel',
-        action: (state) => {
-          const obj = state.objects[0];
-          if (obj) state.updateLineWidth(obj.id, 4);
-        },
       },
       {
-        narration: "Now apply a dashed pattern: 0x00FF — eight off, eight on.",
+        narration: "Instead, we use glRasterPos2f to move the invisible 'pen' to a specific coordinate, and then we pass characters one by one into glutBitmapCharacter.",
         waitForUser: true,
-        focusPanel: 'line-style-panel',
-        action: (state) => {
-          const obj = state.objects[0];
-          if (obj) state.updateLineStipple(obj.id, { factor: 1, pattern: 0x00FF });
-        },
       },
       {
-        narration: "Bumping the factor stretches each bit — useful when the pattern is too dense to read.",
+        narration: "Bitmap fonts always face the camera and stay the same pixel size regardless of your viewport zoom. They are perfect for HUDs and labels.",
         waitForUser: true,
-        focusPanel: 'line-style-panel',
-        action: (state) => {
-          const obj = state.objects[0];
-          if (obj) state.updateLineStipple(obj.id, { factor: 3, pattern: 0x00FF });
-        },
-      },
-      {
-        narration: "The math panel shows the active 16 bits and how many are lit. The code panel shows glLineStipple wrapped between glEnable and glDisable.",
-        waitForUser: true,
-      },
+      }
     ],
   },
   'primitives-demo-5': {
     id: 'primitives-demo-5',
-    title: 'Keyboard Callback',
+    title: 'Hooking Up Callbacks',
     type: 'demo',
     section: 'Primitives',
     steps: [
       {
-        narration: "Interactive programs respond to events. GLUT calls your registered handler when the user types, clicks, or resizes the window.",
-        waitForUser: true,
-      },
-      {
-        narration: "Let's register a keyboard handler called 'onKey'.",
+        narration: "A graphics window isn't much fun if you can't interact with it. GLUT uses 'Callbacks' to listen for your mouse and keyboard.",
         waitForUser: true,
         focusPanel: 'callbacks-panel',
-        action: (state) => state.setCallbackHandler('keyboard', 'onKey'),
       },
       {
-        narration: "Notice the new glutKeyboardFunc registration in main(), plus the empty handler stub above it. The handler runs only when you compile and execute the exported program — VAMS shows you exactly what to write, not how to run it.",
+        narration: "Let's register a function to handle window resizing, and we'll name it 'onWindowResize'.",
+        waitForUser: true,
+        action: (state) => state.setCallbackHandler('reshape', 'onWindowResize'),
+      },
+      {
+        narration: "Scroll down to main() in the Code Panel. See glutReshapeFunc(onWindowResize)? That tells GLUT to call our function whenever the window changes size.",
         waitForUser: true,
       },
       {
-        narration: "You can register handlers for mouse, motion, reshape, and idle the same way. Each one inserts its corresponding glut*Func call.",
+        narration: "VAMS generates the empty function stub for you right above main(). When you export your code, you'll put your logic inside that stub.",
         waitForUser: true,
-      },
+      }
     ],
   },
+
+  // --------------------------------------------------------------------------
+  // EXERCISES
+  // --------------------------------------------------------------------------
+
   'primitives-exercise-1': {
     id: 'primitives-exercise-1',
-    title: 'Build a Triangle',
+    title: 'Quad Assembly',
     type: 'exercise',
     section: 'Primitives',
     steps: [
       {
-        narration: "Add a triangle to the empty scene using the GL_TRIANGLES button in the primitive palette.",
+        narration: "Let's test your geometry skills. Clear the scene (if it isn't already) and use the Primitive Palette to create a GL_QUADS object.",
         waitForUser: true,
         focusPanel: 'primitive-palette',
         successCheck: (state) =>
-          state.objects.some((o) => o.type === 'TRIANGLES' && o.vertices.length >= 3),
+          state.objects.some((o) => o.type === 'QUADS' && o.vertices.length >= 4),
       },
       {
-        narration: "Nice. The draw function now contains a glBegin(GL_TRIANGLES) block with three vertices.",
+        narration: "Excellent! The draw function now emits a glBegin(GL_QUADS) block. Remember: Quads require vertices in groups of four.",
         waitForUser: true,
       },
     ],
   },
   'primitives-exercise-2': {
     id: 'primitives-exercise-2',
-    title: 'Match the Color',
+    title: 'Neon Gradient',
     type: 'exercise',
     section: 'Primitives',
     steps: [
       {
-        narration: "Use the color picker in the appearance panel to make the triangle below match this target color: #f59e0b (a warm amber).",
+        narration: "Let's make a barycentric gradient. I've placed a triangle for you. First, switch its Color Mode from 'Uniform' to 'Per Vertex'.",
         waitForUser: true,
         focusPanel: 'appearance-panel',
         action: (state) => {
-          if (state.objects.length === 0) {
-            state.addCustomObject('TRIANGLES', [
-              { x: 0, y: 0.4 }, { x: -0.4, y: -0.3 }, { x: 0.4, y: -0.3 },
-            ]);
+          const existing = state.objects.find(o => o.type === 'TRIANGLES');
+          if (!existing) {
+             state.addCustomObject('TRIANGLES', [
+               { x: 0, y: 0.5 }, { x: -0.5, y: -0.4 }, { x: 0.5, y: -0.4 }
+             ]);
           }
+          
+          const freshState = useVamsStore.getState();
+          const targetObj = freshState.objects.find(o => o.type === 'TRIANGLES');
+          if (targetObj) freshState.selectObject(targetObj.id);
         },
         successCheck: (state) => {
-          const obj = state.objects.find((o) => o.type === 'TRIANGLES');
-          if (!obj) return false;
-          const target: [number, number, number] = [0xf5, 0x9e, 0x0b];
-          return obj.vertices.every((v) => {
-            const r = parseInt(v.color.slice(1, 3), 16);
-            const g = parseInt(v.color.slice(3, 5), 16);
-            const b = parseInt(v.color.slice(5, 7), 16);
-            return (
-              Math.abs(r - target[0]) < 12 &&
-              Math.abs(g - target[1]) < 12 &&
-              Math.abs(b - target[2]) < 12
-            );
-          });
+          const obj = state.objects.find(o => o.id === state.selectedObjectId);
+          if (!obj || obj.vertices.length < 3) return false;
+          const c1 = obj.vertices[0].color;
+          return obj.vertices.some(v => v.color !== c1);
         },
       },
       {
-        narration: "Close enough — the generated glColor3f reflects your pick.",
+        narration: "Great! Now change the colors of the vertices to create a gradient. Make one of them bright green (#00ff00) and another bright magenta (#ff00ff).",
+        waitForUser: true,
+        focusPanel: 'appearance-panel',
+        successCheck: (state) => {
+          const obj = state.objects.find(o => o.id === state.selectedObjectId);
+          if (!obj) return false;
+          
+          let hasGreen = false;
+          let hasMagenta = false;
+
+          obj.vertices.forEach(v => {
+            const r = parseInt(v.color.slice(1, 3), 16);
+            const g = parseInt(v.color.slice(3, 5), 16);
+            const b = parseInt(v.color.slice(5, 7), 16);
+            
+            if (r < 50 && g > 200 && b < 50) hasGreen = true;
+            if (r > 200 && g < 50 && b > 200) hasMagenta = true;
+          });
+
+          return hasGreen && hasMagenta;
+        },
+      },
+      {
+        narration: "Vibrant! In the Code Panel, you can see that glColor3f is now being called before every individual glVertex2f.",
         waitForUser: true,
       },
     ],
   },
   'primitives-exercise-3': {
     id: 'primitives-exercise-3',
-    title: 'Toggle to Byte Color',
+    title: 'Dotted Outline',
     type: 'exercise',
     section: 'Primitives',
     steps: [
       {
-        narration: "Switch the triangle below to byte color mode using the Float / Byte toggle.",
+        narration: "Time to style some lines. Select the Line Loop I just added to the scene.",
         waitForUser: true,
-        focusPanel: 'appearance-panel',
         action: (state) => {
-          if (state.objects.length === 0) {
-            state.addCustomObject('TRIANGLES', [
-              { x: 0, y: 0.4 }, { x: -0.4, y: -0.3 }, { x: 0.4, y: -0.3 },
-            ]);
-          }
-        },
+           state.addCustomObject('LINE_LOOP', [
+             { x: -0.6, y: 0.6 }, { x: 0.6, y: 0.6 }, { x: 0.6, y: -0.6 }, { x: -0.6, y: -0.6 }
+           ]);
+           
+           const freshState = useVamsStore.getState();
+           const obj = freshState.objects[0];
+           if (obj) freshState.selectObject(obj.id);
+        }
+      },
+      {
+        narration: "Open the Line Style panel. Turn on glLineStipple, and select the 'Dotted' preset.",
+        waitForUser: true,
+        focusPanel: 'line-style-panel',
         successCheck: (state) => {
-          const obj = state.objects.find((o) => o.type === 'TRIANGLES');
-          return !!obj && obj.colorMode === 'BYTE';
+          const obj = state.objects.find(o => o.id === state.selectedObjectId);
+          if (!obj || !obj.lineStipple) return false;
+          return obj.lineStipple.pattern === 0x5555;
         },
       },
       {
-        narration: "glColor3f became glColor3ub. Same color, integer values 0–255.",
+        narration: "Nicely done! Notice the glEnable(GL_LINE_STIPPLE) emission in your generated code.",
         waitForUser: true,
       },
     ],
   },
   'primitives-exercise-4': {
     id: 'primitives-exercise-4',
-    title: 'Enable Stippling',
+    title: 'Hello World!',
     type: 'exercise',
     section: 'Primitives',
     steps: [
       {
-        narration: "Apply a stipple to the line below. Use factor 2 and pattern 0x00FF (the 'Long-dash' preset works).",
+        narration: "Let's label our scene. Open the 'Create Text' panel and add a new text object that says 'Hello World'.",
         waitForUser: true,
-        focusPanel: 'line-style-panel',
-        action: (state) => {
-          if (state.objects.length === 0) {
-            state.addCustomObject('LINE_STRIP', [
-              { x: -0.7, y: 0 }, { x: 0, y: 0.4 }, { x: 0.7, y: 0 },
-            ]);
-          }
-        },
+        focusPanel: 'text-node-panel',
         successCheck: (state) => {
-          const line = state.objects.find(
-            (o) => o.type === 'LINE_STRIP' || o.type === 'LINES' || o.type === 'LINE_LOOP'
+          return state.objects.some(
+            o => o.type === 'TEXT' && o.textContent?.toLowerCase().includes('hello world')
           );
-          if (!line || !line.lineStipple) return false;
-          return line.lineStipple.factor === 2 && line.lineStipple.pattern === 0x0FFF;
         },
       },
       {
-        narration: "Generated code now wraps the line in glEnable(GL_LINE_STIPPLE) / glLineStipple / glDisable.",
+        narration: "Awesome. Look at the Code Panel to see how VAMS converted your string into a loop of glutBitmapCharacter calls.",
         waitForUser: true,
       },
     ],
   },
   'primitives-exercise-5': {
     id: 'primitives-exercise-5',
-    title: 'Register a Mouse Handler',
+    title: 'Hooking up the Mouse',
     type: 'exercise',
     section: 'Primitives',
     steps: [
       {
-        narration: "Open the Callbacks panel and register a mouse handler. Any valid C++ identifier works — the goal is to see glutMouseFunc appear in main().",
+        narration: "Final exercise! We need to make our program respond to mouse clicks. Open the Callbacks panel.",
         waitForUser: true,
         focusPanel: 'callbacks-panel',
+      },
+      {
+        narration: "Register a Mouse callback. You can name the function whatever you like.",
+        waitForUser: true,
         successCheck: (state) => {
           const name = (state.callbacks.mouse || '').trim();
           return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name);
         },
       },
       {
-        narration: "Done. The generated program now has a glutMouseFunc registration plus the empty handler stub waiting for your real code when you compile.",
+        narration: "Perfect. Your program is now wired up with glutMouseFunc. You've mastered the Primitives section!",
         waitForUser: true,
       },
     ],

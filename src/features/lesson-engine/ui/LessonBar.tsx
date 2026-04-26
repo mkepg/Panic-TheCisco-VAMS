@@ -25,6 +25,8 @@ export default function LessonBar() {
 
   const [sessionSeed, setSessionSeed] = useState(0);
   const objects = useVamsStore((s) => s.objects);
+  const callbacks = useVamsStore((s) => s.callbacks); // Added to listen for callback changes
+  
   const lastExecutedStepRef = useRef<string | null>(null);
   const lastStepIndexRef = useRef<number>(-1);
 
@@ -57,10 +59,10 @@ export default function LessonBar() {
         const j = Math.floor(rng() * (i + 1));
         [range[i], range[j]] = [range[j], range[i]];
       }
-
       cloned.steps.splice(start, range.length, ...range);
       return cloned;
     }
+
     return baseLesson;
   }, [activeLessonId, sessionSeed]);
 
@@ -71,7 +73,6 @@ export default function LessonBar() {
     if (step?.exercise?.kind === 'ordered-list') {
       const expected = step.exercise.correctOrder;
       const arr = [...step.exercise.items].map((i) => i.id);
-
       let hasAnyCorrect = true;
       while (hasAnyCorrect) {
         for (let i = arr.length - 1; i > 0; i--) {
@@ -104,8 +105,6 @@ export default function LessonBar() {
       if (newStep.action) newStep.action(useVamsStore.getState());
       store.setLessonFocusPanel(newStep.focusPanel || null);
     } else {
-      // Whenever we scrub backwards, we completely clear the scene, callbacks, and canvas color
-      // to ensure replaying previous actions happens on a pure canvas.
       useVamsStore.setState({
         objects: [],
         callbacks: { keyboard: '', mouse: '', reshape: '', motion: '', idle: '' },
@@ -113,7 +112,7 @@ export default function LessonBar() {
         selectedObjectId: null,
         interactionMode: 'SELECT',
       });
-      
+
       for (let i = 0; i <= currentStepIndex; i++) {
         const pastStep = lesson.steps[i];
         if (pastStep.action) pastStep.action(useVamsStore.getState());
@@ -144,11 +143,12 @@ export default function LessonBar() {
 
     if (step.successCheck) {
       void objects;
+      void callbacks; // Ensures changes to callbacks re-trigger this evaluation
       return step.successCheck(useVamsStore.getState());
     }
 
     return true;
-  }, [step, mcAnswer, orderAnswer, objects]);
+  }, [step, mcAnswer, orderAnswer, objects, callbacks]);
 
   const handleNext = useCallback(() => {
     if (lesson && currentStepIndex < lesson.steps.length - 1) {
