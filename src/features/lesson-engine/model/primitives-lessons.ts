@@ -6,17 +6,6 @@ import type { Lesson } from '@/core/types/lesson';
  * Each lesson uses only mutations that are reachable through the GUI:
  * adding shapes, recoloring, toggling color modes, adjusting line styling,
  * and registering callback handlers. Success checks read scene state directly.
- *
- * IMPORTANT: lesson actions receive a state SNAPSHOT, not a live store reference.
- * That means any chain like:
- *
- *   state.addPendingVertex(...);
- *   state.addCustomObject(type, state.pendingVertices); // ← STALE!
- *
- * reads `pendingVertices` from the *pre-mutation* snapshot. We avoid that
- * pattern entirely by passing concrete arrays into `addCustomObject` in a
- * single step. The pending-vertex flow (start/add/commit) is intended for
- * interactive canvas placement, not for scripted lessons.
  */
 export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
 
@@ -35,40 +24,32 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
       },
       {
         narration:
-          "Watch the code panel as we add the triangle to the scene.",
+          "Watch the code panel as we add the first vertex.",
         waitForUser: true,
         action: (state) => {
-          // Add the triangle in one step — the pending-vertex flow is for
-          // interactive canvas placement and doesn't compose well with
-          // scripted lesson actions, so we go straight to addCustomObject.
-          state.addCustomObject('TRIANGLES', [
-            { x: 0, y: 0.5 },
-            { x: -0.5, y: -0.5 },
-            { x: 0.5, y: -0.5 },
-          ]);
+          // Build the triangle one vertex at a time using the same builder the GUI uses.
+          state.startCustomShape('TRIANGLES', 3, 3);
+          state.addPendingVertex(0, 0.5);
         },
       },
       {
         narration:
-          "Three points, one GL_TRIANGLES primitive. The code panel shows glBegin(GL_TRIANGLES), three glVertex2f calls, then glEnd.",
+          "Second vertex — notice glVertex2f appearing in the draw block.",
         waitForUser: true,
+        action: (state) => state.addPendingVertex(-0.5, -0.5),
       },
       {
         narration:
-          "Each vertex carries its own color. Watch what happens when we paint the corners individually.",
+          "And the third vertex closes the primitive.",
         waitForUser: true,
         action: (state) => {
-          // The triangle was just added, so it sits at index 0 of objects.
-          const triangle = state.objects.find((o) => o.type === 'TRIANGLES');
-          if (!triangle) return;
-          state.updateVertexColor(triangle.id, triangle.vertices[0].id, '#ef4444');
-          state.updateVertexColor(triangle.id, triangle.vertices[1].id, '#22c55e');
-          state.updateVertexColor(triangle.id, triangle.vertices[2].id, '#3b82f6');
+          state.addPendingVertex(0.5, -0.5);
+          state.addCustomObject('TRIANGLES', state.pendingVertices);
         },
       },
       {
         narration:
-          "OpenGL interpolates colors smoothly across the surface — that's barycentric blending, built right into the fixed-function pipeline.",
+          "That's it — three points, one GL_TRIANGLES primitive. The vertex data lives in the draw function alongside the corresponding glColor3f and glVertex2f calls.",
         waitForUser: true,
       },
     ],
@@ -88,7 +69,7 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
           state.addCustomObject('TRIANGLES', [
             { x: 0, y: 0.4 }, { x: -0.4, y: -0.3 }, { x: 0.4, y: -0.3 },
           ]);
-          const obj = state.objects.find((o) => o.type === 'TRIANGLES');
+          const obj = state.objects[0];
           if (obj) state.setAllVertexColors(obj.id, '#3b82f6');
         },
       },
@@ -102,7 +83,7 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
           "Watch what happens when we switch the same triangle to byte mode.",
         waitForUser: true,
         action: (state) => {
-          const obj = state.objects.find((o) => o.type === 'TRIANGLES');
+          const obj = state.objects[0];
           if (obj) state.updateObjectColorMode(obj.id, 'BYTE');
         },
       },
@@ -135,7 +116,7 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
           "Let's paint each vertex a different color.",
         waitForUser: true,
         action: (state) => {
-          const obj = state.objects.find((o) => o.type === 'TRIANGLES');
+          const obj = state.objects[0];
           if (!obj) return;
           state.updateVertexColor(obj.id, obj.vertices[0].id, '#ef4444');
           state.updateVertexColor(obj.id, obj.vertices[1].id, '#22c55e');
@@ -171,9 +152,7 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
           "We'll thicken the line first so the pattern is easy to see.",
         waitForUser: true,
         action: (state) => {
-          const obj = state.objects.find((o) =>
-            o.type === 'LINE_STRIP' || o.type === 'LINES' || o.type === 'LINE_LOOP'
-          );
+          const obj = state.objects[0];
           if (obj) state.updateLineWidth(obj.id, 4);
         },
       },
@@ -182,9 +161,7 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
           "Now apply a dashed pattern: 0x00FF — eight off, eight on.",
         waitForUser: true,
         action: (state) => {
-          const obj = state.objects.find((o) =>
-            o.type === 'LINE_STRIP' || o.type === 'LINES' || o.type === 'LINE_LOOP'
-          );
+          const obj = state.objects[0];
           if (obj) state.updateLineStipple(obj.id, { factor: 1, pattern: 0x00FF });
         },
       },
@@ -193,9 +170,7 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
           "Bumping the factor stretches each bit — useful when the pattern is too dense to read.",
         waitForUser: true,
         action: (state) => {
-          const obj = state.objects.find((o) =>
-            o.type === 'LINE_STRIP' || o.type === 'LINES' || o.type === 'LINE_LOOP'
-          );
+          const obj = state.objects[0];
           if (obj) state.updateLineStipple(obj.id, { factor: 3, pattern: 0x00FF });
         },
       },
@@ -226,7 +201,7 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
       },
       {
         narration:
-          "Notice the new glutKeyboardFunc registration in main(), plus the handler stub above it. The default body quits on ESC and triggers a redraw on any other key — a real, runnable handler.",
+          "Notice the new glutKeyboardFunc registration in main(), plus the empty handler stub above it. The handler runs only when you compile and execute the exported program — VAMS shows you exactly what to write, not how to run it.",
         waitForUser: true,
       },
       {
@@ -339,7 +314,7 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
     steps: [
       {
         narration:
-          "Apply a stipple to the line below. Use the 'Long-dash' preset (factor 2, pattern 0x0FFF).",
+          "Apply a stipple to the line below. Use factor 2 and pattern 0x00FF (the 'Long-dash' preset works).",
         waitForUser: true,
         action: (state) => {
           if (state.objects.length === 0) {
@@ -353,7 +328,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
             (o) => o.type === 'LINE_STRIP' || o.type === 'LINES' || o.type === 'LINE_LOOP'
           );
           if (!line || !line.lineStipple) return false;
-          // Match the Long-dash preset values exactly.
           return line.lineStipple.factor === 2 && line.lineStipple.pattern === 0x0FFF;
         },
       },
@@ -382,7 +356,7 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
       },
       {
         narration:
-          "Done. The generated program now has a glutMouseFunc registration plus a real, runnable handler stub.",
+          "Done. The generated program now has a glutMouseFunc registration plus the empty handler stub waiting for your real code when you compile.",
         waitForUser: true,
       },
     ],
