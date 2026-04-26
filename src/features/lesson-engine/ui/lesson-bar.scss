@@ -12,7 +12,6 @@
   z-index: 1000;
   border-top: 1px solid rgba(var(--accent-blue-rgb), 0.18);
 
-  /* Progress bar pinned to the very top edge */
   &::before {
     content: '';
     position: absolute;
@@ -75,7 +74,6 @@
       padding: 0.18rem 0.5rem;
       border-radius: 999px;
       align-self: flex-start;
-
       svg { flex-shrink: 0; }
     }
 
@@ -101,13 +99,11 @@
     p {
       margin: 0;
       font-size: 0.98rem;
-      color: $text-main;
+      color: var(--accent-blue-light); // Fix: Apply blue to the entire block
       text-align: center;
       line-height: 1.5;
       font-weight: 400;
       animation: narration-slide 0.3s cubic-bezier(0.2, 0.7, 0.3, 1) both;
-
-      &::first-line { color: var(--accent-blue-light); }
     }
 
     .step-counter {
@@ -155,6 +151,7 @@
         border-color: rgba(255, 255, 255, 0.22);
         transform: translateY(-1px);
       }
+
       &:active:not(:disabled) { transform: translateY(0); }
       &:disabled { opacity: 0.3; cursor: not-allowed; }
 

@@ -1,16 +1,49 @@
 import './collapsible-section.scss';
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { useVamsStore } from '@/core/store';
+
 interface CollapsibleSectionProps {
   title: string;
   icon: React.ReactNode;
   children: React.ReactNode;
   defaultOpen?: boolean;
+  panelId?: string;
 }
-const CollapsibleSection = ({ title, icon, children, defaultOpen = false }: CollapsibleSectionProps) => {
+
+const CollapsibleSection = ({ title, icon, children, defaultOpen = false, panelId }: CollapsibleSectionProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  const sectionRef = useRef<HTMLDivElement>(null);
+  
+  const lessonFocusPanel = useVamsStore(s => s.lessonFocusPanel);
+  const isFocused = !!(panelId && lessonFocusPanel === panelId);
+
+  // --- React "Derived State" Pattern ---
+  // If the panel just became focused, force it open during the render phase
+  const [prevIsFocused, setPrevIsFocused] = useState(isFocused);
+  
+  if (isFocused && !prevIsFocused) {
+    setIsOpen(true);
+    setPrevIsFocused(true);
+  } else if (!isFocused && prevIsFocused) {
+    setPrevIsFocused(false);
+  }
+  // -------------------------------------
+
+  // --- DOM Effect Pattern ---
+  // Scrolling is a pure DOM side-effect and safely belongs in useEffect
+  useEffect(() => {
+    if (isFocused) {
+      const timer = setTimeout(() => {
+        sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isFocused]);
+  // --------------------------
+
   return (
-    <div className="collapsible-section">
+    <div ref={sectionRef} className={`collapsible-section ${isFocused ? 'lesson-focused' : ''}`}>
       <button
         className="section-header-collapsible"
         onClick={() => setIsOpen(!isOpen)}
@@ -23,4 +56,5 @@ const CollapsibleSection = ({ title, icon, children, defaultOpen = false }: Coll
     </div>
   );
 };
+
 export default CollapsibleSection;

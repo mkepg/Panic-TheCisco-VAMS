@@ -31,14 +31,12 @@ export default function LessonBar() {
   const [mcAnswer, setMcAnswer] = useState<string | null>(null);
   const [orderAnswer, setOrderAnswer] = useState<string[] | null>(null);
 
-  // Generate a fresh session seed whenever a new lesson is opened to randomize the shuffle
   useEffect(() => {
     if (activeLessonId) {
       setSessionSeed(Math.random());
     }
   }, [activeLessonId]);
 
-  // Intercept the static registry lesson and dynamically inject shuffled steps
   const lesson = useMemo(() => {
     if (!activeLessonId) return null;
     const baseLesson = LESSON_REGISTRY[activeLessonId];
@@ -63,7 +61,6 @@ export default function LessonBar() {
       cloned.steps.splice(start, range.length, ...range);
       return cloned;
     }
-
     return baseLesson;
   }, [activeLessonId, sessionSeed]);
 
@@ -74,22 +71,15 @@ export default function LessonBar() {
     if (step?.exercise?.kind === 'ordered-list') {
       const expected = step.exercise.correctOrder;
       const arr = [...step.exercise.items].map((i) => i.id);
-      
-      // Enforce a complete derangement: absolutely NO item is allowed to 
-      // start in its correct position. 
-      let hasAnyCorrect = true;
 
+      let hasAnyCorrect = true;
       while (hasAnyCorrect) {
-        // Fisher-Yates shuffle
         for (let i = arr.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [arr[i], arr[j]] = [arr[j], arr[i]];
         }
-        
-        // If even a single item accidentally matches its target position, shuffle again
         hasAnyCorrect = arr.some((val, index) => val === expected[index]);
       }
-
       setOrderAnswer(arr);
     } else {
       setOrderAnswer(null);
@@ -98,6 +88,7 @@ export default function LessonBar() {
 
   useEffect(() => {
     if (!lesson || !activeLessonId) return;
+
     const stepKey = `${activeLessonId}-${currentStepIndex}`;
     if (lastExecutedStepRef.current === stepKey) return;
 
@@ -111,16 +102,23 @@ export default function LessonBar() {
     if (isForwardOne) {
       const newStep = lesson.steps[currentStepIndex];
       if (newStep.action) newStep.action(useVamsStore.getState());
+      store.setLessonFocusPanel(newStep.focusPanel || null);
     } else {
+      // Whenever we scrub backwards, we completely clear the scene, callbacks, and canvas color
+      // to ensure replaying previous actions happens on a pure canvas.
       useVamsStore.setState({
         objects: [],
+        callbacks: { keyboard: '', mouse: '', reshape: '', motion: '', idle: '' },
+        canvasBackgroundColor: '#000000',
         selectedObjectId: null,
         interactionMode: 'SELECT',
       });
+      
       for (let i = 0; i <= currentStepIndex; i++) {
         const pastStep = lesson.steps[i];
         if (pastStep.action) pastStep.action(useVamsStore.getState());
       }
+      store.setLessonFocusPanel(lesson.steps[currentStepIndex].focusPanel || null);
     }
 
     store.endBatch();
@@ -130,6 +128,7 @@ export default function LessonBar() {
 
   const isStepSuccess = useMemo(() => {
     if (!step) return false;
+
     if (step.exercise) {
       if (step.exercise.kind === 'multiple-choice') {
         if (mcAnswer !== step.exercise.correctId) return false;
@@ -142,10 +141,12 @@ export default function LessonBar() {
         }
       }
     }
+
     if (step.successCheck) {
-      void objects; 
+      void objects;
       return step.successCheck(useVamsStore.getState());
     }
+
     return true;
   }, [step, mcAnswer, orderAnswer, objects]);
 
@@ -192,6 +193,7 @@ export default function LessonBar() {
   const isLastStep = currentStepIndex === lesson.steps.length - 1;
   const canAdvance = !step.waitForUser || isStepSuccess;
   const progressPercent = ((currentStepIndex + 1) / lesson.steps.length) * 100;
+
   const lessonTypeIcon =
     lesson.type === 'exercise' ? <GraduationCap size={14} /> : <PlayCircle size={14} />;
 

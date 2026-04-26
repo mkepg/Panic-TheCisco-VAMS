@@ -8,7 +8,7 @@ export default function PipelineModeControls() {
   const setPipelineMode = useVamsStore(s => s.setPipelineMode);
 
   return (
-    <CollapsibleSection title="Viewport Mode" icon={<MonitorPlay size={14} />} defaultOpen={true}>
+    <CollapsibleSection panelId="pipeline-mode-controls" title="Viewport Mode" icon={<MonitorPlay size={14} />} defaultOpen={true}>
       <div className="mode-controls-grid">
         <button
           className={`mode-btn ${pipelineMode === 'Playground' ? 'active' : ''}`}

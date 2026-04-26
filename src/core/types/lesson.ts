@@ -5,13 +5,13 @@ export type ExerciseWidget =
   | {
       kind: 'multiple-choice';
       prompt: string;
-      visualArtifact?: 
-        | 'vertex-specification' 
-        | 'vertex-processing' 
-        | 'primitive-assembly' 
-        | 'clipping' 
-        | 'rasterization' 
-        | 'fragment-processing' 
+      visualArtifact?:
+        | 'vertex-specification'
+        | 'vertex-processing'
+        | 'primitive-assembly'
+        | 'clipping'
+        | 'rasterization'
+        | 'fragment-processing'
         | 'per-sample-operations';
       options: { id: string; label: string }[];
       correctId: string;
@@ -30,6 +30,7 @@ export interface LessonStep {
   successCheck?: (state: VamsState) => boolean;
   codeHighlightTarget?: string;
   exercise?: ExerciseWidget;
+  focusPanel?: string; // Targets a specific CollapsibleSection panelId
 }
 
 export interface Lesson {

@@ -244,7 +244,7 @@ export default function SceneHierarchyPanel() {
   };
   const rootObjects = getRootObjects();
   return (
-    <CollapsibleSection title="Scene Hierarchy" icon={<Layers size={14} />} defaultOpen={true}>
+    <CollapsibleSection panelId="scene-hierarchy" title="Scene Hierarchy" icon={<Layers size={14} />} defaultOpen={true}>
       <div className="group-controls">
         <button
           onClick={() => {

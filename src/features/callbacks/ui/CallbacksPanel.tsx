@@ -46,7 +46,7 @@ export default function CallbacksPanel() {
   };
 
   return (
-    <CollapsibleSection title="Callbacks" icon={<Plug size={14} />} defaultOpen={false}>
+    <CollapsibleSection panelId="callbacks-panel" title="Callbacks" icon={<Plug size={14} />} defaultOpen={false}>
       <div className="callbacks-panel">
 
         <div className="cb-info" role="note">

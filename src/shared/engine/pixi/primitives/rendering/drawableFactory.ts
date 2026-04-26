@@ -37,9 +37,9 @@ export function createDrawable(
     return createTextDrawable(o, hitPadding, container);
   }
 
-  // MODIFIED: POINTS always use Graphics because we render them as individual rects
-  // Everything else uses Mesh if it has mixed per-vertex colors
-  const shouldUseGraphics = o.type === 'POINTS' || hasUniformColor(o);
+  // Force stippled lines to use the graphics renderer because the mesh renderer 
+  // doesn't support custom stippling fragment shaders out of the box.
+  const shouldUseGraphics = o.type === 'POINTS' || hasUniformColor(o) || !!o.lineStipple;
 
   if (shouldUseGraphics) {
     return createGraphicsDrawable(o, worldScaleX, worldScaleY, hitPadding, container);
@@ -68,7 +68,7 @@ function createGroupDrawable(
   const drawH = bounds.height + (padding * 2);
 
   const groupGraphics = new PIXI.Graphics();
-  
+
   if (options?.isSelected) {
       groupGraphics.setStrokeStyle({
         width: pxToWorld(1, worldScaleX),
@@ -82,7 +82,6 @@ function createGroupDrawable(
 
   container.addChild(groupGraphics);
   container.hitArea = new PIXI.Rectangle(drawX, drawY, drawW, drawH);
-
   return container;
 }
 
@@ -114,7 +113,7 @@ function drawDashedRectangle(
     for (let j = 0; j < steps; j++) {
       const t1 = j / steps;
       const t2 = Math.min((j + 0.6) / steps, 1);
-      
+
       const x1 = start.x + dx * t1;
       const y1 = start.y + dy * t1;
       const x2 = start.x + dx * t2;
@@ -148,8 +147,6 @@ function createTextDrawable(
   });
 
   text.anchor.set(0.5);
-
-  // Adjusted scale to sync with the C++ generator's specific aspect ratio
   const textScaleX = 0.003;
   const textScaleY = 0.003 * (0.0016 / 0.0011);
   text.scale.set(textScaleX, -textScaleY);
@@ -159,13 +156,11 @@ function createTextDrawable(
   container.scale.set(o.transform.scaleX, o.transform.scaleY);
   container.visible = o.visible;
   container.zIndex = 10;
-
   container.addChild(text);
 
   const w = text.width;
   const h = text.height;
   container.hitArea = createPaddedHitArea(-w/2, -h/2, w, h, hitPadding);
-
   return container;
 }
 
@@ -178,8 +173,8 @@ function createGraphicsDrawable(
 ): PIXI.Container {
   const g = new PIXI.Graphics();
   drawWithGraphics(g, o, worldScaleX, worldScaleY);
-  container.addChild(g);
 
+  container.addChild(g);
   container.position.set(o.transform.translateX, o.transform.translateY);
   container.rotation = (o.transform.rotate * Math.PI) / 180;
   container.scale.set(o.transform.scaleX, o.transform.scaleY);
@@ -205,22 +200,18 @@ function createMeshDrawable(
     const g = new PIXI.Graphics();
     drawWithGraphics(g, o, worldScaleX);
     container.addChild(g);
-
     container.position.set(o.transform.translateX, o.transform.translateY);
     container.rotation = (o.transform.rotate * Math.PI) / 180;
     container.scale.set(o.transform.scaleX, o.transform.scaleY);
     container.visible = o.visible;
-
     if (!g.hitArea) {
       const { cx, cy, rx, ry } = bboxRadii(o);
       container.hitArea = createPaddedHitArea(cx - rx, cy - ry, rx * 2, ry * 2, hitPadding);
     }
-
     return container;
   }
 
   container.addChild(meshResult.mesh);
-
   container.position.set(o.transform.translateX, o.transform.translateY);
   container.rotation = (o.transform.rotate * Math.PI) / 180;
   container.scale.set(o.transform.scaleX, o.transform.scaleY);
@@ -228,6 +219,5 @@ function createMeshDrawable(
 
   const { cx, cy, rx, ry } = bboxRadii(o);
   container.hitArea = createPaddedHitArea(cx - rx, cy - ry, rx * 2, ry * 2, hitPadding);
-
   return container;
 }

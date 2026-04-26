@@ -9,18 +9,12 @@ export interface RegisteredCallback {
 }
 
 interface CallbackTemplate {
-  fn: string;            // glut*Func
-  signature: string;     // C++ function signature
-  body: string;          // body — must be runnable as-is
-  needsStdio?: boolean;  // adds <cstdio> include
+  fn: string;
+  signature: string;
+  body: string;
+  needsStdio?: boolean;
 }
 
-/**
- * Each template body is a *minimal but functional* implementation that runs
- * out of the box and produces an observable effect — students can compile
- * the exported code and immediately see the callback fire. Everything here
- * is OpenGL 1.5 + FreeGLUT, no GLU dependency, no shader code.
- */
 const CALLBACK_TEMPLATES: Record<RegisteredCallback['kind'], CallbackTemplate> = {
   keyboard: {
     fn: 'glutKeyboardFunc',
@@ -30,7 +24,8 @@ const CALLBACK_TEMPLATES: Record<RegisteredCallback['kind'], CallbackTemplate> =
       '    if (key == 27) {',
       '        exit(0);',
       '    }',
-      '    // Trigger a redraw so any state change is reflected on screen.',
+      '    // Visual feedback: shift background color based on key press',
+      '    glClearColor((key % 3) * 0.2f, (key % 5) * 0.2f, 0.2f, 1.0f);',
       '    glutPostRedisplay();',
       '',
     ].join('\n'),
@@ -38,23 +33,21 @@ const CALLBACK_TEMPLATES: Record<RegisteredCallback['kind'], CallbackTemplate> =
   mouse: {
     fn: 'glutMouseFunc',
     signature: 'void {{name}}(int button, int state, int x, int y)',
-    needsStdio: true,
     body: [
-      '    // Print which button was pressed and where.',
+      '    // Visual feedback: change background color based on click position',
       '    if (state == GLUT_DOWN) {',
-      '        printf("Mouse button %d down at (%d, %d)\\n", button, x, y);',
+      '        glClearColor((float)x / 800.0f, (float)y / 600.0f, 0.5f, 1.0f);',
+      '        glutPostRedisplay();',
       '    }',
-      '    glutPostRedisplay();',
       '',
     ].join('\n'),
   },
   motion: {
     fn: 'glutMotionFunc',
     signature: 'void {{name}}(int x, int y)',
-    needsStdio: true,
     body: [
-      '    // Fires while a mouse button is held and the cursor moves.',
-      '    printf("Mouse drag at (%d, %d)\\n", x, y);',
+      '    // Visual feedback: change background color while dragging',
+      '    glClearColor(0.2f, (float)x / 800.0f, (float)y / 600.0f, 1.0f);',
       '    glutPostRedisplay();',
       '',
     ].join('\n'),
@@ -88,6 +81,7 @@ const CALLBACK_TEMPLATES: Record<RegisteredCallback['kind'], CallbackTemplate> =
 
 function generateCallbackStubs(callbacks: RegisteredCallback[]): string {
   if (callbacks.length === 0) return '';
+
   let out = `// --- Callback handlers ---\n`;
   callbacks.forEach((cb) => {
     const tpl = CALLBACK_TEMPLATES[cb.kind];
@@ -99,6 +93,7 @@ function generateCallbackStubs(callbacks: RegisteredCallback[]): string {
 
 function generateCallbackForwardDecls(callbacks: RegisteredCallback[]): string {
   if (callbacks.length === 0) return '';
+
   let out = '';
   callbacks.forEach((cb) => {
     const tpl = CALLBACK_TEMPLATES[cb.kind];
@@ -109,6 +104,7 @@ function generateCallbackForwardDecls(callbacks: RegisteredCallback[]): string {
 
 function generateCallbackRegistrations(callbacks: RegisteredCallback[]): string {
   if (callbacks.length === 0) return '';
+
   let out = '';
   callbacks.forEach((cb) => {
     const tpl = CALLBACK_TEMPLATES[cb.kind];
@@ -122,9 +118,7 @@ function callbacksNeedStdio(callbacks: RegisteredCallback[]): boolean {
   return callbacks.some((cb) => CALLBACK_TEMPLATES[cb.kind].needsStdio === true);
 }
 
-/** True if any registered callback's body uses exit() — pulls in <cstdlib>. */
 function callbacksNeedStdlib(callbacks: RegisteredCallback[]): boolean {
-  // The ESC-quit path in the keyboard handler calls exit().
   return callbacks.some((cb) => cb.kind === 'keyboard');
 }
 
@@ -138,17 +132,19 @@ export const generateAppOutput = (
   callbacks: RegisteredCallback[] = []
 ): string => {
   let fullCode = `#include <GL/freeglut.h>\n#include <cmath>\n`;
+
   if (callbacksNeedStdio(callbacks)) fullCode += `#include <cstdio>\n`;
   if (callbacksNeedStdlib(callbacks)) fullCode += `#include <cstdlib>\n`;
+
   fullCode += `\n`;
 
   fullCode += generateState(objectsToDeclare.length > 0 ? visibleObjects : []);
+
   objectsToDeclare.forEach(obj => {
     fullCode += `void draw_${sanitizeName(obj.name)}();\n`;
   });
   if (objectsToDeclare.length > 0) fullCode += `\n`;
 
-  // Forward-declare callback handlers BEFORE main() registers them.
   fullCode += generateCallbackForwardDecls(callbacks);
 
   objectsToDeclare.forEach(obj => {
@@ -156,6 +152,7 @@ export const generateAppOutput = (
     fullCode += generateObjectDrawBody(obj, visibleObjects);
     fullCode += `}\n\n`;
   });
+
   fullCode += `void draw()\n{\n`;
   if (objectsToCallInDraw.length === 0) {
     fullCode += emptyMessage;
@@ -172,21 +169,24 @@ export const generateAppOutput = (
   fullCode += `    glutSwapBuffers();\n`;
   fullCode += `}\n\n`;
 
-  // Emit callback handler stubs after display() so they sit near main().
   fullCode += generateCallbackStubs(callbacks);
 
   const bgR = (parseInt(canvasBackgroundColor.slice(1, 3), 16) / 255).toFixed(2);
   const bgG = (parseInt(canvasBackgroundColor.slice(3, 5), 16) / 255).toFixed(2);
   const bgB = (parseInt(canvasBackgroundColor.slice(5, 7), 16) / 255).toFixed(2);
+
   fullCode += `int main(int argc, char** argv)\n{\n`;
   fullCode += `    glutInit(&argc, argv);\n`;
   fullCode += `    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_MULTISAMPLE);\n`;
   fullCode += `    glutInitWindowSize(${canvasSize.width}, ${canvasSize.height});\n`;
   fullCode += `    glutCreateWindow("VAMS Preview");\n`;
   fullCode += `    glClearColor(${bgR}f, ${bgG}f, ${bgB}f, 1.0f);\n\n`;
+
   fullCode += `    glutDisplayFunc(display);\n`;
   fullCode += generateCallbackRegistrations(callbacks);
+
   fullCode += `\n    glutMainLoop();\n`;
   fullCode += `    return 0;\n}`;
+
   return fullCode;
 };

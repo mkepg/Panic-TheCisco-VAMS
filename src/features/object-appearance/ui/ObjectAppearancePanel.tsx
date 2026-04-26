@@ -1,6 +1,6 @@
 import './object-appearance-panel.scss';
 import { useState, useEffect, useRef } from 'react';
-import { Palette, Hash, CircleDashed } from 'lucide-react';
+import { Palette, Hash, CircleDashed, Paintbrush, Waypoints } from 'lucide-react';
 import { useVamsStore } from "@/core/store";
 import CollapsibleSection from '@/shared/ui/collapsible-section/CollapsibleSection';
 
@@ -97,7 +97,7 @@ export default function ObjectAppearancePanel() {
   // --- Early Returns ---
   if (!selectedObject) {
     return (
-      <CollapsibleSection title="Scene Color" icon={<Palette size={14} />} defaultOpen={true}>
+      <CollapsibleSection panelId="appearance-panel" title="Scene Color" icon={<Palette size={14} />} defaultOpen={true}>
         <div className="canvas-color-control">
            <div className="property-row">
               <div className="label-group">
@@ -189,7 +189,7 @@ export default function ObjectAppearancePanel() {
   };
 
   return (
-    <CollapsibleSection title="Color & Shading" icon={<Palette size={14} />} defaultOpen={true}>
+    <CollapsibleSection panelId="appearance-panel" title="Color & Shading" icon={<Palette size={14} />} defaultOpen={true}>
       <div className="color-section">
         {/* Emission Mode Selection */}
         <div className="emission-mode">
@@ -225,22 +225,37 @@ export default function ObjectAppearancePanel() {
           </div>
         </div>
 
-        {/* Color Mode Toggle */}
+        {/* Color Mode Segmented Control */}
         {supportsPerVertexColor && (
-          <div ref={toggleContainerRef}>
-            <div className="shading-header">Color Mode</div>
-            <div className="toggle-group">
+          <div className="color-mode-section" ref={toggleContainerRef}>
+            <div className="mode-label">
+              <span>Color Mode</span>
+              <span className="mode-hint">
+                {colorMode === 'OBJECT' ? 'Solid Fill' : 'Barycentric Gradient'}
+              </span>
+            </div>
+            <div className="mode-toggle" role="radiogroup" aria-label="Color application mode">
               <button
-                onClick={() => switchColorMode('OBJECT')}
+                type="button"
                 className={colorMode === 'OBJECT' ? 'active' : ''}
+                onClick={() => switchColorMode('OBJECT')}
+                role="radio"
+                aria-checked={colorMode === 'OBJECT'}
+                title="Apply one uniform color to the entire object"
               >
-                Uniform
+                <Paintbrush size={12} />
+                <span>Uniform</span>
               </button>
               <button
-                onClick={() => switchColorMode('VERTEX')}
+                type="button"
                 className={colorMode === 'VERTEX' ? 'active' : ''}
+                onClick={() => switchColorMode('VERTEX')}
+                role="radio"
+                aria-checked={colorMode === 'VERTEX'}
+                title="Paint individual vertices for interpolated gradients"
               >
-                Per Vertex
+                <Waypoints size={12} />
+                <span>Per Vertex</span>
               </button>
             </div>
           </div>

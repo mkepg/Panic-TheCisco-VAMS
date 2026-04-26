@@ -35,8 +35,6 @@ export interface SceneSlice {
   ungroup: (groupId: string) => void;
   deleteGroup: (groupId: string) => void;
   reorderObject: (sourceId: string, targetId: string, position: 'before' | 'after' | 'inside') => void;
-
-  // --- Stage 2 additions ---
   updateObjectColorMode: (id: string, mode: ColorMode) => void;
   updateLineWidth: (id: string, width: number) => void;
   updateLineStipple: (id: string, stipple: LineStipple | null) => void;
@@ -131,23 +129,21 @@ export interface LessonSlice {
   exerciseAnswers: Record<string, unknown>;
   isSuccess: boolean;
   sceneBackup: SceneNode[] | null;
+  callbacksBackup: Record<GlutCallbackKind, string> | null;
+  canvasBackgroundColorBackup: string | null;
+  lessonFocusPanel: string | null;
   setActiveLesson: (lessonId: string | null) => void;
   setCurrentStep: (index: number) => void;
   setExerciseAnswer: (stepId: string, answer: unknown) => void;
   setSuccessState: (success: boolean) => void;
+  setLessonFocusPanel: (panelId: string | null) => void;
   clearLessonState: () => void;
 }
 
-/* -------------------------------------------------------------------------- */
-/*                       Stage 2 — Callbacks Registration                     */
-/* -------------------------------------------------------------------------- */
-
 export interface CallbacksSlice {
-  /** Map of callback kind → handler name (empty string means unregistered). */
   callbacks: Record<GlutCallbackKind, string>;
   setCallbackHandler: (kind: GlutCallbackKind, handlerName: string) => void;
   clearCallback: (kind: GlutCallbackKind) => void;
-  /** Snapshot helper used by lesson success-checks. */
   getRegisteredCallbacks: () => CallbackRegistration[];
 }
 

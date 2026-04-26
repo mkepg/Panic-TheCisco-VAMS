@@ -26,6 +26,7 @@ const PIPELINE_LESSONS: Record<string, Lesson> = {
       {
         narration: "Notice how the C++ code updated? Let's hide the triangle.",
         waitForUser: true,
+        focusPanel: 'scene-hierarchy',
         action: (state) => {
           const triangle = state.objects.find((o) => o.type === 'TRIANGLES');
           if (triangle) state.toggleObjectVisibility(triangle.id);
@@ -44,53 +45,46 @@ const PIPELINE_LESSONS: Record<string, Lesson> = {
     section: 'Pipeline',
     steps: [
       {
-        narration:
-          "Welcome to the rendering pipeline — the assembly line that turns your code into pixels on screen.",
+        narration: "Welcome to the rendering pipeline — the assembly line that turns your code into pixels on screen.",
         waitForUser: true,
+        focusPanel: 'pipeline-mode-controls',
         action: (state) => {
           state.setPipelineMode('Diagram');
           state.setActivePipelineStage(null);
         },
       },
       {
-        narration:
-          "1. Vertex Specification — your code lists the points (vertices) that describe each shape, along with their colors.",
+        narration: "1. Vertex Specification — your code lists the points (vertices) that describe each shape, along with their colors.",
         waitForUser: true,
         action: (state) => state.setActivePipelineStage(0),
       },
       {
-        narration:
-          "2. Vertex Processing — each vertex is moved into its final position using transformation matrices.",
+        narration: "2. Vertex Processing — each vertex is moved into its final position using transformation matrices.",
         waitForUser: true,
         action: (state) => state.setActivePipelineStage(1),
       },
       {
-        narration:
-          "3. Primitive Assembly — vertices are connected into actual shapes: points, lines, or triangles.",
+        narration: "3. Primitive Assembly — vertices are connected into actual shapes: points, lines, or triangles.",
         waitForUser: true,
         action: (state) => state.setActivePipelineStage(2),
       },
       {
-        narration:
-          "4. Clipping — anything outside the visible window is cut away. No work is wasted on offscreen pixels.",
+        narration: "4. Clipping — anything outside the visible window is cut away. No work is wasted on offscreen pixels.",
         waitForUser: true,
         action: (state) => state.setActivePipelineStage(3),
       },
       {
-        narration:
-          "5. Rasterization — the moment vector becomes raster. Smooth shapes are sliced into a grid of square fragments.",
+        narration: "5. Rasterization — the moment vector becomes raster. Smooth shapes are sliced into a grid of square fragments.",
         waitForUser: true,
         action: (state) => state.setActivePipelineStage(4),
       },
       {
-        narration:
-          "6. Fragment Processing — each fragment receives its final color. Textures and effects are applied here.",
+        narration: "6. Fragment Processing — each fragment receives its final color. Textures and effects are applied here.",
         waitForUser: true,
         action: (state) => state.setActivePipelineStage(5),
       },
       {
-        narration:
-          "7. Per-Sample Operations — final tests decide which fragments survive and become pixels on the screen.",
+        narration: "7. Per-Sample Operations — final tests decide which fragments survive and become pixels on the screen.",
         waitForUser: true,
         action: (state) => state.setActivePipelineStage(6),
       },
@@ -108,24 +102,21 @@ const PIPELINE_LESSONS: Record<string, Lesson> = {
     section: 'Pipeline',
     steps: [
       {
-        narration:
-          "Computer graphics has two ways of describing shapes. Let's compare them side by side.",
+        narration: "Computer graphics has two ways of describing shapes. Let's compare them side by side.",
         waitForUser: true,
+        focusPanel: 'pipeline-mode-controls',
         action: (state) => state.setPipelineMode('RasterVector'),
       },
       {
-        narration:
-          "On the left: a vector triangle. It's described by three points and exact equations. Zoom in forever — the edges stay crisp.",
+        narration: "On the left: a vector triangle. It's described by three points and exact equations. Zoom in forever — the edges stay crisp.",
         waitForUser: true,
       },
       {
-        narration:
-          "On the right: the same triangle as raster. It's been sliced into a grid of square fragments — what your screen actually displays.",
+        narration: "On the right: the same triangle as raster. It's been sliced into a grid of square fragments — what your screen actually displays.",
         waitForUser: true,
       },
       {
-        narration:
-          "The pipeline's job is to convert vector input into raster output. Every shape you draw goes through this transformation.",
+        narration: "The pipeline's job is to convert vector input into raster output. Every shape you draw goes through this transformation.",
         waitForUser: true,
       },
     ],
@@ -137,24 +128,21 @@ const PIPELINE_LESSONS: Record<string, Lesson> = {
     section: 'Pipeline',
     steps: [
       {
-        narration:
-          "OpenGL doesn't think in pixels. It uses a clean coordinate system called NDC, ranging from -1 to +1 on each axis.",
+        narration: "OpenGL doesn't think in pixels. It uses a clean coordinate system called NDC, ranging from -1 to +1 on each axis.",
         waitForUser: true,
+        focusPanel: 'pipeline-mode-controls',
         action: (state) => state.setPipelineMode('Playground'),
       },
       {
-        narration:
-          "Move your cursor across the canvas — watch the math panel on the right. Those decimals are the cursor's NDC position.",
+        narration: "Move your cursor across the canvas — watch the math panel on the right. Those decimals are the cursor's NDC position.",
         waitForUser: true,
       },
       {
-        narration:
-          "(0, 0) sits at the dead center. (-1, -1) is the bottom-left corner. (+1, +1) is the top-right.",
+        narration: "(0, 0) sits at the dead center. (-1, -1) is the bottom-left corner. (+1, +1) is the top-right.",
         waitForUser: true,
       },
       {
-        narration:
-          "Why use NDC? Because shapes defined in NDC look identical regardless of window size. The pixel mapping happens automatically.",
+        narration: "Why use NDC? Because shapes defined in NDC look identical regardless of window size. The pixel mapping happens automatically.",
         waitForUser: true,
       },
     ],
@@ -166,34 +154,29 @@ const PIPELINE_LESSONS: Record<string, Lesson> = {
     section: 'Pipeline',
     steps: [
       {
-        narration:
-          "Every OpenGL program with FreeGLUT follows the same skeleton. Let's walk through what each section does.",
+        narration: "Every OpenGL program with FreeGLUT follows the same skeleton. Let's walk through what each section does.",
         waitForUser: true,
+        focusPanel: 'pipeline-mode-controls',
         action: (state) => state.setPipelineMode('Playground'),
       },
       {
-        narration:
-          "At the top: #include directives bring in FreeGLUT — the library that handles windowing and OpenGL setup.",
+        narration: "At the top: #include directives bring in FreeGLUT — the library that handles windowing and OpenGL setup.",
         waitForUser: true,
       },
       {
-        narration:
-          "Next: the display() function. This is your painter. GLUT calls it whenever the window needs redrawing.",
+        narration: "Next: the display() function. This is your painter. GLUT calls it whenever the window needs redrawing.",
         waitForUser: true,
       },
       {
-        narration:
-          "Inside display(): glClear wipes the screen, draw() does the work, and glutSwapBuffers shows the result smoothly.",
+        narration: "Inside display(): glClear wipes the screen, draw() does the work, and glutSwapBuffers shows the result smoothly.",
         waitForUser: true,
       },
       {
-        narration:
-          "Then: main(). It initializes GLUT, opens the window, registers display() as the painter, and starts the event loop.",
+        narration: "Then: main(). It initializes GLUT, opens the window, registers display() as the painter, and starts the event loop.",
         waitForUser: true,
       },
       {
-        narration:
-          "Hover any line in the code panel for a closer look. You've completed the demo!",
+        narration: "Hover any line in the code panel for a closer look. You've completed the demo!",
         waitForUser: true,
       },
     ],
@@ -205,9 +188,9 @@ const PIPELINE_LESSONS: Record<string, Lesson> = {
     section: 'Pipeline',
     steps: [
       {
-        narration:
-          "Let's practice working in NDC. We'll add a point at the origin — your job is to move it.",
+        narration: "Let's practice working in NDC. We'll add a point at the origin — your job is to move it.",
         waitForUser: true,
+        focusPanel: 'pipeline-mode-controls',
         action: (state) => {
           state.setPipelineMode('Playground');
           const exists = state.objects.find((o) => o.type === 'POINTS');
@@ -215,8 +198,7 @@ const PIPELINE_LESSONS: Record<string, Lesson> = {
         },
       },
       {
-        narration:
-          "Drag the point to land on (0.5, 0.5). Just get reasonably close.",
+        narration: "Drag the point to land on (0.5, 0.5). Just get reasonably close.",
         waitForUser: true,
         successCheck: (state) => {
           const pt = state.objects.find((o) => o.type === 'POINTS');
@@ -227,8 +209,7 @@ const PIPELINE_LESSONS: Record<string, Lesson> = {
         },
       },
       {
-        narration:
-          "Excellent! Look at the code panel — glVertex2f reflects exactly where you placed the point.",
+        narration: "Excellent! Look at the code panel — glVertex2f reflects exactly where you placed the point.",
         waitForUser: true,
       },
     ],
@@ -378,8 +359,7 @@ const PIPELINE_LESSONS: Record<string, Lesson> = {
     section: 'Pipeline',
     steps: [
       {
-        narration:
-          "Let's see if you can remember the correct order without looking at the diagram.",
+        narration: "Let's see if you can remember the correct order without looking at the diagram.",
         waitForUser: true,
         action: (state) => state.setPipelineMode('Playground'),
         exercise: {

@@ -192,7 +192,7 @@ export default function CustomShapeBuilderPanel() {
   }
 
   return (
-    <CollapsibleSection title="Create Primitive" icon={<Edit3 size={12} />} defaultOpen={true}>
+    <CollapsibleSection panelId="primitive-palette" title="Create Primitive" icon={<Edit3 size={12} />} defaultOpen={true}>
       <div className="vertex-shape-builder">
         <div className="control-row header">
           <span className="shape-label">{activeDef?.label}</span>
