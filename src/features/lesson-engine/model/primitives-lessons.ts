@@ -284,7 +284,7 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
     section: 'Primitives',
     steps: [
       {
-        narration: "Let's make a barycentric gradient. I've placed a triangle for you. First, switch its Color Mode from 'Uniform' to 'Per Vertex'.",
+        narration: "Let's make a barycentric gradient. I've placed a triangle for you. First, switch its Color Mode from 'Uniform' to 'Per Vertex' and set a color on one of its vertices.",
         waitForUser: true,
         focusPanel: 'appearance-panel',
         action: (state) => {
