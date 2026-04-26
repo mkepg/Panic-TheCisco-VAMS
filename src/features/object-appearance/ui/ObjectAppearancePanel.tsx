@@ -9,26 +9,26 @@ const getGradientColor = (colors: string[], position: number): string => {
   if (colors.length === 1) return colors[0];
   if (position <= 0) return colors[0];
   if (position >= 1) return colors[colors.length - 1];
-  
+
   const segment = 1 / (colors.length - 1);
   const index = Math.floor(position / segment);
   const factor = (position - index * segment) / segment;
-  
+
   const c1 = colors[index];
   const c2 = colors[index + 1];
-  
+
   const r1 = parseInt(c1.substring(1, 3), 16);
   const g1 = parseInt(c1.substring(3, 5), 16);
   const b1 = parseInt(c1.substring(5, 7), 16);
-  
+
   const r2 = parseInt(c2.substring(1, 3), 16);
   const g2 = parseInt(c2.substring(3, 5), 16);
   const b2 = parseInt(c2.substring(5, 7), 16);
-  
+
   const r = Math.round(r1 + factor * (r2 - r1));
   const g = Math.round(g1 + factor * (g2 - g1));
   const b = Math.round(b1 + factor * (b2 - b1));
-  
+
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
 };
 
@@ -49,12 +49,10 @@ export default function ObjectAppearancePanel() {
   const [colorMode, setColorMode] = useState<'OBJECT' | 'VERTEX'>('OBJECT');
   const [activeColorChange, setActiveColorChange] = useState<string | null>(null);
 
-  // Safely compute isMultiColor taking into account that selectedObject might be undefined
   const isMultiColor = selectedObject && selectedObject.vertices.length > 0
     ? selectedObject.vertices.some(v => v.color !== selectedObject.vertices[0].color)
     : false;
 
-  // --- React "Derived State" Pattern for Tab Switching ---
   const [prevSelectedId, setPrevSelectedId] = useState<string | null>(selectedObjectId);
   const [prevIsMulti, setPrevIsMulti] = useState<boolean>(isMultiColor);
 
@@ -68,33 +66,38 @@ export default function ObjectAppearancePanel() {
   } else if (!isMultiColor && prevIsMulti) {
     setPrevIsMulti(false);
   }
-  // ----------------------------------------------------------
 
-  // --- DOM Effect Pattern for Scrolling ---
   const toggleContainerRef = useRef<HTMLDivElement>(null);
   const scrollTriggerRef = useRef({ id: selectedObjectId, wasMulti: isMultiColor });
 
   useEffect(() => {
     const last = scrollTriggerRef.current;
-    
-    // Only scroll if we are looking at the SAME object, and it JUST became multi-colored 
-    // (which maps perfectly to Step 2 of the Barycentric lesson painting the triangle)
     if (selectedObjectId === last.id && isMultiColor && !last.wasMulti) {
       setTimeout(() => {
-        toggleContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100); // Slight delay ensures the DOM has fully expanded with the new vertex rows
+        const el = toggleContainerRef.current;
+        if (el) {
+          const scrollParent = el.closest('.sidebar-content') as HTMLElement;
+          
+          if (scrollParent) {
+            const parentRect = scrollParent.getBoundingClientRect();
+            const elRect = el.getBoundingClientRect();
+            const targetTop = scrollParent.scrollTop + (elRect.top - parentRect.top) - (parentRect.height / 2) + (elRect.height / 2);
+            
+            scrollParent.scrollTo({ top: targetTop, behavior: 'smooth' });
+          } else {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+      }, 100);
     }
-    
     scrollTriggerRef.current = { id: selectedObjectId, wasMulti: isMultiColor };
   }, [selectedObjectId, isMultiColor]);
-  // ----------------------------------------
 
   const switchColorMode = (mode: 'OBJECT' | 'VERTEX') => {
     setColorMode(mode);
     setActiveColorChange(null);
   };
 
-  // --- Early Returns ---
   if (!selectedObject) {
     return (
       <CollapsibleSection panelId="appearance-panel" title="Scene Color" icon={<Palette size={14} />} defaultOpen={true}>
@@ -119,7 +122,6 @@ export default function ObjectAppearancePanel() {
 
   if (selectedObject.type === 'GROUP') return null;
 
-  // --- Main Render ---
   const supportsPerVertexColor = selectedObject.vertices.length >= 2;
   const objColorMode = selectedObject.colorMode ?? 'FLOAT';
 
@@ -148,13 +150,13 @@ export default function ObjectAppearancePanel() {
       if (v.y < minY) minY = v.y;
       if (v.y > maxY) maxY = v.y;
     });
-    
+
     const width = maxX - minX;
     const height = maxY - minY;
     
     const useY = width < 0.0001 && height > 0.0001;
     const range = useY ? height : width;
-    
+
     selectedObject.vertices.forEach((v, i) => {
       let position = 0;
       if (range > 0.0001) {
@@ -162,11 +164,9 @@ export default function ObjectAppearancePanel() {
       } else {
          position = numVertices > 1 ? i / (numVertices - 1) : 0;
       }
-      
       const interpolatedColor = getGradientColor(colors, position);
       updateVertexColor(selectedObjectId, v.id, interpolatedColor);
     });
-    
     endBatch();
   };
 
@@ -191,7 +191,8 @@ export default function ObjectAppearancePanel() {
   return (
     <CollapsibleSection panelId="appearance-panel" title="Color & Shading" icon={<Palette size={14} />} defaultOpen={true}>
       <div className="color-section">
-        {/* Emission Mode Selection */}
+        
+        {/* Emission Mode Toggle */}
         <div className="emission-mode">
           <div className="emission-label">
             <span>Emission</span>
@@ -225,7 +226,7 @@ export default function ObjectAppearancePanel() {
           </div>
         </div>
 
-        {/* Color Mode Segmented Control */}
+        {/* Color Mode Toggle */}
         {supportsPerVertexColor && (
           <div className="color-mode-section" ref={toggleContainerRef}>
             <div className="mode-label">

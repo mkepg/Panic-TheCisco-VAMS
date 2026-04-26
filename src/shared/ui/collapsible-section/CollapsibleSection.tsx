@@ -14,33 +14,43 @@ interface CollapsibleSectionProps {
 const CollapsibleSection = ({ title, icon, children, defaultOpen = false, panelId }: CollapsibleSectionProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const sectionRef = useRef<HTMLDivElement>(null);
-  
+
   const lessonFocusPanel = useVamsStore(s => s.lessonFocusPanel);
   const isFocused = !!(panelId && lessonFocusPanel === panelId);
 
-  // --- React "Derived State" Pattern ---
-  // If the panel just became focused, force it open during the render phase
   const [prevIsFocused, setPrevIsFocused] = useState(isFocused);
-  
+
   if (isFocused && !prevIsFocused) {
     setIsOpen(true);
     setPrevIsFocused(true);
   } else if (!isFocused && prevIsFocused) {
     setPrevIsFocused(false);
   }
-  // -------------------------------------
 
-  // --- DOM Effect Pattern ---
-  // Scrolling is a pure DOM side-effect and safely belongs in useEffect
   useEffect(() => {
     if (isFocused) {
       const timer = setTimeout(() => {
-        sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const el = sectionRef.current;
+        if (el) {
+          // Target the specific scrollable container
+          const scrollParent = el.closest('.sidebar-content') as HTMLElement;
+          
+          if (scrollParent) {
+            // Calculate center offset safely
+            const parentRect = scrollParent.getBoundingClientRect();
+            const elRect = el.getBoundingClientRect();
+            const targetTop = scrollParent.scrollTop + (elRect.top - parentRect.top) - (parentRect.height / 2) + (elRect.height / 2);
+            
+            scrollParent.scrollTo({ top: targetTop, behavior: 'smooth' });
+          } else {
+            // Fallback
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
       }, 150);
       return () => clearTimeout(timer);
     }
   }, [isFocused]);
-  // --------------------------
 
   return (
     <div ref={sectionRef} className={`collapsible-section ${isFocused ? 'lesson-focused' : ''}`}>

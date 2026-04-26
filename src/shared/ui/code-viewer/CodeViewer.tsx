@@ -57,7 +57,7 @@ function tokenizeLine(line: string): Array<{ t: string; k: string }> {
         i += tok.length; continue;
       }
     }
-    if (/[{}()\[\];,.:]/.test(ch)) { out.push({ t: ch, k: 'punct' }); i++; continue; }
+    if (/[{}()[\];,.:]/.test(ch)) { out.push({ t: ch, k: 'punct' }); i++; continue; }
     if (/[+\-*/%=<>!&|^~?]/.test(ch)) {
       let j = i + 1;
       while (j < n && /[+\-*/%=<>!&|^~?]/.test(line[j])) j++;
