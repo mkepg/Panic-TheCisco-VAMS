@@ -1,8 +1,11 @@
 import type { VamsState } from '@/core/store/types';
 import type {
   AxisVisibility,
+  ColorMode,
+  GlutCallbackKind,
   InteractionMode,
   LearningSettings,
+  LineStipple,
   PendingVertex,
   PrimitiveType,
   ShadingModel,
@@ -13,7 +16,10 @@ import type {
   ViewportLimits,
 } from '@/core/types/scene';
 
-export const VAMS_PROJECT_SCHEMA_VERSION = 2 as const;
+// Bumped from 2 → 3 to capture per-object color mode, line styling, and
+// the registered callbacks map. Loaders for v2 files still work because every
+// new field has a sensible fallback.
+export const VAMS_PROJECT_SCHEMA_VERSION = 3 as const;
 
 export type VamsProjectData = {
   objects: SceneNode[];
@@ -30,6 +36,7 @@ export type VamsProjectData = {
   pendingVertices: PendingVertex[];
   pendingMinVertices: number;
   pendingVertexStride: number | null;
+  callbacks: Record<GlutCallbackKind, string>;
 };
 
 export type VamsProjectFile = {
@@ -46,16 +53,23 @@ const ALLOWED_OBJECT_TYPES: ReadonlySet<SceneNodeType> = new Set([
   'TEXT', 'GROUP',
 ]);
 
+const CALLBACK_KINDS: GlutCallbackKind[] = [
+  'keyboard', 'mouse', 'reshape', 'motion', 'idle',
+];
+
 const DEFAULT_VIEWPORT: ViewportLimits = { minX: -1, maxX: 1, minY: -1, maxY: 1 };
 const DEFAULT_AXIS: AxisVisibility = { showGlobalAxes: true, showLocalAxes: true, showOriginMarker: true, showGridlines: true };
 const DEFAULT_LEARNING: LearningSettings = { gridSnapping: false, snapIncrement: 0.1 };
 const DEFAULT_TRANSFORM: TransformState = { translateX: 0, translateY: 0, rotate: 0, scaleX: 1, scaleY: 1 };
+const DEFAULT_CALLBACKS: Record<GlutCallbackKind, string> = {
+  keyboard: '', mouse: '', reshape: '', motion: '', idle: '',
+};
 
 const DEFAULT_DATA: VamsProjectData = {
   objects: [],
   viewportLimits: DEFAULT_VIEWPORT,
   axisVisibility: DEFAULT_AXIS,
-  showCoordinateTracker: false, // Default changed here as well
+  showCoordinateTracker: false,
   learningSettings: DEFAULT_LEARNING,
   theme: 'dark',
   canvasBackgroundColor: '#000000',
@@ -66,6 +80,7 @@ const DEFAULT_DATA: VamsProjectData = {
   pendingVertices: [],
   pendingMinVertices: 1,
   pendingVertexStride: null,
+  callbacks: { ...DEFAULT_CALLBACKS },
 };
 
 function isRecord(v: unknown): v is Record<string, unknown> { return typeof v === 'object' && v !== null; }
@@ -74,6 +89,7 @@ function toBoolean(v: unknown, fallback: boolean): boolean { return typeof v ===
 function toString(v: unknown, fallback: string): string { return typeof v === 'string' ? v : fallback; }
 function toTheme(v: unknown): 'dark' | 'light' { return v === 'light' ? 'light' : 'dark'; }
 function toShading(v: unknown): ShadingModel { return v === 'FLAT' ? 'FLAT' : 'SMOOTH'; }
+function toColorMode(v: unknown): ColorMode { return v === 'BYTE' ? 'BYTE' : 'FLOAT'; }
 function toInteractionMode(v: unknown): InteractionMode {
   if (v === 'CUSTOM_SHAPE_PLACE') return 'VERTEX_PLACE';
   const allowed: InteractionMode[] = ['SELECT', 'VERTEX_PLACE', 'VERTEX_EDIT'];
@@ -115,6 +131,12 @@ function sanitizeVertex(v: unknown, idx: number): Vertex {
   if (!isRecord(v)) return { id: `v${idx}`, x: 0, y: 0, color: '#ffffff' };
   return { id: toString(v.id, `v${idx}`), x: toNumber(v.x, 0), y: toNumber(v.y, 0), color: toString(v.color, '#ffffff') };
 }
+function sanitizeStipple(v: unknown): LineStipple | null {
+  if (!isRecord(v)) return null;
+  const factor = Math.max(1, Math.min(256, Math.floor(toNumber(v.factor, 1))));
+  const pattern = Math.floor(toNumber(v.pattern, 0xFFFF)) & 0xFFFF;
+  return { factor, pattern };
+}
 
 function sanitizeObject(v: unknown, idx: number): SceneNode | null {
   if (!isRecord(v)) return null;
@@ -140,6 +162,12 @@ function sanitizeObject(v: unknown, idx: number): SceneNode | null {
     rasterPosition: isRecord(v.rasterPosition) ? { x: toNumber(v.rasterPosition.x, 0), y: toNumber(v.rasterPosition.y, 0) } : undefined,
     parentId: typeof v.parentId === 'string' ? v.parentId : null,
     children: (childrenRaw as unknown[]).filter((id) => typeof id === 'string') as string[],
+    // Stage 2 additions
+    colorMode: toColorMode(v.colorMode),
+    lineWidth: typeof v.lineWidth === 'number' && Number.isFinite(v.lineWidth)
+      ? Math.max(0.5, Math.min(20, v.lineWidth))
+      : undefined,
+    lineStipple: v.lineStipple == null ? null : sanitizeStipple(v.lineStipple),
   };
 }
 
@@ -152,6 +180,16 @@ function fixHierarchy(objects: SceneNode[]): SceneNode[] {
     return { ...o, children };
   });
   return normalized;
+}
+
+function sanitizeCallbacks(v: unknown): Record<GlutCallbackKind, string> {
+  const out: Record<GlutCallbackKind, string> = { ...DEFAULT_CALLBACKS };
+  if (!isRecord(v)) return out;
+  CALLBACK_KINDS.forEach((k) => {
+    const raw = v[k];
+    out[k] = typeof raw === 'string' ? raw : '';
+  });
+  return out;
 }
 
 export function buildProjectFile(state: VamsState): VamsProjectFile {
@@ -170,6 +208,7 @@ export function buildProjectFile(state: VamsState): VamsProjectFile {
     pendingVertices: state.pendingVertices,
     pendingMinVertices: state.pendingMinVertices,
     pendingVertexStride: state.pendingVertexStride,
+    callbacks: state.callbacks,
   };
   return {
     app: 'VAMS',
@@ -291,6 +330,7 @@ export function sanitizeProjectData(raw: unknown): VamsProjectData {
     pendingVertices,
     pendingMinVertices: Math.max(1, Math.floor(toNumber(raw.pendingMinVertices, DEFAULT_DATA.pendingMinVertices))),
     pendingVertexStride,
+    callbacks: sanitizeCallbacks(raw.callbacks),
   };
 }
 
@@ -310,5 +350,6 @@ export function toStorePatchFromProject(data: VamsProjectData): Partial<VamsStat
     pendingVertices: data.pendingVertices,
     pendingMinVertices: data.pendingMinVertices,
     pendingVertexStride: data.pendingVertexStride,
+    callbacks: data.callbacks,
   };
 }

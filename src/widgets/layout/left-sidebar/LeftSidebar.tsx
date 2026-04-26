@@ -8,6 +8,8 @@ import TextNodePanel from '@/features/text-nodes/ui/TextNodePanel';
 import SceneHierarchyPanel from '@/features/scene-hierarchy/ui/SceneHierarchyPanel';
 import ObjectTransformPanel from '@/features/object-transform/ui/ObjectTransformPanel';
 import ObjectAppearancePanel from '@/features/object-appearance/ui/ObjectAppearancePanel';
+import LineStylePanel from '@/features/line-style/ui/LineStylePanel';
+import CallbacksPanel from '@/features/callbacks/ui/CallbacksPanel';
 import './left-sidebar.scss';
 
 export default function LeftSidebar() {
@@ -57,6 +59,12 @@ export default function LeftSidebar() {
             <TextNodePanel />
             <div className="separator" />
             <ObjectAppearancePanel />
+            {/* LineStylePanel self-hides for non-line primitives, so it can sit
+                here unconditionally — keeps the layout stable when the user
+                switches between selections. */}
+            <LineStylePanel />
+            <div className="separator" />
+            <CallbacksPanel />
           </div>
         );
       case 'Buffers':

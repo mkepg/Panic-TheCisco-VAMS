@@ -8,6 +8,10 @@ import type {
   InteractionMode,
   AxisVisibility,
   PendingVertex,
+  ColorMode,
+  LineStipple,
+  CallbackRegistration,
+  GlutCallbackKind,
 } from '@/core/types/scene';
 
 export interface SceneSlice {
@@ -31,6 +35,11 @@ export interface SceneSlice {
   ungroup: (groupId: string) => void;
   deleteGroup: (groupId: string) => void;
   reorderObject: (sourceId: string, targetId: string, position: 'before' | 'after' | 'inside') => void;
+
+  // --- Stage 2 additions ---
+  updateObjectColorMode: (id: string, mode: ColorMode) => void;
+  updateLineWidth: (id: string, width: number) => void;
+  updateLineStipple: (id: string, stipple: LineStipple | null) => void;
 }
 
 export interface InteractionSlice {
@@ -129,6 +138,19 @@ export interface LessonSlice {
   clearLessonState: () => void;
 }
 
+/* -------------------------------------------------------------------------- */
+/*                       Stage 2 — Callbacks Registration                     */
+/* -------------------------------------------------------------------------- */
+
+export interface CallbacksSlice {
+  /** Map of callback kind → handler name (empty string means unregistered). */
+  callbacks: Record<GlutCallbackKind, string>;
+  setCallbackHandler: (kind: GlutCallbackKind, handlerName: string) => void;
+  clearCallback: (kind: GlutCallbackKind) => void;
+  /** Snapshot helper used by lesson success-checks. */
+  getRegisteredCallbacks: () => CallbackRegistration[];
+}
+
 export type VamsState = SceneSlice &
   InteractionSlice &
   ViewportSlice &
@@ -136,4 +158,5 @@ export type VamsState = SceneSlice &
   CustomShapeBuilderSlice &
   HistorySlice &
   RuntimeSlice &
-  LessonSlice;
+  LessonSlice &
+  CallbacksSlice;

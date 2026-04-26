@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useVamsStore } from "@/core/store";
 import CodeViewer from '@/shared/ui/code-viewer/CodeViewer';
-import { generateAppOutput } from '@/features/code-generation/model/code-generator';
+import { generateAppOutput, type RegisteredCallback } from '@/features/code-generation/model/code-generator';
 import { useCanvasSize } from '@/features/code-generation/model/useCanvasSize';
 import type { SceneNode } from "@/core/types/scene";
 import { sanitizeName } from '@/features/code-generation/model/generator/utils';
@@ -26,14 +26,26 @@ export default function SceneCodePanel() {
   const canvasBackgroundColor = useVamsStore(s => s.canvasBackgroundColor);
   const appMode = useVamsStore(s => s.appMode);
   const activeSection = useVamsStore(s => s.activeSection);
+  const callbacks = useVamsStore(s => s.callbacks);
   const canvasSize = useCanvasSize();
 
   const selectedObject = objects.find(o => o.id === selectedObjectId);
   const highlightTarget = selectedObject ? sanitizeName(selectedObject.name) : null;
 
+  const registeredCallbacks: RegisteredCallback[] = useMemo(() => {
+    return (Object.keys(callbacks) as Array<keyof typeof callbacks>)
+      .filter((k) => callbacks[k] && callbacks[k].trim().length > 0)
+      .map((k) => ({ kind: k, handlerName: callbacks[k].trim() }));
+  }, [callbacks]);
+
   const generatedCode = useMemo(() => {
     if (objects.length === 0) {
-      return generateAppOutput([], [], [], canvasBackgroundColor, canvasSize);
+      return generateAppOutput(
+        [], [], [],
+        canvasBackgroundColor, canvasSize,
+        "    // Empty scene\n",
+        registeredCallbacks
+      );
     }
     const visibleObjects = getEffectivelyVisibleObjects(objects);
     const rootObjects = visibleObjects.filter(o => !o.parentId);
@@ -42,13 +54,12 @@ export default function SceneCodePanel() {
       rootObjects,
       visibleObjects,
       canvasBackgroundColor,
-      canvasSize
+      canvasSize,
+      "    // Empty scene\n",
+      registeredCallbacks
     );
-  }, [objects, canvasBackgroundColor, canvasSize]);
+  }, [objects, canvasBackgroundColor, canvasSize, registeredCallbacks]);
 
-  // Show GLUT-boilerplate annotations only when the scene is empty AND the user
-  // is in the Pipeline section — that's the pedagogical context where they're
-  // learning the program structure.
   const showAnnotations = activeSection === 'Pipeline' && objects.length === 0;
 
   return (

@@ -1,6 +1,7 @@
 import type { Lesson } from '@/core/types/lesson';
+import { PRIMITIVES_LESSONS } from './primitives-lessons';
 
-export const LESSON_REGISTRY: Record<string, Lesson> = {
+const PIPELINE_LESSONS: Record<string, Lesson> = {
   'poc-demo-1': {
     id: 'poc-demo-1',
     title: 'Proof of Concept: Drawing a Triangle',
@@ -232,7 +233,7 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
       },
     ],
   },
-'pipeline-exercise-2': {
+  'pipeline-exercise-2': {
     id: 'pipeline-exercise-2',
     title: 'Which Stage?',
     type: 'exercise',
@@ -403,4 +404,9 @@ export const LESSON_REGISTRY: Record<string, Lesson> = {
       },
     ],
   },
+};
+
+export const LESSON_REGISTRY: Record<string, Lesson> = {
+  ...PIPELINE_LESSONS,
+  ...PRIMITIVES_LESSONS,
 };

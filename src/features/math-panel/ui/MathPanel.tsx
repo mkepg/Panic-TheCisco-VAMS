@@ -1,6 +1,7 @@
 import './math-panel.scss';
 import { useVamsStore } from '@/core/store';
 import PipelineMathContent from './PipelineMathContent';
+import PrimitivesMathContent from './PrimitivesMathContent';
 
 export default function MathPanel() {
   const activeSection = useVamsStore((s) => s.activeSection);
@@ -12,7 +13,9 @@ export default function MathPanel() {
         <span className="math-section-tag">{activeSection}</span>
       </div>
       <div className="math-content">
-        {activeSection === 'Pipeline' ? <PipelineMathContent /> : <DefaultEmpty />}
+        {activeSection === 'Pipeline'   && <PipelineMathContent />}
+        {activeSection === 'Primitives' && <PrimitivesMathContent />}
+        {activeSection !== 'Pipeline' && activeSection !== 'Primitives' && <DefaultEmpty />}
       </div>
     </div>
   );

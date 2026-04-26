@@ -1,6 +1,6 @@
 import './object-appearance-panel.scss';
 import { useState } from 'react';
-import { Palette } from 'lucide-react';
+import { Palette, Hash, CircleDashed } from 'lucide-react';
 import { useVamsStore } from "@/core/store";
 import CollapsibleSection from '@/shared/ui/collapsible-section/CollapsibleSection';
 
@@ -41,7 +41,8 @@ export default function ObjectAppearancePanel() {
     startBatch,
     endBatch,
     canvasBackgroundColor,
-    setCanvasBackgroundColor
+    setCanvasBackgroundColor,
+    updateObjectColorMode,
   } = useVamsStore();
 
   const selectedObject = objects.find(o => o.id === selectedObjectId);
@@ -78,9 +79,10 @@ export default function ObjectAppearancePanel() {
   if (selectedObject.type === 'GROUP') return null;
 
   const supportsPerVertexColor = selectedObject.vertices.length >= 2;
-
   const isMultiColor = selectedObject.vertices.length > 0 &&
     selectedObject.vertices.some(v => v.color !== selectedObject.vertices[0].color);
+
+  const objColorMode = selectedObject.colorMode ?? 'FLOAT';
 
   const handleUniformColorChange = (color: string) => {
     if (!selectedObjectId) return;
@@ -148,6 +150,42 @@ export default function ObjectAppearancePanel() {
   return (
     <CollapsibleSection title="Color & Shading" icon={<Palette size={14} />} defaultOpen={true}>
       <div className="color-section">
+
+        {/* --------------------------- Color emission mode --------------------------- */}
+        <div className="emission-mode">
+          <div className="emission-label">
+            <span>Emission</span>
+            <span className="emission-hint">
+              {objColorMode === 'FLOAT' ? 'glColor3f · 0.0–1.0' : 'glColor3ub · 0–255'}
+            </span>
+          </div>
+          <div className="emission-toggle" role="radiogroup" aria-label="Color emission mode">
+            <button
+              type="button"
+              className={objColorMode === 'FLOAT' ? 'active' : ''}
+              onClick={() => updateObjectColorMode(selectedObject.id, 'FLOAT')}
+              role="radio"
+              aria-checked={objColorMode === 'FLOAT'}
+              title="Emit colors as glColor3f (normalized 0.0–1.0)"
+            >
+              <CircleDashed size={12} />
+              <span>Float</span>
+            </button>
+            <button
+              type="button"
+              className={objColorMode === 'BYTE' ? 'active' : ''}
+              onClick={() => updateObjectColorMode(selectedObject.id, 'BYTE')}
+              role="radio"
+              aria-checked={objColorMode === 'BYTE'}
+              title="Emit colors as glColor3ub (integer 0–255)"
+            >
+              <Hash size={12} />
+              <span>Byte</span>
+            </button>
+          </div>
+        </div>
+
+        {/* --------------------------- Vertex color mode ----------------------------- */}
         {supportsPerVertexColor && (
           <>
             <div className="shading-header">Color Mode</div>
@@ -168,7 +206,6 @@ export default function ObjectAppearancePanel() {
           </>
         )}
 
-        {/* Object / Uniform Mode */}
         {colorMode === 'OBJECT' || !supportsPerVertexColor ? (
           <div className="vertex-color-list">
             {supportsPerVertexColor && isMultiColor && (
@@ -176,7 +213,7 @@ export default function ObjectAppearancePanel() {
                 Mixed colors detected. Selecting a color below will overwrite all vertex colors.
               </div>
             )}
-            
+
             <div className="property-row">
               <div className="label-group">
                 <span className="vertex-label">FILL</span>
@@ -191,7 +228,7 @@ export default function ObjectAppearancePanel() {
                 className="color-preview-input"
               />
             </div>
-            
+
           </div>
         ) : (
           selectedObject.vertices.length > 0 && (
@@ -223,30 +260,10 @@ export default function ObjectAppearancePanel() {
               <div className="gradient-presets">
                 <div className="shading-header" style={{ marginTop: '12px' }}>Quick Gradients</div>
                 <div className="preset-buttons">
-                  <button
-                    className="preset-btn"
-                    onClick={() => handlePresetGradient(['#ff0000', '#0000ff'])}
-                  >
-                    Red → Blue
-                  </button>
-                  <button
-                    className="preset-btn"
-                    onClick={() => handlePresetGradient(['#ff0000', '#ffff00', '#00ff00', '#00ffff', '#0000ff', '#ff00ff'])}
-                  >
-                    Rainbow
-                  </button>
-                  <button
-                    className="preset-btn"
-                    onClick={() => handlePresetGradient(['#ff6b35', '#f7931e', '#fdc500'])}
-                  >
-                    Warm
-                  </button>
-                  <button
-                    className="preset-btn"
-                    onClick={() => handlePresetGradient(['#667eea', '#764ba2', '#f093fb'])}
-                  >
-                    Cool
-                  </button>
+                  <button className="preset-btn" onClick={() => handlePresetGradient(['#ff0000', '#0000ff'])}>Red → Blue</button>
+                  <button className="preset-btn" onClick={() => handlePresetGradient(['#ff0000', '#ffff00', '#00ff00', '#00ffff', '#0000ff', '#ff00ff'])}>Rainbow</button>
+                  <button className="preset-btn" onClick={() => handlePresetGradient(['#ff6b35', '#f7931e', '#fdc500'])}>Warm</button>
+                  <button className="preset-btn" onClick={() => handlePresetGradient(['#667eea', '#764ba2', '#f093fb'])}>Cool</button>
                 </div>
               </div>
             </div>

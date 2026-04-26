@@ -3,17 +3,15 @@ import { persist } from 'zustand/middleware';
 import { enableMapSet } from 'immer';
 import type { VamsState } from '@/core/store/types';
 
-// Existing imports
 import { createSceneSlice } from '@/entities/scene/model/scene-slice';
 import { createInteractionSlice } from '@/entities/scene/model/interaction-slice';
 import { createViewportSlice } from '@/entities/scene/model/viewport-slice';
 import { createSettingsSlice } from '@/core/store/settings-slice';
 import { createCustomShapeBuilderSlice } from '@/features/custom-shapes/model/custom-shape-builder-slice';
 import { createHistorySlice } from '@/core/store/history-slice';
-
-// --- NEW IMPORTS (You were likely missing these) ---
 import { createRuntimeSlice } from '@/core/store/runtime-slice';
 import { createLessonSlice } from '@/core/store/lesson-slice';
+import { createCallbacksSlice } from '@/core/store/callbacks-slice';
 
 enableMapSet();
 
@@ -26,10 +24,10 @@ export const useVamsStore = create<VamsState>()(
       ...createSettingsSlice(...a),
       ...createCustomShapeBuilderSlice(...a),
       ...createHistorySlice(...a),
-      ...createRuntimeSlice(...a), 
+      ...createRuntimeSlice(...a),
       ...createLessonSlice(...a),
-      
-      // We keep the reset logic here as a utility, but we hide it from the UI
+      ...createCallbacksSlice(...a),
+
       resetProject: () => {
         localStorage.removeItem('vams-storage');
         window.location.reload();
@@ -37,9 +35,10 @@ export const useVamsStore = create<VamsState>()(
     }),
     {
       name: 'vams-storage',
-      version: 3, // Increment this whenever you make breaking changes to types
-      
-      // AUTOMATIC RECOVERY
+      // Bumped to 4 — Stage 2 added per-object color mode, line styling,
+      // and registered GLUT callbacks.
+      version: 4,
+
       onRehydrateStorage: () => {
         return (_rehydratedState, error) => {
           if (error) {
@@ -49,7 +48,7 @@ export const useVamsStore = create<VamsState>()(
           }
         };
       },
-      
+
       partialize: (state) => ({
         theme: state.theme,
         learningSettings: state.learningSettings,
@@ -59,6 +58,7 @@ export const useVamsStore = create<VamsState>()(
         viewportLimits: state.viewportLimits,
         canvasBackgroundColor: state.canvasBackgroundColor,
         activeSection: state.activeSection,
+        callbacks: state.callbacks,
       }),
     }
   )

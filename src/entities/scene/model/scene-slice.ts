@@ -81,6 +81,9 @@ const getGlobalMatrix = (objId: string, objects: SceneNode[]): number[] => {
   return mat;
 };
 
+const isLinePrimitive = (t: SceneNode['type']): boolean =>
+  t === 'LINES' || t === 'LINE_STRIP' || t === 'LINE_LOOP';
+
 export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (set, get) => ({
   objects: [],
   selectedObjectId: null,
@@ -110,6 +113,10 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         transform: { translateX: centerX, translateY: centerY, rotate: 0, scaleX: 1, scaleY: 1 },
         parentId: null,
         children: [],
+        colorMode: 'FLOAT',
+        // Sensible defaults for line primitives; harmless on others (renderers ignore them).
+        lineWidth: isLinePrimitive(type) ? 1 : undefined,
+        lineStipple: null,
       };
       return {
         objects: [newObj, ...state.objects],
@@ -252,6 +259,7 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         rasterPosition: { x, y },
         parentId: null,
         children: [],
+        colorMode: 'FLOAT',
       };
       return { objects: [textObj, ...state.objects], selectedObjectId: newId };
     });
@@ -426,5 +434,29 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
       });
       return { objects: newObjects };
     });
+  },
+
+  /* ----------------------- Stage 2 — Per-object ops ----------------------- */
+
+  updateObjectColorMode: (id, mode) => {
+    get().pushToHistory();
+    set((state) => ({
+      objects: state.objects.map((o) => (o.id === id ? { ...o, colorMode: mode } : o)),
+    }));
+  },
+
+  updateLineWidth: (id, width) => {
+    get().pushToHistory();
+    const clamped = Math.max(0.5, Math.min(20, width));
+    set((state) => ({
+      objects: state.objects.map((o) => (o.id === id ? { ...o, lineWidth: clamped } : o)),
+    }));
+  },
+
+  updateLineStipple: (id, stipple) => {
+    get().pushToHistory();
+    set((state) => ({
+      objects: state.objects.map((o) => (o.id === id ? { ...o, lineStipple: stipple } : o)),
+    }));
   },
 });
