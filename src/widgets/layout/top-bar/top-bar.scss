@@ -17,7 +17,8 @@
   padding: 0 1rem;
   transition: background-color 0.3s, border-color 0.3s;
   position: relative;
-  z-index: 100;
+  // Increase this from 100 to 200 so it sits above the pedagogical overlays
+  z-index: 200; 
   .brand, .actions {
     flex: 1;
   }
