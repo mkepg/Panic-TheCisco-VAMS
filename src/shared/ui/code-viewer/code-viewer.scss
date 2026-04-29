@@ -48,15 +48,18 @@
         letter-spacing: 0.05em;
         font-weight: 700;
       }
+
       .code-sep {
         color: $text-dim;
         font-size: 0.7rem;
       }
+
       .code-stat {
         font-family: $font-mono;
         font-size: 0.8rem;
         color: $text-dim;
       }
+
       .code-focus {
         margin-left: auto;
         font-family: $font-mono;
@@ -70,9 +73,9 @@
         overflow: hidden;
         text-overflow: ellipsis;
         max-width: 160px;
-
         code { font-family: inherit; }
       }
+
       .code-annot-hint {
         display: inline-flex;
         align-items: center;
@@ -85,7 +88,6 @@
         color: var(--accent-blue-light);
         background: rgba(var(--accent-blue-rgb), 0.1);
         border: 1px solid rgba(var(--accent-blue-rgb), 0.22);
-
         svg { flex-shrink: 0; }
       }
     }
@@ -126,6 +128,7 @@
       min-width: 180px;
 
       svg { color: $text-dim; flex-shrink: 0; }
+
       input {
         flex: 1;
         background: transparent;
@@ -137,6 +140,7 @@
         min-width: 0;
       }
       input::placeholder { color: $text-dim; }
+
       .search-count {
         font-family: $font-mono;
         font-size: 0.65rem;
@@ -145,6 +149,7 @@
         padding: 0 0.3rem;
         border-radius: 3px;
       }
+
       .search-close {
         background: transparent;
         border: none;
@@ -178,6 +183,7 @@
         color: $text-main;
         border-color: rgba(255, 255, 255, 0.1);
       }
+
       &.copied {
         color: $accent-green;
         background-color: rgba(var(--accent-green-rgb), 0.1);
@@ -203,13 +209,13 @@
       text-align: right;
       color: $text-dim;
       user-select: none;
-      border-right: 1px solid $border-color;
-      background-color: rgba(var(--bg-panel-rgb), 0.5);
+      box-shadow: 1px 0 0 $border-color, 2px 0 8px rgba(0, 0, 0, 0.15);
+      background-color: rgb(var(--bg-panel-rgb));
       min-height: 100%;
       height: fit-content;
       position: sticky;
       left: 0;
-      z-index: 1;
+      z-index: 10;
 
       .line-num {
         padding: 0 0.55rem;
@@ -247,6 +253,7 @@
           border-left-color: $accent-blue;
           animation: highlight-pulse 0.4s ease-out;
         }
+
         &.match {
           background-color: rgba(251, 191, 36, 0.07);
           border-left-color: #fbbf24;
@@ -256,7 +263,6 @@
           position: relative;
           cursor: help;
 
-          /* Subtle dotted underline so users know the line is interactive */
           &::after {
             content: '';
             position: absolute;
@@ -295,6 +301,7 @@
               margin-bottom: 0.2rem;
               letter-spacing: 0.02em;
             }
+
             .annot-desc {
               display: block;
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -314,7 +321,6 @@
     }
   }
 
-  /* --- Syntax tokens --- */
   .tk { white-space: pre; }
   .tk-kw       { color: #c792ea; font-weight: 600; }
   .tk-pp       { color: #f78c6c; font-style: italic; }
