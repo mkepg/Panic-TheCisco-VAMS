@@ -67,6 +67,18 @@ export interface SceneNode {
 
   /** Used only by line primitives. `null` means stippling disabled. */
   lineStipple?: LineStipple | null;
+
+  // --- Stage 3 additions ---
+
+  /** How an object is drawn at the OpenGL API level. Defaults to IMMEDIATE. */
+  renderingMode?: RenderingMode;
+
+  /** glBufferData usage hint. Only relevant for VBO mode. Defaults to STATIC. */
+  bufferUsage?: BufferUsage;
+
+  /** When true, switches the draw call from glDrawArrays to glDrawElements
+   *  with a deduplicated vertex set + index array. */
+  useIndexed?: boolean;
 }
 
 export interface LearningSettings {
@@ -118,3 +130,20 @@ export interface CallbackRegistration {
   kind: GlutCallbackKind;
   handlerName: string;
 }
+
+/* -------------------------------------------------------------------------- */
+/*                            Stage 3 — Buffers                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * How an object is drawn at the OpenGL API level.
+ *  - IMMEDIATE     → glBegin/glVertex/glEnd inline in display()
+ *  - VERTEX_ARRAY  → client-side arrays, glDrawArrays in display()
+ *  - VBO           → buffers uploaded once in init(), bound and drawn in display()
+ *
+ * Visual output is identical across modes — the difference is structural.
+ */
+export type RenderingMode = 'IMMEDIATE' | 'VERTEX_ARRAY' | 'VBO';
+
+/** glBufferData usage hint. Only relevant for VBO mode. */
+export type BufferUsage = 'STATIC' | 'DYNAMIC' | 'STREAM';

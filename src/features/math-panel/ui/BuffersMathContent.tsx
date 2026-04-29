@@ -1,0 +1,663 @@
+// src/features/math-panel/ui/BuffersMathContent.tsx
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { Pause, Play, RotateCcw, ChevronLeft, ChevronRight, Pin } from 'lucide-react';
+import { useVamsStore } from '@/core/store';
+import type { SceneNode, RenderingMode, BufferUsage } from '@/core/types/scene';
+
+const BYTES_POS   = 8;
+const BYTES_COLOR = 12;
+const BYTES_INDEX = 4;
+const BYTES_PER_VERTEX = BYTES_POS + BYTES_COLOR;
+
+function isPrimitive(o: SceneNode): boolean {
+  return o.type !== 'GROUP' && o.type !== 'TEXT';
+}
+
+function dedupCount(o: SceneNode): { unique: number; total: number } {
+  const keys = new Set<string>();
+  for (const v of o.vertices) {
+    keys.add(`${v.x.toFixed(6)}|${v.y.toFixed(6)}|${v.color}`);
+  }
+  return { unique: keys.size, total: o.vertices.length };
+}
+
+const GL_PRIM: Record<string, string> = {
+  POINTS: 'GL_POINTS',
+  LINES: 'GL_LINES',
+  LINE_STRIP: 'GL_LINE_STRIP',
+  LINE_LOOP: 'GL_LINE_LOOP',
+  TRIANGLES: 'GL_TRIANGLES',
+  TRIANGLE_STRIP: 'GL_TRIANGLE_STRIP',
+  TRIANGLE_FAN: 'GL_TRIANGLE_FAN',
+  QUADS: 'GL_QUADS',
+  QUAD_STRIP: 'GL_QUAD_STRIP',
+  POLYGON: 'GL_POLYGON',
+};
+
+function Section({ title, children, isFocused }: { title: string; children: React.ReactNode; isFocused?: boolean }) {
+  const sectionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isFocused) {
+      const timer = setTimeout(() => {
+        const el = sectionRef.current;
+        if (el) {
+          const scrollParent = el.closest('.math-content') as HTMLElement;
+          if (scrollParent) {
+            const parentRect = scrollParent.getBoundingClientRect();
+            const elRect = el.getBoundingClientRect();
+            
+            // The exact scroll position to align the tops
+            const exactTop = scrollParent.scrollTop + (elRect.top - parentRect.top);
+            
+            // Ideal position to perfectly center the element
+            let targetTop = exactTop - (parentRect.height / 2) + (elRect.height / 2);
+            
+            // If centering pushes the top out of view (because it's too tall),
+            // cap the scroll so it aligns to the top with a comfortable 16px padding
+            const topWithPadding = exactTop - 16;
+            if (targetTop > topWithPadding) {
+              targetTop = topWithPadding;
+            }
+
+            scrollParent.scrollTo({ top: targetTop, behavior: 'smooth' });
+          } else {
+            // Fallback for native scrolling
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isFocused]);
+
+  return (
+    <div ref={sectionRef} className={`math-section ${isFocused ? 'lesson-focused' : ''}`}>
+      <h4 className="math-section-title">{title}</h4>
+      <div className="math-section-body">{children}</div>
+    </div>
+  );
+}
+
+function describeDrawCall(
+  obj: SceneNode,
+  mode: RenderingMode,
+): { headline: string; sub: string | null } {
+  const prim = GL_PRIM[obj.type] ?? 'GL_*';
+  const { unique, total } = dedupCount(obj);
+
+  if (mode === 'IMMEDIATE') {
+    return {
+      headline: `glBegin(${prim}) … glEnd()`,
+      sub: `${total} glVertex2f calls per frame`,
+    };
+  }
+
+  if (obj.useIndexed) {
+    const indexCount = total;
+    const vertCount = unique;
+    if (mode === 'VERTEX_ARRAY') {
+      return {
+        headline: `glDrawElements(${prim}, ${indexCount}, GL_UNSIGNED_INT, indices_*)`,
+        sub: `${vertCount} unique vertices · ${indexCount} indices`,
+      };
+    }
+    return {
+      headline: `glDrawElements(${prim}, ${indexCount}, GL_UNSIGNED_INT, 0)`,
+      sub: `${vertCount} unique vertices · ${indexCount} indices · bound EBO`,
+    };
+  }
+
+  if (mode === 'VERTEX_ARRAY') {
+    return {
+      headline: `glDrawArrays(${prim}, 0, ${total})`,
+      sub: 'data sourced from a client-side array',
+    };
+  }
+
+  return {
+    headline: `glDrawArrays(${prim}, 0, ${total})`,
+    sub: 'data sourced from a bound VBO',
+  };
+}
+
+function CurrentDrawCall({ obj, mode }: { obj: SceneNode; mode: RenderingMode }) {
+  const { headline, sub } = describeDrawCall(obj, mode);
+
+  return (
+    <div className="bm-current-call">
+      <div className="bm-current-call-row">
+        <Pin size={11} className="bm-current-call-pin" aria-hidden />
+        <span className="bm-current-call-label">draws as</span>
+        <code className="bm-current-call-code">{headline}</code>
+      </div>
+      {sub && <div className="bm-current-call-sub">{sub}</div>}
+    </div>
+  );
+}
+
+function MemoryFootprint({ obj }: { obj: SceneNode }) {
+  const { total } = dedupCount(obj);
+  const totalBytes = total * BYTES_PER_VERTEX;
+
+  return (
+    <div className="bm-footprint">
+      <div className="bm-footprint-stat">
+        <span className="bm-stat-num">{total}</span>
+        <span className="bm-stat-label">vertices</span>
+      </div>
+      <span className="bm-stat-op">×</span>
+      <div className="bm-footprint-stat" title="position (8 B) + color (12 B)">
+        <span className="bm-stat-num">{BYTES_PER_VERTEX} B</span>
+        <span className="bm-stat-label">per vertex</span>
+      </div>
+      <span className="bm-stat-op">=</span>
+      <div className="bm-footprint-stat result">
+        <span className="bm-stat-num">{totalBytes} B</span>
+        <span className="bm-stat-label">total</span>
+      </div>
+    </div>
+  );
+}
+
+function MemoryComparison({ obj }: { obj: SceneNode }) {
+  const { unique, total } = dedupCount(obj);
+  const arrayBytes = total * BYTES_PER_VERTEX;
+  const indexedBytes = unique * BYTES_PER_VERTEX + total * BYTES_INDEX;
+  const savings = arrayBytes - indexedBytes;
+  const positive = savings > 0;
+
+  return (
+    <div className="bm-memory">
+      <div className="bm-memory-row">
+        <div className="bm-memory-cell">
+          <span className="bm-memory-name">Without indexing</span>
+          <span className="bm-memory-api">glDrawArrays</span>
+        </div>
+        <code className="bm-memory-val">{arrayBytes} B</code>
+        <span className="bm-memory-sub">{total} verts × {BYTES_PER_VERTEX} B</span>
+      </div>
+
+      <div className="bm-memory-row">
+        <div className="bm-memory-cell">
+          <span className="bm-memory-name">With indexing</span>
+          <span className="bm-memory-api">glDrawElements</span>
+        </div>
+        <code className="bm-memory-val">{indexedBytes} B</code>
+        <span className="bm-memory-sub">
+          {unique} unique × {BYTES_PER_VERTEX} B + {total} idx × {BYTES_INDEX} B
+        </span>
+      </div>
+
+      <div className={`bm-memory-delta ${positive ? 'win' : 'tie'}`}>
+        {positive
+          ? `Saves ${savings} B (${Math.round((savings / arrayBytes) * 100)}%) by deduplicating`
+          : 'No savings — every vertex is unique.'}
+      </div>
+    </div>
+  );
+}
+
+function InterleavedLayout({ obj }: { obj: SceneNode }) {
+  const { total } = dedupCount(obj);
+  const MAX_BLOCKS = 4;
+  const truncated = total > MAX_BLOCKS;
+  const visibleCount = truncated ? Math.min(MAX_BLOCKS - 1, total) : total;
+
+  const blocks: Array<{ idx: number; ellipsis?: boolean; trailing?: boolean }> = [];
+  for (let i = 0; i < visibleCount; i++) blocks.push({ idx: i });
+  if (truncated) {
+    blocks.push({ idx: -1, ellipsis: true });
+    blocks.push({ idx: total - 1, trailing: true });
+  }
+
+  return (
+    <div className="bm-interleaved">
+      <div className="bm-interleaved-row">
+        {blocks.map((b, i) =>
+          b.ellipsis ? (
+            <div key={`gap-${i}`} className="bm-vblock ellipsis" aria-hidden>
+              <span className="bm-vblock-idx">…</span>
+            </div>
+          ) : (
+            <div key={`v-${b.idx}`} className="bm-vblock">
+              <span className="bm-vblock-idx">V{b.idx}</span>
+              <div className="bm-vblock-cells">
+                <span className="bm-cell pos">x</span>
+                <span className="bm-cell pos">y</span>
+                <span className="bm-cell col">r</span>
+                <span className="bm-cell col">g</span>
+                <span className="bm-cell col">b</span>
+              </div>
+            </div>
+          )
+        )}
+      </div>
+      <div className="bm-interleaved-foot">
+        <div className="bm-interleaved-legend">
+          <span><span className="bm-swatch pos" /> position (8 B)</span>
+          <span><span className="bm-swatch col" /> color (12 B)</span>
+        </div>
+        <span className="bm-interleaved-summary">
+          {total} {total === 1 ? 'block' : 'blocks'} × 20 B
+        </span>
+      </div>
+    </div>
+  );
+}
+
+interface FlowProfile {
+  transfers: number[];
+  legend: string;
+  severity: 'high' | 'mid' | 'low';
+}
+
+function flowProfile(mode: RenderingMode, usage: BufferUsage): FlowProfile {
+  if (mode === 'IMMEDIATE') {
+    return {
+      transfers: [1, 2, 3, 4, 5, 6, 7, 8],
+      legend: 'Vertex data is re-issued on every frame, vertex by vertex.',
+      severity: 'high',
+    };
+  }
+  if (mode === 'VERTEX_ARRAY') {
+    return {
+      transfers: [1, 2, 3, 4, 5, 6, 7, 8],
+      legend: 'One batched send per frame — better than immediate, but still continuous traffic.',
+      severity: 'high',
+    };
+  }
+  if (usage === 'STATIC') {
+    return {
+      transfers: [1],
+      legend: 'Sent once on init. The GPU keeps the data for every subsequent frame.',
+      severity: 'low',
+    };
+  }
+  if (usage === 'DYNAMIC') {
+    return {
+      transfers: [1, 4, 7],
+      legend: 'Sent at init and whenever the data changes — sparse traffic afterwards.',
+      severity: 'mid',
+    };
+  }
+  return {
+    transfers: [1, 2, 3, 4, 5, 6, 7, 8],
+    legend: 'Re-sent every frame — fast on the GPU side but heavy for short-lived data.',
+    severity: 'high',
+  };
+}
+
+function BufferFlow({ profile }: { profile: FlowProfile }) {
+  const frames = 8;
+  const transferSet = useMemo(() => new Set(profile.transfers), [profile.transfers]);
+
+  return (
+    <div className={`bm-flow severity-${profile.severity}`}>
+      <div className="bm-flow-row">
+        <span className="bm-flow-axis">CPU</span>
+        <div className="bm-flow-track">
+          {Array.from({ length: frames }).map((_, i) => (
+            <div
+              key={i}
+              className={`bm-flow-cell ${transferSet.has(i + 1) ? 'send' : ''}`}
+              title={`Frame ${i + 1}${transferSet.has(i + 1) ? ' — upload' : ''}`}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="bm-flow-arrows">
+        <span className="bm-flow-axis-blank" />
+        <div className="bm-flow-arrows-track">
+          {Array.from({ length: frames }).map((_, i) => (
+            <span key={i} className={`bm-flow-arrow ${transferSet.has(i + 1) ? 'on' : ''}`}>↓</span>
+          ))}
+        </div>
+      </div>
+      <div className="bm-flow-row">
+        <span className="bm-flow-axis">GPU</span>
+        <div className="bm-flow-track">
+          {Array.from({ length: frames }).map((_, i) => (
+            <div key={i} className="bm-flow-cell gpu" />
+          ))}
+        </div>
+      </div>
+      <div className="bm-flow-foot">
+        <span className="bm-flow-frames">8 frames →</span>
+        <span className="bm-flow-legend">{profile.legend}</span>
+      </div>
+    </div>
+  );
+}
+
+interface MapStep {
+  code: string;
+  caption: string;
+  mapped: boolean;
+  cursor: number | null;
+  written: number[];
+}
+
+const BUFFER_CELLS = 8;
+const MAP_STEPS: MapStep[] = [
+  {
+    code: 'glBindBuffer(GL_ARRAY_BUFFER, vbo);',
+    caption: 'Bind the VBO. Now subsequent buffer operations target this object.',
+    mapped: false,
+    cursor: null,
+    written: [],
+  },
+  {
+    code: 'float* ptr = (float*)\n  glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);',
+    caption: 'Map the buffer. The driver hands back a pointer to GPU memory you can write to directly — no upload, no copy.',
+    mapped: true,
+    cursor: 0,
+    written: [],
+  },
+  {
+    code: 'ptr[0] = 0.5f;',
+    caption: 'Write through the pointer. The first slot is updated in place.',
+    mapped: true,
+    cursor: 1,
+    written: [0],
+  },
+  {
+    code: 'ptr[1] = 0.7f;',
+    caption: 'Advance and write again. C pointer arithmetic moves the cursor forward; each write modifies GPU memory directly.',
+    mapped: true,
+    cursor: 2,
+    written: [0, 1],
+  },
+  {
+    code: 'ptr[2] = -0.3f;\nptr[3] = 0.2f;',
+    caption: 'Continue writing only the cells that need to change. Untouched cells keep their previous values — no full re-upload required.',
+    mapped: true,
+    cursor: 4,
+    written: [0, 1, 2, 3],
+  },
+  {
+    code: 'glUnmapBuffer(GL_ARRAY_BUFFER);',
+    caption: 'Unmap to commit. The pointer becomes invalid; the driver finalizes the writes and the buffer is ready for the next draw call.',
+    mapped: false,
+    cursor: null,
+    written: [0, 1, 2, 3],
+  },
+];
+
+export const DMA_TOTAL_STEPS = MAP_STEPS.length;
+
+interface MapBufferDiagramProps {
+  drivenStep?: number | null;
+}
+
+function MapBufferDiagram({ drivenStep }: MapBufferDiagramProps) {
+  const [internalStepIdx, setInternalStepIdx] = useState(0);
+  const [playing, setPlaying] = useState(false);
+
+  const isDriven = typeof drivenStep === 'number';
+  const stepIdx = isDriven
+    ? Math.max(0, Math.min(MAP_STEPS.length - 1, drivenStep!))
+    : internalStepIdx;
+
+  const step = MAP_STEPS[stepIdx];
+  const isFirst = stepIdx === 0;
+  const isLast = stepIdx === MAP_STEPS.length - 1;
+
+  // React pattern to adjust state during render instead of inside an Effect
+  if (playing && (isDriven || isLast)) {
+    setPlaying(false);
+  }
+
+  useEffect(() => {
+    // We already adjust `playing` during render above, so we only 
+    // care if we are actively playing and not at the end.
+    if (isDriven || !playing || isLast) return;
+
+    const t = window.setTimeout(
+      () => setInternalStepIdx((i) => Math.min(i + 1, MAP_STEPS.length - 1)),
+      1600,
+    );
+    return () => window.clearTimeout(t);
+  }, [playing, isLast, isDriven]);
+
+  const writtenSet = useMemo(() => new Set(step.written), [step.written]);
+
+  return (
+    <div className="bm-dma">
+      {/* Interactive Diagram */}
+      <div className="bm-dma-stage" data-mapped={step.mapped ? 'true' : 'false'}>
+        <div className="bm-dma-pointer-row">
+          <span className={`bm-dma-pointer-label ${step.mapped ? 'live' : 'dead'}`}>
+            {step.mapped ? 'ptr →' : 'ptr (invalid)'}
+          </span>
+          <div className="bm-dma-track">
+            {Array.from({ length: BUFFER_CELLS }).map((_, i) => {
+              const isCursor = step.cursor === i;
+              const isPastEnd = step.cursor === BUFFER_CELLS && i === BUFFER_CELLS - 1;
+              return (
+                <div key={i} className="bm-dma-caret-slot">
+                  {(isCursor || (isPastEnd && step.mapped)) && (
+                    <span
+                      className="bm-dma-caret"
+                      style={{
+                        transform:
+                          step.cursor === BUFFER_CELLS
+                            ? 'translateX(50%)'
+                            : 'translateX(0)',
+                      }}
+                    >
+                      ▼
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="bm-dma-buffer-row">
+          <span className="bm-dma-buffer-label">VBO</span>
+          <div className="bm-dma-track">
+            {Array.from({ length: BUFFER_CELLS }).map((_, i) => {
+              const written = writtenSet.has(i);
+              const atCursor = step.mapped && step.cursor === i;
+              return (
+                <div
+                  key={i}
+                  className={`bm-dma-cell ${written ? 'written' : ''} ${atCursor ? 'at-cursor' : ''}`}
+                  title={`Cell ${i}${written ? ' (written)' : ''}`}
+                >
+                  <span className="bm-dma-cell-idx">{i}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="bm-dma-state-row">
+          <span className={`bm-dma-state ${step.mapped ? 'mapped' : 'unmapped'}`}>
+            <span className="bm-dma-state-dot" />
+            {step.mapped ? 'mapped' : 'unmapped'}
+          </span>
+          <span className="bm-dma-step-counter">
+            Step <strong>{stepIdx + 1}</strong> / {MAP_STEPS.length}
+          </span>
+        </div>
+      </div>
+
+      {/* Code Callout */}
+      <div className="bm-dma-callout">
+        <pre className="bm-dma-code">{step.code}</pre>
+        <p className="bm-dma-caption">{step.caption}</p>
+      </div>
+
+      {/* Controls */}
+      {isDriven ? (
+        <div className="bm-dma-driven-badge" role="status">
+          <span className="bm-dma-driven-dot" />
+          Driven by lesson
+        </div>
+      ) : (
+        <div className="bm-dma-controls">
+          <button
+            type="button"
+            className="bm-dma-ctrl"
+            onClick={() => { setPlaying(false); setInternalStepIdx(0); }}
+            title="Reset"
+          >
+            <RotateCcw size={11} />
+          </button>
+
+          <button
+            type="button"
+            className="bm-dma-ctrl"
+            onClick={() => {
+              setPlaying(false);
+              setInternalStepIdx((i) => Math.max(0, i - 1));
+            }}
+            disabled={isFirst}
+            title="Previous step"
+          >
+            <ChevronLeft size={12} />
+          </button>
+
+          <button
+            type="button"
+            className="bm-dma-ctrl primary"
+            onClick={() => {
+              if (isLast) {
+                setInternalStepIdx(0);
+                setPlaying(true);
+              } else {
+                setPlaying((p) => !p);
+              }
+            }}
+            title={playing ? 'Pause' : 'Play'}
+          >
+            {playing ? <Pause size={11} /> : <Play size={11} />}
+            <span>{isLast && !playing ? 'Replay' : playing ? 'Pause' : 'Play'}</span>
+          </button>
+
+          <button
+            type="button"
+            className="bm-dma-ctrl"
+            onClick={() => {
+              setPlaying(false);
+              setInternalStepIdx((i) => Math.min(MAP_STEPS.length - 1, i + 1));
+            }}
+            disabled={isLast}
+            title="Next step"
+          >
+            <ChevronRight size={12} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DmaSection({
+  mode,
+  drivenStep,
+}: {
+  mode: RenderingMode;
+  drivenStep: number | null;
+}) {
+  const isFocused = drivenStep !== null;
+
+  if (mode !== 'VBO' && drivenStep === null) {
+    return (
+      <Section title="Direct Memory Access" isFocused={isFocused}>
+        <div className="bm-dma-inactive">
+          <p className="explanation">
+            <code>glMapBuffer</code> only applies to <strong>VBO</strong> mode — it gives you a
+            raw pointer into GPU memory so you can edit a buffer in place.
+          </p>
+          <p className="bm-dma-inactive-hint">
+            Switch this object to VBO to step through the mapping lifecycle.
+          </p>
+        </div>
+      </Section>
+    );
+  }
+
+  return (
+    <Section title="Direct Memory Access" isFocused={isFocused}>
+      <p className="explanation">
+        <code>glMapBuffer</code> hands you a pointer into GPU memory.
+        {drivenStep === null && ' Step through to watch where the pointer lands and which cells get rewritten.'}
+      </p>
+      <MapBufferDiagram drivenStep={drivenStep} />
+    </Section>
+  );
+}
+
+export default function BuffersMathContent() {
+  const objects = useVamsStore((s) => s.objects);
+  const selectedObjectId = useVamsStore((s) => s.selectedObjectId);
+  const dmaDriverStep = useVamsStore((s) => s.dmaDriverStep);
+
+  const selected = objects.find((o) => o.id === selectedObjectId);
+
+  if (!selected) {
+    if (dmaDriverStep !== null) {
+      return (
+        <div className="primitives-math buffers-math">
+          <DmaSection mode={'VBO'} drivenStep={dmaDriverStep} />
+        </div>
+      );
+    }
+    return (
+      <div className="empty-state">
+        Select a primitive to inspect its memory footprint and GPU upload pattern.
+      </div>
+    );
+  }
+
+  if (!isPrimitive(selected)) {
+    return (
+      <div className="empty-state">
+        Buffer math applies to drawing primitives only.
+      </div>
+    );
+  }
+
+  const mode: RenderingMode = selected.renderingMode ?? 'IMMEDIATE';
+  const usage: BufferUsage = selected.bufferUsage ?? 'STATIC';
+  const profile = flowProfile(mode, usage);
+
+  return (
+    <div className="primitives-math buffers-math">
+      {/* Current Output Code */}
+      <CurrentDrawCall obj={selected} mode={mode} />
+
+      <Section title="Memory Footprint">
+        <MemoryFootprint obj={selected} />
+      </Section>
+
+      {selected.vertices.length >= 2 && (
+        <Section title="Array vs Indexed">
+          <MemoryComparison obj={selected} />
+        </Section>
+      )}
+
+      <Section title="Layout: Interleaved">
+        <p className="explanation">
+          Position and color are packed together, one block per vertex, so the GPU fetches both
+          in a single read.
+        </p>
+        <InterleavedLayout obj={selected} />
+      </Section>
+
+      <Section title={
+        mode === 'IMMEDIATE'    ? 'CPU → GPU Traffic — Immediate'    :
+        mode === 'VERTEX_ARRAY' ? 'CPU → GPU Traffic — Vertex Array' :
+                                  `CPU → GPU Traffic — VBO · ${usage}`
+      }>
+        <BufferFlow profile={profile} />
+      </Section>
+
+      <DmaSection mode={mode} drivenStep={dmaDriverStep} />
+    </div>
+  );
+}

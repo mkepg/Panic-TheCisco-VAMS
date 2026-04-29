@@ -43,17 +43,22 @@ Based on the `plan.md` and the current state of the repository, here is the comp
 
 ---
 
-## Epic: Stage 3 — Buffers (Status: To Do)
+## Epic: Stage 3 — Buffers (Status: Done)
 **Purpose:** Memory management, vertex arrays, VBOs, usage hints, direct memory access.
 
-- [ ] **Rendering Mode Selector:** Toggle between Immediate, Vertex Array, and VBO modes per object.
-- [ ] **Buffer Usage Selector:** Select `GL_STATIC_DRAW`, `GL_DYNAMIC_DRAW`, `GL_STREAM_DRAW` (VBO only).
-- [ ] **Math Panel — Buffer Flow:** Visual diagram of data transfer between CPU and GPU over a timeline.
-- [ ] **Math Panel — DMA:** Visual pointer diagram for direct memory access (`glMapBuffer`).
-- [ ] **Math Panel — Size Calcs:** Buffer size formula and array vs. indexed savings display.
-- [ ] **Math Panel — Interleaved Layout:** Diagram for combined position + color buffers.
-- [ ] **Demos (4 Minimum):** Immediate Mode, Converting to Vertex Arrays, VBOs: Send Once, Buffer Usage Hints, glMapBuffer.
-- [ ] **Exercises (4 Minimum):** Switch to VBO, Use Static for Unchanging Data, Reduce Memory with Indexed Drawing, Pick the Right Usage Hint.
+- [x] **Rendering Mode Selector:** Per-object Immediate / Vertex Array / VBO toggle.
+- [x] **Buffer Usage Selector:** STATIC / DYNAMIC / STREAM, shown only for VBO objects.
+- [x] **Indexed Drawing Toggle:** Deduplicates vertices and switches to glDrawElements.
+- [x] **Code Generator — init():** Always-emitted one-time setup function; VBO uploads are hoisted into it.
+- [x] **Code Generator — Modes:** Three structurally distinct emission paths driven by the per-object mode.
+- [x] **Math Panel — Memory Footprint:** Live vertex count × 20 B calculation.
+- [x] **Math Panel — Array vs Indexed:** Side-by-side byte comparison with savings delta.
+- [x] **Math Panel — Interleaved Layout:** Visual diagram of position + color packing.
+- [x] **Math Panel — Buffer Flow Timeline:** Adapts to STATIC / DYNAMIC / STREAM.
+- [x] **Math Panel — DMA Pointer Diagram:** Step-through visualization of the glMapBuffer lifecycle with animated caret, written-cell highlights, mapped/unmapped state, code call-out, and play / step / reset controls.
+- [x] **Demos (5):** Immediate Mode, Vertex Arrays, VBOs, Usage Hints, glMapBuffer.
+- [x] **Exercises (4):** Switch to VBO, Use Static, Indexed Drawing, Pick the Hint.
+- [x] **Project I/O round-trip:** New per-object fields persist via schema v4.
 
 ---
 
@@ -72,5 +77,6 @@ Untouched — see `plan.md` for full scope.
 
 ## Epic: Quality, Milestones & Technical Debt (Ongoing)
 - [x] **Constraint Audit (Stage 2):** No "lighting" or "3D" terminology in any new strings or generated code.
+- [x] **Constraint Audit (Stage 3):** All buffer/memory framing avoids deferred-feature language.
 - [ ] **M1 Release:** Polish Stage 1 for initial distribution to the FEU Tech course.
 - [ ] **M2 Release Gate:** Collect feedback from at least 5 students and the instructor before proceeding past Stage 2.

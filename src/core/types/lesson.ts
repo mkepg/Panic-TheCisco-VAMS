@@ -31,6 +31,13 @@ export interface LessonStep {
   codeHighlightTarget?: string;
   exercise?: ExerciseWidget;
   focusPanel?: string; // Targets a specific CollapsibleSection panelId
+
+  /**
+   * Drives the Direct Memory Access pointer diagram in the Buffers math panel.
+   * When set, the diagram shows this step (0-indexed) and hides its own controls.
+   * When omitted/null, the diagram falls back to its standalone state.
+   */
+  dmaStep?: number | null;
 }
 
 export interface Lesson {

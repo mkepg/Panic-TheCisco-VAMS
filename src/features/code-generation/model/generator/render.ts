@@ -1,5 +1,6 @@
 import type { SceneNode, Vertex } from '@/core/types/scene';
 import { sanitizeName, hexToGlColor, hexToGlByteColor, getGlPrimitive } from './utils';
+import { generateVertexArrayDrawBody, generateVBODrawBody } from './buffers';
 
 const isLine = (t: SceneNode['type']): boolean =>
   t === 'LINES' || t === 'LINE_STRIP' || t === 'LINE_LOOP';
@@ -12,7 +13,30 @@ function emitColor(v: Vertex, colorMode: 'FLOAT' | 'BYTE' | undefined, indent = 
   return `${indent}glColor3f(${hexToGlColor(v.color)});\n`;
 }
 
+/**
+ * Stage 3 dispatcher. Routes each object to the right emission path
+ * based on its rendering mode. GROUP and TEXT always use the legacy
+ * immediate-mode path because those types don't participate in buffer
+ * objects.
+ */
 export const generateObjectDrawBody = (
+  object: SceneNode,
+  allObjects: SceneNode[]
+): string => {
+  if (object.type === 'GROUP' || object.type === 'TEXT') {
+    return generateImmediateDrawBody(object, allObjects);
+  }
+  const mode = object.renderingMode ?? 'IMMEDIATE';
+  if (mode === 'VERTEX_ARRAY') return generateVertexArrayDrawBody(object);
+  if (mode === 'VBO')          return generateVBODrawBody(object);
+  return generateImmediateDrawBody(object, allObjects);
+};
+
+/* ------------------------------------------------------------------ */
+/*  Immediate-mode body — Stage 1/2 behaviour, kept verbatim          */
+/* ------------------------------------------------------------------ */
+
+const generateImmediateDrawBody = (
   object: SceneNode,
   allObjects: SceneNode[]
 ): string => {

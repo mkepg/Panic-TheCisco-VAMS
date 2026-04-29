@@ -104,6 +104,8 @@ export default function LessonBar() {
       const newStep = lesson.steps[currentStepIndex];
       if (newStep.action) newStep.action(useVamsStore.getState());
       store.setLessonFocusPanel(newStep.focusPanel || null);
+      // Drive (or release) the DMA pointer diagram for Stage 3 demos.
+      store.setDmaDriverStep(newStep.dmaStep ?? null);
     } else {
       useVamsStore.setState({
         objects: [],
@@ -118,6 +120,7 @@ export default function LessonBar() {
         if (pastStep.action) pastStep.action(useVamsStore.getState());
       }
       store.setLessonFocusPanel(lesson.steps[currentStepIndex].focusPanel || null);
+      store.setDmaDriverStep(lesson.steps[currentStepIndex].dmaStep ?? null);
     }
 
     store.endBatch();

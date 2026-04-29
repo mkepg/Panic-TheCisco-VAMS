@@ -2,6 +2,7 @@ import type { SceneNode } from "@/core/types/scene";
 import { sanitizeName } from './generator/utils';
 import { generateState } from './generator/state';
 import { generateObjectDrawBody } from './generator/render';
+import { generateBufferGlobals, generateInitBody } from './generator/buffers';
 
 export interface RegisteredCallback {
   kind: 'keyboard' | 'mouse' | 'reshape' | 'motion' | 'idle';
@@ -140,10 +141,15 @@ export const generateAppOutput = (
 
   fullCode += generateState(objectsToDeclare.length > 0 ? visibleObjects : []);
 
+  // Stage 3: vertex arrays, index arrays, VBO handles
+  fullCode += generateBufferGlobals(visibleObjects);
+
+  // Forward declarations
   objectsToDeclare.forEach(obj => {
     fullCode += `void draw_${sanitizeName(obj.name)}();\n`;
   });
   if (objectsToDeclare.length > 0) fullCode += `\n`;
+  fullCode += `void init();\n\n`;
 
   fullCode += generateCallbackForwardDecls(callbacks);
 
@@ -169,6 +175,12 @@ export const generateAppOutput = (
   fullCode += `    glutSwapBuffers();\n`;
   fullCode += `}\n\n`;
 
+  // Stage 3: init() — one-time GPU setup, runs before glutMainLoop.
+  fullCode += `// One-time setup, called once before the main loop\n`;
+  fullCode += `void init()\n{\n`;
+  fullCode += generateInitBody(visibleObjects);
+  fullCode += `}\n\n`;
+
   fullCode += generateCallbackStubs(callbacks);
 
   const bgR = (parseInt(canvasBackgroundColor.slice(1, 3), 16) / 255).toFixed(2);
@@ -181,6 +193,7 @@ export const generateAppOutput = (
   fullCode += `    glutInitWindowSize(${canvasSize.width}, ${canvasSize.height});\n`;
   fullCode += `    glutCreateWindow("VAMS Preview");\n`;
   fullCode += `    glClearColor(${bgR}f, ${bgG}f, ${bgB}f, 1.0f);\n\n`;
+  fullCode += `    init();\n\n`;
 
   fullCode += `    glutDisplayFunc(display);\n`;
   fullCode += generateCallbackRegistrations(callbacks);

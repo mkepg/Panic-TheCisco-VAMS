@@ -117,6 +117,10 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         // Sensible defaults for line primitives; harmless on others (renderers ignore them).
         lineWidth: isLinePrimitive(type) ? 1 : undefined,
         lineStipple: null,
+        // Stage 3 defaults — generated code remains identical to Stage 2 output.
+        renderingMode: 'IMMEDIATE',
+        bufferUsage: 'STATIC',
+        useIndexed: false,
       };
       return {
         objects: [newObj, ...state.objects],
@@ -457,6 +461,38 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
     get().pushToHistory();
     set((state) => ({
       objects: state.objects.map((o) => (o.id === id ? { ...o, lineStipple: stipple } : o)),
+    }));
+  },
+
+  /* ------------------------ Stage 3 — Buffer ops ------------------------- */
+
+  updateRenderingMode: (id, mode) => {
+    get().pushToHistory();
+    set((state) => ({
+      objects: state.objects.map((o) =>
+        o.id === id
+          ? {
+              ...o,
+              renderingMode: mode,
+              // VBO objects need a default usage hint if one wasn't set.
+              bufferUsage: mode === 'VBO' ? (o.bufferUsage ?? 'STATIC') : o.bufferUsage,
+            }
+          : o,
+      ),
+    }));
+  },
+
+  updateBufferUsage: (id, usage) => {
+    get().pushToHistory();
+    set((state) => ({
+      objects: state.objects.map((o) => (o.id === id ? { ...o, bufferUsage: usage } : o)),
+    }));
+  },
+
+  updateUseIndexed: (id, useIndexed) => {
+    get().pushToHistory();
+    set((state) => ({
+      objects: state.objects.map((o) => (o.id === id ? { ...o, useIndexed } : o)),
     }));
   },
 });

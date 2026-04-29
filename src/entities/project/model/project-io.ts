@@ -1,6 +1,7 @@
 import type { VamsState } from '@/core/store/types';
 import type {
   AxisVisibility,
+  BufferUsage,
   ColorMode,
   GlutCallbackKind,
   InteractionMode,
@@ -8,6 +9,7 @@ import type {
   LineStipple,
   PendingVertex,
   PrimitiveType,
+  RenderingMode,
   ShadingModel,
   TransformState,
   SceneNode,
@@ -16,10 +18,10 @@ import type {
   ViewportLimits,
 } from '@/core/types/scene';
 
-// Bumped from 2 → 3 to capture per-object color mode, line styling, and
-// the registered callbacks map. Loaders for v2 files still work because every
-// new field has a sensible fallback.
-export const VAMS_PROJECT_SCHEMA_VERSION = 3 as const;
+// Bumped to 4 — captures rendering mode, buffer usage hint, and the indexed-drawing
+// flag introduced in Stage 3. Older save files (v2/v3) still load cleanly because
+// every new field has a sensible default fallback.
+export const VAMS_PROJECT_SCHEMA_VERSION = 4 as const;
 
 export type VamsProjectData = {
   objects: SceneNode[];
@@ -90,6 +92,16 @@ function toString(v: unknown, fallback: string): string { return typeof v === 's
 function toTheme(v: unknown): 'dark' | 'light' { return v === 'light' ? 'light' : 'dark'; }
 function toShading(v: unknown): ShadingModel { return v === 'FLAT' ? 'FLAT' : 'SMOOTH'; }
 function toColorMode(v: unknown): ColorMode { return v === 'BYTE' ? 'BYTE' : 'FLOAT'; }
+function toRenderingMode(v: unknown): RenderingMode {
+  if (v === 'VERTEX_ARRAY') return 'VERTEX_ARRAY';
+  if (v === 'VBO') return 'VBO';
+  return 'IMMEDIATE';
+}
+function toBufferUsage(v: unknown): BufferUsage {
+  if (v === 'DYNAMIC') return 'DYNAMIC';
+  if (v === 'STREAM') return 'STREAM';
+  return 'STATIC';
+}
 function toInteractionMode(v: unknown): InteractionMode {
   if (v === 'CUSTOM_SHAPE_PLACE') return 'VERTEX_PLACE';
   const allowed: InteractionMode[] = ['SELECT', 'VERTEX_PLACE', 'VERTEX_EDIT'];
@@ -168,6 +180,10 @@ function sanitizeObject(v: unknown, idx: number): SceneNode | null {
       ? Math.max(0.5, Math.min(20, v.lineWidth))
       : undefined,
     lineStipple: v.lineStipple == null ? null : sanitizeStipple(v.lineStipple),
+    // Stage 3 additions
+    renderingMode: toRenderingMode(v.renderingMode),
+    bufferUsage: toBufferUsage(v.bufferUsage),
+    useIndexed: toBoolean(v.useIndexed, false),
   };
 }
 

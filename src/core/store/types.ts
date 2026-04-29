@@ -12,6 +12,8 @@ import type {
   LineStipple,
   CallbackRegistration,
   GlutCallbackKind,
+  RenderingMode,
+  BufferUsage,
 } from '@/core/types/scene';
 
 export interface SceneSlice {
@@ -38,6 +40,11 @@ export interface SceneSlice {
   updateObjectColorMode: (id: string, mode: ColorMode) => void;
   updateLineWidth: (id: string, width: number) => void;
   updateLineStipple: (id: string, stipple: LineStipple | null) => void;
+
+  /* Stage 3 — per-object buffer settings */
+  updateRenderingMode: (id: string, mode: RenderingMode) => void;
+  updateBufferUsage: (id: string, usage: BufferUsage) => void;
+  updateUseIndexed: (id: string, useIndexed: boolean) => void;
 }
 
 export interface InteractionSlice {
@@ -132,11 +139,20 @@ export interface LessonSlice {
   callbacksBackup: Record<GlutCallbackKind, string> | null;
   canvasBackgroundColorBackup: string | null;
   lessonFocusPanel: string | null;
+
+  /**
+   * Lesson-driven step index for the DMA pointer diagram.
+   * null → diagram operates standalone with its own controls.
+   * number → diagram displays this step and hides its controls.
+   */
+  dmaDriverStep: number | null;
+
   setActiveLesson: (lessonId: string | null) => void;
   setCurrentStep: (index: number) => void;
   setExerciseAnswer: (stepId: string, answer: unknown) => void;
   setSuccessState: (success: boolean) => void;
   setLessonFocusPanel: (panelId: string | null) => void;
+  setDmaDriverStep: (index: number | null) => void;
   clearLessonState: () => void;
 }
 

@@ -35,9 +35,8 @@ export const useVamsStore = create<VamsState>()(
     }),
     {
       name: 'vams-storage',
-      // Bumped to 4 — Stage 2 added per-object color mode, line styling,
-      // and registered GLUT callbacks.
-      version: 4,
+      // Bumped to 5 — Stage 3 added per-object renderingMode, bufferUsage, useIndexed.
+      version: 5,
 
       onRehydrateStorage: () => {
         return (_rehydratedState, error) => {

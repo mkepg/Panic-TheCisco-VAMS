@@ -1,0 +1,406 @@
+import type { Lesson } from '@/core/types/lesson';
+import { useVamsStore } from '@/core/store';
+
+/* ----------------------------------------------------------------------- */
+/*  Notes for Stage 3 lesson authoring                                      */
+/* ----------------------------------------------------------------------- */
+/*                                                                         */
+/*  • The generated program nests glBegin/glEnd inside a per-object draw   */
+/*    function (e.g. draw_TRIANGLES_1) which is called from draw(), which  */
+/*    is called from display(). Lesson narration must respect that         */
+/*    structure — never claim glBegin "lives in display()".                */
+/*                                                                         */
+/*  • The DMA pointer diagram in the math panel is keyed off `dmaStep` on  */
+/*    each step. Use that to keep narration and visualization in lockstep. */
+/*    Indices map 1:1 to MAP_STEPS in BuffersMathContent.tsx:              */
+/*       0 → bind                                                           */
+/*       1 → glMapBuffer (caret on cell 0)                                  */
+/*       2 → ptr[0] = … (caret on cell 1, cell 0 written)                   */
+/*       3 → ptr[1] = … (caret on cell 2, cells 0–1 written)                */
+/*       4 → ptr[2..3] = … (caret on cell 4, cells 0–3 written)             */
+/*       5 → glUnmapBuffer (pointer invalid, all written cells stay green)  */
+/*                                                                         */
+/* ----------------------------------------------------------------------- */
+
+export const BUFFERS_LESSONS: Record<string, Lesson> = {
+  'buffers-demo-1': {
+    id: 'buffers-demo-1',
+    title: 'Immediate Mode: Every Frame',
+    type: 'demo',
+    section: 'Buffers',
+    steps: [
+      {
+        narration: "Let's begin with how OpenGL 1.x has worked since the start: immediate mode.",
+        waitForUser: true,
+        action: (state) => {
+          state.addCustomObject('TRIANGLES', [
+            { x: -0.5, y: -0.4 }, { x: 0.5, y: -0.4 }, { x: 0, y: 0.5 },
+          ]);
+          const obj = useVamsStore.getState().objects[0];
+          if (obj) {
+            useVamsStore.getState().selectObject(obj.id);
+            useVamsStore.getState().updateRenderingMode(obj.id, 'IMMEDIATE');
+          }
+        },
+      },
+      {
+        narration: "VAMS wraps each object in its own draw_*() function. Find draw_TRIANGLES_1() in the code panel — that's where glBegin and glEnd live.",
+        waitForUser: true,
+      },
+      {
+        narration: "Each frame, display() calls draw(), which calls draw_TRIANGLES_1(), which re-issues every glVertex2f. The CPU is doing real work for each vertex, every single frame.",
+        waitForUser: true,
+      },
+      {
+        narration: "Three vertices is fine. Three thousand is wasteful — same data, sent 60 times a second. That's what the next two modes solve.",
+        waitForUser: true,
+      },
+    ],
+  },
+
+  'buffers-demo-2': {
+    id: 'buffers-demo-2',
+    title: 'Converting to Vertex Arrays',
+    type: 'demo',
+    section: 'Buffers',
+    steps: [
+      {
+        narration: "Vertex arrays move the vertex list out of glBegin/glEnd and into a flat C array, drawn with one call.",
+        waitForUser: true,
+        action: (state) => {
+          state.addCustomObject('TRIANGLES', [
+            { x: -0.5, y: -0.4 }, { x: 0.5, y: -0.4 }, { x: 0, y: 0.5 },
+          ]);
+          const obj = useVamsStore.getState().objects[0];
+          if (obj) useVamsStore.getState().selectObject(obj.id);
+        },
+      },
+      {
+        narration: "Watch the code panel as we switch the rendering mode.",
+        waitForUser: true,
+        focusPanel: 'buffers-panel',
+        action: (state) => {
+          const obj = state.objects[0];
+          if (obj) state.updateRenderingMode(obj.id, 'VERTEX_ARRAY');
+        },
+      },
+      {
+        narration: "Two big changes: vertex data is now declared at file scope as verts_TRIANGLES_1[], and the draw function uses one glDrawArrays call instead of N glVertex2f calls.",
+        waitForUser: true,
+      },
+      {
+        narration: "Look at the math panel's CPU → GPU Traffic timeline. The data still travels every frame — but now in one batched send instead of vertex-by-vertex.",
+        waitForUser: true,
+      },
+    ],
+  },
+
+  'buffers-demo-3': {
+    id: 'buffers-demo-3',
+    title: 'VBOs: Send Once',
+    type: 'demo',
+    section: 'Buffers',
+    steps: [
+      {
+        narration: "A Vertex Buffer Object lives on the GPU. Once you upload it, drawing means binding it — no more CPU→GPU traffic for the vertex data.",
+        waitForUser: true,
+        action: (state) => {
+          state.addCustomObject('TRIANGLES', [
+            { x: -0.5, y: -0.4 }, { x: 0.5, y: -0.4 }, { x: 0, y: 0.5 },
+          ]);
+          const obj = useVamsStore.getState().objects[0];
+          if (obj) useVamsStore.getState().selectObject(obj.id);
+        },
+      },
+      {
+        narration: "Switch the mode to VBO and watch where the heavy lifting moves.",
+        waitForUser: true,
+        focusPanel: 'buffers-panel',
+        action: (state) => {
+          const obj = state.objects[0];
+          if (obj) state.updateRenderingMode(obj.id, 'VBO');
+        },
+      },
+      {
+        narration: "Notice how init() now contains glGenBuffers, glBindBuffer, and glBufferData. That setup runs exactly once. After that, the per-object draw function just binds the VBO and draws.",
+        waitForUser: true,
+      },
+      {
+        narration: "Look at the math panel's CPU → GPU Traffic timeline — only frame 1 lights up green. The GPU keeps the data; subsequent frames are pure draw calls.",
+        waitForUser: true,
+      },
+      {
+        narration: "Buffers aren't just for triangles. Let's add a quad in VBO mode to show the same machinery applies to every primitive type.",
+        waitForUser: true,
+        action: (state) => {
+          state.addCustomObject('QUADS', [
+            { x: -0.7, y: 0.55 }, { x: -0.3, y: 0.55 },
+            { x: -0.3, y: 0.85 }, { x: -0.7, y: 0.85 },
+          ]);
+          const obj = useVamsStore.getState().objects[0];
+          if (obj) {
+            useVamsStore.getState().selectObject(obj.id);
+            useVamsStore.getState().updateRenderingMode(obj.id, 'VBO');
+          }
+        },
+      },
+      {
+        narration: "Same code shape — verts_QUADS_1, glGenBuffers in init, bind-and-draw at render time. The pattern is uniform across primitive types.",
+        waitForUser: true,
+      },
+    ],
+  },
+
+  'buffers-demo-4': {
+    id: 'buffers-demo-4',
+    title: 'Buffer Usage Hints',
+    type: 'demo',
+    section: 'Buffers',
+    steps: [
+      {
+        narration: "When you upload a VBO, you also tell OpenGL how often it will change. This is the usage hint.",
+        waitForUser: true,
+        action: (state) => {
+          state.addCustomObject('TRIANGLES', [
+            { x: -0.5, y: -0.4 }, { x: 0.5, y: -0.4 }, { x: 0, y: 0.5 },
+          ]);
+          const obj = useVamsStore.getState().objects[0];
+          if (obj) {
+            useVamsStore.getState().selectObject(obj.id);
+            useVamsStore.getState().updateRenderingMode(obj.id, 'VBO');
+          }
+        },
+      },
+      {
+        narration: "Static — for terrain, logos, anything that never changes. The driver puts it in the fastest read-only memory. The traffic timeline turns green: one send, then silence.",
+        waitForUser: true,
+        focusPanel: 'buffers-panel',
+        action: (state) => {
+          const obj = state.objects[0];
+          if (obj) state.updateBufferUsage(obj.id, 'STATIC');
+        },
+      },
+      {
+        narration: "Dynamic — for things that update sometimes, like a deforming character mesh. The timeline shows occasional sends in blue.",
+        waitForUser: true,
+        focusPanel: 'buffers-panel',
+        action: (state) => {
+          const obj = state.objects[0];
+          if (obj) state.updateBufferUsage(obj.id, 'DYNAMIC');
+        },
+      },
+      {
+        narration: "Stream — for data that's freshly generated every frame, like particles. Every cell lights up orange — almost as expensive as immediate mode for that vertex data.",
+        waitForUser: true,
+        focusPanel: 'buffers-panel',
+        action: (state) => {
+          const obj = state.objects[0];
+          if (obj) state.updateBufferUsage(obj.id, 'STREAM');
+        },
+      },
+      {
+        narration: "Pick the closest match to your real workload. The hint doesn't change correctness — only performance.",
+        waitForUser: true,
+      },
+    ],
+  },
+
+  /* --------------------------------------------------------------------- */
+  /*  Demo 5 — fully rewritten as a lesson-driven walkthrough.             */
+  /*  Each step pairs narration with a `dmaStep` that drives the pointer   */
+  /*  diagram in the math panel.                                            */
+  /* --------------------------------------------------------------------- */
+
+  'buffers-demo-5': {
+    id: 'buffers-demo-5',
+    title: 'glMapBuffer: Direct Memory Access',
+    type: 'demo',
+    section: 'Buffers',
+    steps: [
+      {
+        narration: "VBOs are great for data that rarely changes. But what if you want to update one vertex without re-uploading the whole buffer? You map it.",
+        waitForUser: true,
+        action: (state) => {
+          state.addCustomObject('TRIANGLES', [
+            { x: -0.5, y: -0.4 }, { x: 0.5, y: -0.4 }, { x: 0, y: 0.5 },
+          ]);
+          const obj = useVamsStore.getState().objects[0];
+          if (obj) {
+            useVamsStore.getState().selectObject(obj.id);
+            useVamsStore.getState().updateRenderingMode(obj.id, 'VBO');
+            useVamsStore.getState().updateBufferUsage(obj.id, 'DYNAMIC');
+          }
+        },
+      },
+      {
+        narration: "Step one: bind the buffer. After this, every buffer call talks to this VBO until something else binds.",
+        waitForUser: true,
+        dmaStep: 0,
+      },
+      {
+        narration: "Step two: map it. The driver hands back a raw C pointer into GPU memory — that blue caret in the diagram is your pointer.",
+        waitForUser: true,
+        dmaStep: 1,
+      },
+      {
+        narration: "Step three: ptr[0] = 0.5f. The first slot is rewritten in place — no upload, no copy. Watch cell 0 turn green.",
+        waitForUser: true,
+        dmaStep: 2,
+      },
+      {
+        narration: "Step four: ptr[1] = 0.7f. C pointer arithmetic moves the cursor forward; each write modifies GPU memory directly.",
+        waitForUser: true,
+        dmaStep: 3,
+      },
+      {
+        narration: "Step five: two more writes at once. The cells you don't touch keep their previous values — this is the whole point of mapping.",
+        waitForUser: true,
+        dmaStep: 4,
+      },
+      {
+        narration: "Step six: glUnmapBuffer commits the writes and invalidates the pointer. Notice the green cells stay highlighted — only those slots changed.",
+        waitForUser: true,
+        dmaStep: 5,
+      },
+      {
+        narration: "Now let's actually do this — drag the top vertex of the triangle. Behind the scenes, this is exactly what mapping is for: edit a few values, leave the rest alone.",
+        waitForUser: true,
+        dmaStep: 5,
+        action: (state) => {
+          const obj = state.objects[0];
+          if (obj) state.updateVertexPosition(obj.id, obj.vertices[2].id, 0, 0.7);
+        },
+      },
+      {
+        narration: "That's why mapping pairs so well with DYNAMIC usage — the buffer is expected to change, and you're updating it surgically rather than re-sending it all.",
+        waitForUser: true,
+      },
+    ],
+  },
+
+  /* ----------------------- EXERCISES ----------------------- */
+
+  'buffers-exercise-1': {
+    id: 'buffers-exercise-1',
+    title: 'Switch to VBO',
+    type: 'exercise',
+    section: 'Buffers',
+    steps: [
+      {
+        narration: "I've added a triangle in immediate mode. Switch its rendering mode to VBO.",
+        waitForUser: true,
+        focusPanel: 'buffers-panel',
+        action: (state) => {
+          state.addCustomObject('TRIANGLES', [
+            { x: -0.5, y: -0.4 }, { x: 0.5, y: -0.4 }, { x: 0, y: 0.5 },
+          ]);
+          const obj = useVamsStore.getState().objects[0];
+          if (obj) useVamsStore.getState().selectObject(obj.id);
+        },
+        successCheck: (state) => {
+          const obj = state.objects.find(o => o.id === state.selectedObjectId);
+          return obj?.renderingMode === 'VBO';
+        },
+      },
+      {
+        narration: "Done. The GPU upload moved into init() and the draw function now just binds the buffer — that's the whole point of a VBO.",
+        waitForUser: true,
+      },
+    ],
+  },
+
+  'buffers-exercise-2': {
+    id: 'buffers-exercise-2',
+    title: 'Use Static for Unchanging Data',
+    type: 'exercise',
+    section: 'Buffers',
+    steps: [
+      {
+        narration: "This logo never moves and never deforms. Set the right usage hint.",
+        waitForUser: true,
+        focusPanel: 'buffers-panel',
+        action: (state) => {
+          state.addCustomObject('QUADS', [
+            { x: -0.4, y: -0.4 }, { x: 0.4, y: -0.4 }, { x: 0.4, y: 0.4 }, { x: -0.4, y: 0.4 },
+          ]);
+          const obj = useVamsStore.getState().objects[0];
+          if (obj) {
+            useVamsStore.getState().selectObject(obj.id);
+            useVamsStore.getState().updateRenderingMode(obj.id, 'VBO');
+            useVamsStore.getState().updateBufferUsage(obj.id, 'DYNAMIC');
+          }
+        },
+        successCheck: (state) => {
+          const obj = state.objects.find(o => o.id === state.selectedObjectId);
+          return obj?.renderingMode === 'VBO' && obj?.bufferUsage === 'STATIC';
+        },
+      },
+      {
+        narration: "GL_STATIC_DRAW — perfect. The driver can park this in fast read-only memory.",
+        waitForUser: true,
+      },
+    ],
+  },
+
+  'buffers-exercise-3': {
+    id: 'buffers-exercise-3',
+    title: 'Reduce Memory with Indexed Drawing',
+    type: 'exercise',
+    section: 'Buffers',
+    steps: [
+      {
+        narration: "Here's a quad drawn as two triangles — six vertices, but only four are unique. Enable indexed drawing to deduplicate.",
+        waitForUser: true,
+        focusPanel: 'buffers-panel',
+        action: (state) => {
+          // A quad as TRIANGLES with the shared diagonal duplicated.
+          state.addCustomObject('TRIANGLES', [
+            { x: -0.4, y: -0.4 }, { x: 0.4, y: -0.4 }, { x: -0.4, y: 0.4 },
+            { x: 0.4, y: -0.4 },  { x: 0.4, y: 0.4 },  { x: -0.4, y: 0.4 },
+          ]);
+          const obj = useVamsStore.getState().objects[0];
+          if (obj) {
+            useVamsStore.getState().selectObject(obj.id);
+            useVamsStore.getState().updateRenderingMode(obj.id, 'VERTEX_ARRAY');
+          }
+        },
+        successCheck: (state) => {
+          const obj = state.objects.find(o => o.id === state.selectedObjectId);
+          return !!obj?.useIndexed;
+        },
+      },
+      {
+        narration: "Look at Array vs Indexed in the math panel — the indexed version stores 4 vertices plus 6 indices instead of 6 full vertices. The code panel now uses glDrawElements.",
+        waitForUser: true,
+      },
+    ],
+  },
+
+  'buffers-exercise-4': {
+    id: 'buffers-exercise-4',
+    title: 'Pick the Right Usage Hint',
+    type: 'exercise',
+    section: 'Buffers',
+    steps: [
+      {
+        narration: "A quick check on what you've learned.",
+        waitForUser: true,
+        exercise: {
+          kind: 'multiple-choice',
+          prompt: "You're writing a particle system that regenerates every frame. Which usage hint fits best?",
+          options: [
+            { id: 'stream',  label: 'GL_STREAM_DRAW' },
+            { id: 'static',  label: 'GL_STATIC_DRAW' },
+            { id: 'dynamic', label: 'GL_DYNAMIC_DRAW' },
+            { id: 'none',    label: 'No hint needed' },
+          ],
+          correctId: 'stream',
+        },
+      },
+      {
+        narration: "Right — Stream tells the driver this data is short-lived. Anything else and you'd waste memory or stall the GPU.",
+        waitForUser: true,
+      },
+    ],
+  },
+};

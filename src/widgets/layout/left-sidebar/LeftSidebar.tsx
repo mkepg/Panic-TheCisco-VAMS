@@ -10,6 +10,7 @@ import ObjectTransformPanel from '@/features/object-transform/ui/ObjectTransform
 import ObjectAppearancePanel from '@/features/object-appearance/ui/ObjectAppearancePanel';
 import LineStylePanel from '@/features/line-style/ui/LineStylePanel';
 import CallbacksPanel from '@/features/callbacks/ui/CallbacksPanel';
+import BuffersPanel from '@/features/buffers/ui/BuffersPanel';
 import './left-sidebar.scss';
 
 export default function LeftSidebar() {
@@ -71,6 +72,10 @@ export default function LeftSidebar() {
         return (
           <div className="tab-pane">
             <SceneHierarchyPanel />
+            <div className="separator" />
+            <CustomShapeBuilderPanel />
+            <div className="separator" />
+            <BuffersPanel />
           </div>
         );
       case 'Transforms':
