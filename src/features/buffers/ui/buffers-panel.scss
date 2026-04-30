@@ -164,6 +164,69 @@
   }
 }
 
+/* ----- Update method tiles (DYNAMIC sub-control) -----
+   Two-column variant of the usage tiles, with an icon accent so the row
+   reads as "edit strategy" rather than another usage hint at a glance. */
+.bp-method-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+}
+
+.bp-method-btn {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 0.15rem 0.5rem;
+  padding: 0.5rem 0.55rem;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid $border-color;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-align: left;
+
+  .bp-method-icon {
+    grid-row: 1 / span 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.3);
+    color: $text-dim;
+  }
+  .bp-method-name {
+    font-family: $font-mono;
+    font-size: 0.72rem;
+    color: $text-main;
+    letter-spacing: 0.02em;
+  }
+  .bp-method-hint {
+    font-size: 0.6rem;
+    color: $text-dim;
+    line-height: 1.35;
+  }
+
+  &:hover {
+    border-color: var(--border-highlight);
+    background: rgba(var(--accent-blue-rgb), 0.04);
+  }
+  &.active {
+    border-color: rgba(var(--accent-blue-rgb), 0.55);
+    background: rgba(var(--accent-blue-rgb), 0.1);
+
+    .bp-method-icon {
+      background: rgba(var(--accent-blue-rgb), 0.22);
+      color: var(--accent-blue-light);
+      box-shadow: 0 0 6px rgba(var(--accent-blue-rgb), 0.4);
+    }
+    .bp-method-name { color: var(--accent-blue-light); }
+  }
+}
+
 /* ----- Indexed toggle ----- */
 .bp-indexed-toggle {
   display: grid;

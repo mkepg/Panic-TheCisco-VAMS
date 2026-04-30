@@ -35,8 +35,12 @@ export const useVamsStore = create<VamsState>()(
     }),
     {
       name: 'vams-storage',
-      // Bumped to 5 — Stage 3 added per-object renderingMode, bufferUsage, useIndexed.
-      version: 5,
+      // Bumped to 6 — Stage 3 follow-up adds per-object `updateMethod` driving
+      // glBufferSubData vs glMapBuffer for VBO+DYNAMIC objects, plus a real
+      // update_buffers() emission. No migration function: zustand will discard
+      // older state, which is safe — the user's project file is the source of
+      // truth and that has its own schema versioning.
+      version: 6,
 
       onRehydrateStorage: () => {
         return (_rehydratedState, error) => {

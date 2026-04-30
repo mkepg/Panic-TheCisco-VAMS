@@ -2,7 +2,12 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Pause, Play, RotateCcw, ChevronLeft, ChevronRight, Pin } from 'lucide-react';
 import { useVamsStore } from '@/core/store';
-import type { SceneNode, RenderingMode, BufferUsage } from '@/core/types/scene';
+import type {
+  BufferUpdateMethod,
+  BufferUsage,
+  RenderingMode,
+  SceneNode,
+} from '@/core/types/scene';
 
 const BYTES_POS   = 8;
 const BYTES_COLOR = 12;
@@ -46,13 +51,13 @@ function Section({ title, children, isFocused }: { title: string; children: Reac
           if (scrollParent) {
             const parentRect = scrollParent.getBoundingClientRect();
             const elRect = el.getBoundingClientRect();
-            
+
             // The exact scroll position to align the tops
             const exactTop = scrollParent.scrollTop + (elRect.top - parentRect.top);
-            
+
             // Ideal position to perfectly center the element
             let targetTop = exactTop - (parentRect.height / 2) + (elRect.height / 2);
-            
+
             // If centering pushes the top out of view (because it's too tall),
             // cap the scroll so it aligns to the top with a comfortable 16px padding
             const topWithPadding = exactTop - 16;
@@ -409,7 +414,7 @@ function MapBufferDiagram({ drivenStep }: MapBufferDiagramProps) {
   }
 
   useEffect(() => {
-    // We already adjust `playing` during render above, so we only 
+    // We already adjust `playing` during render above, so we only
     // care if we are actively playing and not at the end.
     if (isDriven || !playing || isLast) return;
 
@@ -556,33 +561,40 @@ function MapBufferDiagram({ drivenStep }: MapBufferDiagramProps) {
   );
 }
 
-function DmaSection({
+/**
+ * Mapping diagram, contextualized.
+ *
+ * Shows up only when the selected object is in VBO + DYNAMIC + MAP_BUFFER —
+ * i.e. when the *generated code* actually demonstrates mapping. When a
+ * lesson drives the diagram via dmaDriverStep, the lesson always wins.
+ *
+ * Why the gating: previously this section was always visible regardless of
+ * scene state, which made it feel like a disconnected curiosity. Now it
+ * earns its space — switching the update method in the buffers panel makes
+ * this appear and the corresponding code block in the panel light up at
+ * the same time.
+ */
+function MappingSection({
   mode,
+  usage,
+  updateMethod,
   drivenStep,
 }: {
   mode: RenderingMode;
+  usage: BufferUsage;
+  updateMethod: BufferUpdateMethod;
   drivenStep: number | null;
 }) {
   const isFocused = drivenStep !== null;
+  const matches =
+    mode === 'VBO' && usage === 'DYNAMIC' && updateMethod === 'MAP_BUFFER';
 
-  if (mode !== 'VBO' && drivenStep === null) {
-    return (
-      <Section title="Direct Memory Access" isFocused={isFocused}>
-        <div className="bm-dma-inactive">
-          <p className="explanation">
-            <code>glMapBuffer</code> only applies to <strong>VBO</strong> mode — it gives you a
-            raw pointer into GPU memory so you can edit a buffer in place.
-          </p>
-          <p className="bm-dma-inactive-hint">
-            Switch this object to VBO to step through the mapping lifecycle.
-          </p>
-        </div>
-      </Section>
-    );
-  }
+  // Don't render at all unless the scene actually demonstrates mapping or a
+  // lesson is explicitly driving the diagram.
+  if (!matches && drivenStep === null) return null;
 
   return (
-    <Section title="Direct Memory Access" isFocused={isFocused}>
+    <Section title="Mapping the Buffer" isFocused={isFocused}>
       <p className="explanation">
         <code>glMapBuffer</code> hands you a pointer into GPU memory.
         {drivenStep === null && ' Step through to watch where the pointer lands and which cells get rewritten.'}
@@ -599,11 +611,19 @@ export default function BuffersMathContent() {
 
   const selected = objects.find((o) => o.id === selectedObjectId);
 
+  // Lesson-driven diagram with no selection: render only the mapping section
+  // so demos can run from a clean state without forcing the user to pre-select
+  // an object first.
   if (!selected) {
     if (dmaDriverStep !== null) {
       return (
         <div className="primitives-math buffers-math">
-          <DmaSection mode={'VBO'} drivenStep={dmaDriverStep} />
+          <MappingSection
+            mode="VBO"
+            usage="DYNAMIC"
+            updateMethod="MAP_BUFFER"
+            drivenStep={dmaDriverStep}
+          />
         </div>
       );
     }
@@ -624,6 +644,7 @@ export default function BuffersMathContent() {
 
   const mode: RenderingMode = selected.renderingMode ?? 'IMMEDIATE';
   const usage: BufferUsage = selected.bufferUsage ?? 'STATIC';
+  const updateMethod: BufferUpdateMethod = selected.updateMethod ?? 'BUFFER_SUB_DATA';
   const profile = flowProfile(mode, usage);
 
   return (
@@ -657,7 +678,12 @@ export default function BuffersMathContent() {
         <BufferFlow profile={profile} />
       </Section>
 
-      <DmaSection mode={mode} drivenStep={dmaDriverStep} />
+      <MappingSection
+        mode={mode}
+        usage={usage}
+        updateMethod={updateMethod}
+        drivenStep={dmaDriverStep}
+      />
     </div>
   );
 }

@@ -1,8 +1,13 @@
 import './buffers-panel.scss';
-import { Database, Cpu, HardDrive, Hash, Info, Boxes } from 'lucide-react';
+import { Database, Cpu, HardDrive, Hash, Info, Boxes, Pencil, Pointer } from 'lucide-react';
 import { useVamsStore } from '@/core/store';
 import CollapsibleSection from '@/shared/ui/collapsible-section/CollapsibleSection';
-import type { BufferUsage, RenderingMode, SceneNode } from '@/core/types/scene';
+import type {
+  BufferUpdateMethod,
+  BufferUsage,
+  RenderingMode,
+  SceneNode,
+} from '@/core/types/scene';
 
 const NON_PRIMITIVE_TYPES: ReadonlySet<SceneNode['type']> = new Set(['GROUP', 'TEXT']);
 
@@ -32,12 +37,38 @@ const USAGE_OPTIONS: UsageOption[] = [
   { id: 'STREAM',  label: 'Stream',  macro: 'GL_STREAM_DRAW',  hint: 'Updated every frame' },
 ];
 
+interface UpdateMethodOption {
+  id: BufferUpdateMethod;
+  label: string;
+  api: string;
+  hint: string;
+  icon: typeof Pencil;
+}
+
+const UPDATE_METHOD_OPTIONS: UpdateMethodOption[] = [
+  {
+    id: 'BUFFER_SUB_DATA',
+    label: 'Sub Data',
+    api: 'glBufferSubData',
+    hint: 'Push a range of bytes to the GPU',
+    icon: Pencil,
+  },
+  {
+    id: 'MAP_BUFFER',
+    label: 'Map Buffer',
+    api: 'glMapBuffer',
+    hint: 'Edit GPU memory through a pointer',
+    icon: Pointer,
+  },
+];
+
 export default function BuffersPanel() {
   const objects = useVamsStore((s) => s.objects);
   const selectedObjectId = useVamsStore((s) => s.selectedObjectId);
   const updateRenderingMode = useVamsStore((s) => s.updateRenderingMode);
   const updateBufferUsage = useVamsStore((s) => s.updateBufferUsage);
   const updateUseIndexed = useVamsStore((s) => s.updateUseIndexed);
+  const updateUpdateMethod = useVamsStore((s) => s.updateUpdateMethod);
 
   const selected = objects.find((o) => o.id === selectedObjectId);
 
@@ -74,7 +105,11 @@ export default function BuffersPanel() {
 
   const mode: RenderingMode = selected.renderingMode ?? 'IMMEDIATE';
   const usage: BufferUsage = selected.bufferUsage ?? 'STATIC';
+  const updateMethod: BufferUpdateMethod = selected.updateMethod ?? 'BUFFER_SUB_DATA';
   const indexed = !!selected.useIndexed;
+
+  const showUsage = mode === 'VBO';
+  const showUpdateMethod = mode === 'VBO' && usage === 'DYNAMIC';
 
   return (
     <CollapsibleSection
@@ -118,7 +153,7 @@ export default function BuffersPanel() {
         </div>
 
         {/* ---- Buffer Usage Hint (VBO only) ---- */}
-        {mode === 'VBO' && (
+        {showUsage && (
           <div className="bp-block">
             <div className="bp-block-head">
               <span className="bp-block-label">Buffer Usage</span>
@@ -139,6 +174,42 @@ export default function BuffersPanel() {
                   >
                     <span className="bp-usage-name">{opt.label}</span>
                     <span className="bp-usage-hint">{opt.hint}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ---- Update Method (VBO + DYNAMIC only) ----
+             STATIC has no update path. STREAM always re-uploads the whole
+             buffer regardless. The choice between sub-data and map-buffer
+             only meaningfully changes the emitted code for DYNAMIC. */}
+        {showUpdateMethod && (
+          <div className="bp-block">
+            <div className="bp-block-head">
+              <span className="bp-block-label">Update Method</span>
+              <span className="bp-block-hint">
+                {UPDATE_METHOD_OPTIONS.find((u) => u.id === updateMethod)!.api}
+              </span>
+            </div>
+            <div className="bp-method-grid" role="radiogroup" aria-label="Buffer update method">
+              {UPDATE_METHOD_OPTIONS.map((opt) => {
+                const active = updateMethod === opt.id;
+                const Icon = opt.icon;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    className={`bp-method-btn ${active ? 'active' : ''}`}
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => updateUpdateMethod(selected.id, opt.id)}
+                    title={opt.api}
+                  >
+                    <span className="bp-method-icon"><Icon size={13} /></span>
+                    <span className="bp-method-name">{opt.label}</span>
+                    <span className="bp-method-hint">{opt.hint}</span>
                   </button>
                 );
               })}
@@ -176,8 +247,9 @@ export default function BuffersPanel() {
         <div className="bp-note" role="note">
           <Info size={12} className="bp-note-icon" aria-hidden />
           <p>
-            Visual output is identical across modes — switching changes only the
-            generated code. Watch the code panel for the structural diff.
+            Visual output is identical across modes — switching changes the
+            generated code structure. Watch the code panel for the diff, especially
+            when you change usage or update method.
           </p>
         </div>
       </div>

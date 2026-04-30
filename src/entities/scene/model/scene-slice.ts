@@ -117,10 +117,12 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         // Sensible defaults for line primitives; harmless on others (renderers ignore them).
         lineWidth: isLinePrimitive(type) ? 1 : undefined,
         lineStipple: null,
-        // Stage 3 defaults — generated code remains identical to Stage 2 output.
+        // Stage 3 defaults — generated code remains identical to Stage 2 output
+        // until the student opts into a non-IMMEDIATE rendering mode.
         renderingMode: 'IMMEDIATE',
         bufferUsage: 'STATIC',
         useIndexed: false,
+        updateMethod: 'BUFFER_SUB_DATA',
       };
       return {
         objects: [newObj, ...state.objects],
@@ -476,6 +478,9 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
               renderingMode: mode,
               // VBO objects need a default usage hint if one wasn't set.
               bufferUsage: mode === 'VBO' ? (o.bufferUsage ?? 'STATIC') : o.bufferUsage,
+              // Likewise an update method default — only meaningful for
+              // VBO+DYNAMIC, but harmless to carry around.
+              updateMethod: o.updateMethod ?? 'BUFFER_SUB_DATA',
             }
           : o,
       ),
@@ -493,6 +498,13 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
     get().pushToHistory();
     set((state) => ({
       objects: state.objects.map((o) => (o.id === id ? { ...o, useIndexed } : o)),
+    }));
+  },
+
+  updateUpdateMethod: (id, method) => {
+    get().pushToHistory();
+    set((state) => ({
+      objects: state.objects.map((o) => (o.id === id ? { ...o, updateMethod: method } : o)),
     }));
   },
 });

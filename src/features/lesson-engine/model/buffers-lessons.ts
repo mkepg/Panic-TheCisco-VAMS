@@ -10,6 +10,15 @@ import { useVamsStore } from '@/core/store';
 /*    is called from display(). Lesson narration must respect that         */
 /*    structure — never claim glBegin "lives in display()".                */
 /*                                                                         */
+/*  • DYNAMIC and STREAM VBOs cause the generator to emit an               */
+/*    `update_buffers()` function and register it as glutIdleFunc.         */
+/*    Inside that function:                                                 */
+/*       - DYNAMIC + BUFFER_SUB_DATA → glBufferSubData                     */
+/*       - DYNAMIC + MAP_BUFFER      → glMapBuffer / glUnmapBuffer         */
+/*       - STREAM                    → glBufferData (full re-upload)       */
+/*                                                                         */
+/*    STATIC objects never appear in update_buffers(); that's the lesson. */
+/*                                                                         */
 /*  • The DMA pointer diagram in the math panel is keyed off `dmaStep` on  */
 /*    each step. Use that to keep narration and visualization in lockstep. */
 /*    Indices map 1:1 to MAP_STEPS in BuffersMathContent.tsx:              */
@@ -151,6 +160,16 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
     ],
   },
 
+  /* --------------------------------------------------------------------- */
+  /*  Demo 4 — usage hints, reframed.                                       */
+  /*                                                                       */
+  /*  The pedagogical center of gravity is now the code panel diff: when   */
+  /*  the student moves from STATIC to DYNAMIC, an entire update_buffers() */
+  /*  function springs into existence and gets registered as the idle      */
+  /*  callback. STREAM swaps out the body for a full glBufferData call.    */
+  /*  The flow timeline still reinforces the cost story.                   */
+  /* --------------------------------------------------------------------- */
+
   'buffers-demo-4': {
     id: 'buffers-demo-4',
     title: 'Buffer Usage Hints',
@@ -158,7 +177,7 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
     section: 'Buffers',
     steps: [
       {
-        narration: "When you upload a VBO, you also tell OpenGL how often it will change. This is the usage hint.",
+        narration: "When you upload a VBO, you also tell OpenGL how often the data will change. Different hints produce structurally different programs — let's see how.",
         waitForUser: true,
         action: (state) => {
           state.addCustomObject('TRIANGLES', [
@@ -168,20 +187,17 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
           if (obj) {
             useVamsStore.getState().selectObject(obj.id);
             useVamsStore.getState().updateRenderingMode(obj.id, 'VBO');
+            useVamsStore.getState().updateBufferUsage(obj.id, 'STATIC');
           }
         },
       },
       {
-        narration: "Static — for terrain, logos, anything that never changes. The driver puts it in the fastest read-only memory. The traffic timeline turns green: one send, then silence.",
+        narration: "STATIC is what we have now — for terrain, logos, anything that never changes. Notice the program has no update_buffers() function. There's nothing to refresh, so the generator doesn't emit anything.",
         waitForUser: true,
         focusPanel: 'buffers-panel',
-        action: (state) => {
-          const obj = state.objects[0];
-          if (obj) state.updateBufferUsage(obj.id, 'STATIC');
-        },
       },
       {
-        narration: "Dynamic — for things that update sometimes, like a deforming character mesh. The timeline shows occasional sends in blue.",
+        narration: "Switch to DYNAMIC and watch the code panel — a whole new function appears.",
         waitForUser: true,
         focusPanel: 'buffers-panel',
         action: (state) => {
@@ -190,7 +206,11 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         },
       },
       {
-        narration: "Stream — for data that's freshly generated every frame, like particles. Every cell lights up orange — almost as expensive as immediate mode for that vertex data.",
+        narration: "update_buffers() is now defined and registered as the idle callback at the bottom of main(). It runs every frame, calling glBufferSubData to push changed bytes to the GPU.",
+        waitForUser: true,
+      },
+      {
+        narration: "Now switch to STREAM. Same function, but the body changes.",
         waitForUser: true,
         focusPanel: 'buffers-panel',
         action: (state) => {
@@ -199,26 +219,34 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         },
       },
       {
-        narration: "Pick the closest match to your real workload. The hint doesn't change correctness — only performance.",
+        narration: "STREAM re-uploads the entire buffer every frame with glBufferData — the same call from init(), but in a hot loop. That's how particle systems or fully-deformed meshes work.",
+        waitForUser: true,
+      },
+      {
+        narration: "Look at the math panel's traffic timeline as you flip between the three. STATIC is one green cell. DYNAMIC is sparse blue. STREAM is solid orange. The hint matches the cost.",
         waitForUser: true,
       },
     ],
   },
 
   /* --------------------------------------------------------------------- */
-  /*  Demo 5 — fully rewritten as a lesson-driven walkthrough.             */
-  /*  Each step pairs narration with a `dmaStep` that drives the pointer   */
-  /*  diagram in the math panel.                                            */
+  /*  Demo 5 — DYNAMIC + glMapBuffer.                                       */
+  /*                                                                       */
+  /*  Now grounded in concrete code: the student switches to DYNAMIC,      */
+  /*  then to MAP_BUFFER, and the math-panel diagram appears at the same   */
+  /*  moment the generator emits the corresponding lifecycle inside        */
+  /*  update_buffers(). The pointer diagram is the visual companion to the */
+  /*  code that was just generated, not a parallel curiosity.              */
   /* --------------------------------------------------------------------- */
 
   'buffers-demo-5': {
     id: 'buffers-demo-5',
-    title: 'glMapBuffer: Direct Memory Access',
+    title: 'Updating in Place: glMapBuffer',
     type: 'demo',
     section: 'Buffers',
     steps: [
       {
-        narration: "VBOs are great for data that rarely changes. But what if you want to update one vertex without re-uploading the whole buffer? You map it.",
+        narration: "DYNAMIC buffers come with two ways to update them. The default — glBufferSubData — pushes a range of bytes from CPU to GPU. There's another path that's worth knowing.",
         waitForUser: true,
         action: (state) => {
           state.addCustomObject('TRIANGLES', [
@@ -229,8 +257,27 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
             useVamsStore.getState().selectObject(obj.id);
             useVamsStore.getState().updateRenderingMode(obj.id, 'VBO');
             useVamsStore.getState().updateBufferUsage(obj.id, 'DYNAMIC');
+            useVamsStore.getState().updateUpdateMethod(obj.id, 'BUFFER_SUB_DATA');
           }
         },
+      },
+      {
+        narration: "Look at update_buffers() — right now it calls glBufferSubData. We're going to switch the update method to Map Buffer and watch what happens.",
+        waitForUser: true,
+        focusPanel: 'buffers-panel',
+      },
+      {
+        narration: "Switching now.",
+        waitForUser: true,
+        focusPanel: 'buffers-panel',
+        action: (state) => {
+          const obj = state.objects[0];
+          if (obj) state.updateUpdateMethod(obj.id, 'MAP_BUFFER');
+        },
+      },
+      {
+        narration: "The function body is completely different. Instead of pushing bytes, we ask the driver for a raw pointer into GPU memory and write through it. The math panel just lit up with a Mapping diagram — that's the lifecycle we'll walk through now.",
+        waitForUser: true,
       },
       {
         narration: "Step one: bind the buffer. After this, every buffer call talks to this VBO until something else binds.",
@@ -238,7 +285,7 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         dmaStep: 0,
       },
       {
-        narration: "Step two: map it. The driver hands back a raw C pointer into GPU memory — that blue caret in the diagram is your pointer.",
+        narration: "Step two: map it. The driver hands back a raw C pointer — that blue caret in the diagram is your pointer.",
         waitForUser: true,
         dmaStep: 1,
       },
@@ -258,12 +305,12 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         dmaStep: 4,
       },
       {
-        narration: "Step six: glUnmapBuffer commits the writes and invalidates the pointer. Notice the green cells stay highlighted — only those slots changed.",
+        narration: "Step six: glUnmapBuffer commits the writes and invalidates the pointer. The green cells stay highlighted — only those slots changed.",
         waitForUser: true,
         dmaStep: 5,
       },
       {
-        narration: "Now let's actually do this — drag the top vertex of the triangle. Behind the scenes, this is exactly what mapping is for: edit a few values, leave the rest alone.",
+        narration: "Now let's actually do this — drag the top vertex of the triangle. Behind the scenes, this is exactly the kind of small, in-place change mapping is designed for.",
         waitForUser: true,
         dmaStep: 5,
         action: (state) => {
@@ -272,7 +319,7 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         },
       },
       {
-        narration: "That's why mapping pairs so well with DYNAMIC usage — the buffer is expected to change, and you're updating it surgically rather than re-sending it all.",
+        narration: "Sub-data and Map Buffer reach the same destination — both update the GPU's copy. The difference is whether you're pushing bytes over or editing in place. Pick the one that matches the shape of your update.",
         waitForUser: true,
       },
     ],
@@ -336,7 +383,7 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         },
       },
       {
-        narration: "GL_STATIC_DRAW — perfect. The driver can park this in fast read-only memory.",
+        narration: "GL_STATIC_DRAW — perfect. Notice update_buffers() disappeared from the code panel; STATIC has nothing to refresh.",
         waitForUser: true,
       },
     ],

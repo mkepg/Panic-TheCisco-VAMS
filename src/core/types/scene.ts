@@ -79,6 +79,17 @@ export interface SceneNode {
   /** When true, switches the draw call from glDrawArrays to glDrawElements
    *  with a deduplicated vertex set + index array. */
   useIndexed?: boolean;
+
+  /**
+   * How the buffer is *updated* each frame. Only meaningful for VBO mode with
+   * DYNAMIC usage — STATIC never updates, STREAM always re-uploads the whole
+   * buffer regardless. Defaults to BUFFER_SUB_DATA.
+   *
+   *  - BUFFER_SUB_DATA → `glBufferSubData(...)` pushes new bytes to a region.
+   *  - MAP_BUFFER      → `glMapBuffer(...)` hands back a raw pointer the
+   *                       student writes through directly, then unmaps.
+   */
+  updateMethod?: BufferUpdateMethod;
 }
 
 export interface LearningSettings {
@@ -147,3 +158,13 @@ export type RenderingMode = 'IMMEDIATE' | 'VERTEX_ARRAY' | 'VBO';
 
 /** glBufferData usage hint. Only relevant for VBO mode. */
 export type BufferUsage = 'STATIC' | 'DYNAMIC' | 'STREAM';
+
+/**
+ * For VBO + DYNAMIC objects, which API drives the per-frame update.
+ *  - BUFFER_SUB_DATA → glBufferSubData (default)
+ *  - MAP_BUFFER      → glMapBuffer / glUnmapBuffer pointer lifecycle
+ *
+ * STATIC ignores this (no update path is emitted) and STREAM always uses a
+ * full glBufferData re-upload, which is structurally distinct from both.
+ */
+export type BufferUpdateMethod = 'BUFFER_SUB_DATA' | 'MAP_BUFFER';

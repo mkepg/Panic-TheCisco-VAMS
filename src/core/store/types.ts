@@ -14,6 +14,7 @@ import type {
   GlutCallbackKind,
   RenderingMode,
   BufferUsage,
+  BufferUpdateMethod,
 } from '@/core/types/scene';
 
 export interface SceneSlice {
@@ -45,6 +46,7 @@ export interface SceneSlice {
   updateRenderingMode: (id: string, mode: RenderingMode) => void;
   updateBufferUsage: (id: string, usage: BufferUsage) => void;
   updateUseIndexed: (id: string, useIndexed: boolean) => void;
+  updateUpdateMethod: (id: string, method: BufferUpdateMethod) => void;
 }
 
 export interface InteractionSlice {

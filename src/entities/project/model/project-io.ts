@@ -1,6 +1,7 @@
 import type { VamsState } from '@/core/store/types';
 import type {
   AxisVisibility,
+  BufferUpdateMethod,
   BufferUsage,
   ColorMode,
   GlutCallbackKind,
@@ -18,10 +19,11 @@ import type {
   ViewportLimits,
 } from '@/core/types/scene';
 
-// Bumped to 4 — captures rendering mode, buffer usage hint, and the indexed-drawing
-// flag introduced in Stage 3. Older save files (v2/v3) still load cleanly because
-// every new field has a sensible default fallback.
-export const VAMS_PROJECT_SCHEMA_VERSION = 4 as const;
+// Bumped to 5 — Stage 3 follow-up adds the `updateMethod` discriminator that
+// tells the generator whether DYNAMIC VBOs use glBufferSubData or glMapBuffer.
+// Older save files (v2/v3/v4) still load cleanly because every new field has a
+// safe default fallback in the sanitizer below.
+export const VAMS_PROJECT_SCHEMA_VERSION = 5 as const;
 
 export type VamsProjectData = {
   objects: SceneNode[];
@@ -101,6 +103,9 @@ function toBufferUsage(v: unknown): BufferUsage {
   if (v === 'DYNAMIC') return 'DYNAMIC';
   if (v === 'STREAM') return 'STREAM';
   return 'STATIC';
+}
+function toUpdateMethod(v: unknown): BufferUpdateMethod {
+  return v === 'MAP_BUFFER' ? 'MAP_BUFFER' : 'BUFFER_SUB_DATA';
 }
 function toInteractionMode(v: unknown): InteractionMode {
   if (v === 'CUSTOM_SHAPE_PLACE') return 'VERTEX_PLACE';
@@ -184,6 +189,7 @@ function sanitizeObject(v: unknown, idx: number): SceneNode | null {
     renderingMode: toRenderingMode(v.renderingMode),
     bufferUsage: toBufferUsage(v.bufferUsage),
     useIndexed: toBoolean(v.useIndexed, false),
+    updateMethod: toUpdateMethod(v.updateMethod),
   };
 }
 

@@ -46,6 +46,22 @@ function effectiveVerts(o: SceneNode): Vertex[] {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Update-frame predicates                                           */
+/* ------------------------------------------------------------------ */
+
+/** True when this object's buffer needs to be re-touched every frame. */
+function needsPerFrameUpdate(o: SceneNode): boolean {
+  if (!isPrimitive(o)) return false;
+  if (o.renderingMode !== 'VBO') return false;
+  return o.bufferUsage === 'DYNAMIC' || o.bufferUsage === 'STREAM';
+}
+
+/** True when *any* visible object in the scene needs an update_buffers() body. */
+export function sceneNeedsBufferUpdates(allObjects: SceneNode[]): boolean {
+  return allObjects.some(needsPerFrameUpdate);
+}
+
+/* ------------------------------------------------------------------ */
 /*  Globals: vertex arrays, color arrays, index arrays, VBO handles   */
 /* ------------------------------------------------------------------ */
 
@@ -132,6 +148,74 @@ export function generateInitBody(allObjects: SceneNode[]): string {
 
   if (lines.length === 0) {
     return '    // No GPU buffers to upload\n';
+  }
+  return lines.join('\n') + '\n';
+}
+
+/* ------------------------------------------------------------------ */
+/*  update_buffers() body: per-frame re-uploads / mapped writes        */
+/*                                                                    */
+/*  Three structurally distinct paths, driven by the per-object       */
+/*  bufferUsage and updateMethod fields:                              */
+/*                                                                    */
+/*    VBO + DYNAMIC + BUFFER_SUB_DATA → glBufferSubData               */
+/*    VBO + DYNAMIC + MAP_BUFFER      → glMapBuffer / glUnmapBuffer   */
+/*    VBO + STREAM                    → glBufferData (full re-upload) */
+/*                                                                    */
+/*  STATIC objects don't appear here — that's the whole point of the  */
+/*  hint, and the diff between this body being empty/absent vs.       */
+/*  populated is exactly the lesson.                                  */
+/* ------------------------------------------------------------------ */
+
+export function generateUpdateBuffersBody(allObjects: SceneNode[]): string {
+  const lines: string[] = [];
+
+  for (const o of allObjects) {
+    if (!needsPerFrameUpdate(o)) continue;
+
+    const safe = sanitizeName(o.name);
+    if (effectiveVerts(o).length === 0) continue;
+
+    if (o.bufferUsage === 'STREAM') {
+      // STREAM → orphan + re-upload the whole buffer each frame.
+      const usage = bufferUsageMacro(o);
+      lines.push(`    // ${o.name} — re-upload every frame (GL_STREAM_DRAW)`);
+      lines.push(`    glBindBuffer(GL_ARRAY_BUFFER, vbo_${safe});`);
+      lines.push(`    // Regenerate your data here (e.g. particles, deforming mesh):`);
+      lines.push(`    glBufferData(GL_ARRAY_BUFFER, sizeof(verts_${safe}), verts_${safe}, ${usage});`);
+      lines.push('');
+      continue;
+    }
+
+    // DYNAMIC: branch on updateMethod
+    const method = o.updateMethod ?? 'BUFFER_SUB_DATA';
+    if (method === 'MAP_BUFFER') {
+      lines.push(`    // ${o.name} — update via mapped pointer (DYNAMIC)`);
+      lines.push(`    glBindBuffer(GL_ARRAY_BUFFER, vbo_${safe});`);
+      lines.push(`    {`);
+      lines.push(`        GLfloat* ptr = (GLfloat*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);`);
+      lines.push(`        if (ptr != NULL) {`);
+      lines.push(`            // Edit individual cells in place — no full re-upload:`);
+      lines.push(`            // ptr[0] = newX0;`);
+      lines.push(`            // ptr[1] = newY0;`);
+      lines.push(`            glUnmapBuffer(GL_ARRAY_BUFFER);`);
+      lines.push(`        }`);
+      lines.push(`    }`);
+      lines.push('');
+    } else {
+      lines.push(`    // ${o.name} — push updated bytes to the GPU (DYNAMIC)`);
+      lines.push(`    glBindBuffer(GL_ARRAY_BUFFER, vbo_${safe});`);
+      lines.push(`    // Modify verts_${safe}[...] above, then push the changed range:`);
+      lines.push(`    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(verts_${safe}), verts_${safe});`);
+      lines.push('');
+    }
+  }
+
+  if (lines.length === 0) {
+    // The function was emitted but had nothing to do. This shouldn't normally
+    // happen because we gate the emission on `sceneNeedsBufferUpdates`, but
+    // keep a friendly stub just in case so the program still compiles cleanly.
+    return '    // No DYNAMIC or STREAM buffers to refresh\n';
   }
   return lines.join('\n') + '\n';
 }
