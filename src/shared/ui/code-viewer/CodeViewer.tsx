@@ -9,12 +9,6 @@ interface CodeViewerProps {
   highlightTarget?: string | null;
   isLessonMode?: boolean;
   annotations?: CodeAnnotation[];
-  /**
-   * 0-indexed line numbers flagged as "changed in the current lesson step".
-   * Rendered as a distinct amber layer on top of the existing blue selection
-   * highlight, and the topmost line in this set is auto-scrolled into view
-   * (vertically only).
-   */
   changedLines?: number[];
 }
 
@@ -25,16 +19,20 @@ const KEYWORDS = new Set([
   'unsigned', 'signed', 'short', 'long', 'auto', 'using', 'namespace',
   'reinterpret_cast', 'sizeof', 'new', 'delete',
 ]);
+
 const GL_PREFIXES = ['GL_', 'GLUT_'];
 
 function tokenizeLine(line: string): Array<{ t: string; k: string }> {
   const out: Array<{ t: string; k: string }> = [];
   let i = 0;
   const n = line.length;
+
   while (i < n) {
     const ch = line[i];
+
     if (i === 0 && /^\s*#/.test(line)) { out.push({ t: line, k: 'pp' }); return out; }
     if (ch === '/' && line[i + 1] === '/') { out.push({ t: line.slice(i), k: 'comment' }); return out; }
+
     if (ch === '"') {
       let j = i + 1;
       while (j < n && line[j] !== '"') { if (line[j] === '\\') j++; j++; }
@@ -45,10 +43,12 @@ function tokenizeLine(line: string): Array<{ t: string; k: string }> {
       while (j < n && line[j] !== "'") { if (line[j] === '\\') j++; j++; }
       out.push({ t: line.slice(i, j + 1), k: 'string' }); i = j + 1; continue;
     }
+
     if (/[0-9]/.test(ch) || (ch === '.' && /[0-9]/.test(line[i + 1] || ''))) {
       const m = line.slice(i).match(/^[0-9]*\.?[0-9]+(e[+-]?[0-9]+)?[fFlLuU]*/);
       if (m) { out.push({ t: m[0], k: 'num' }); i += m[0].length; continue; }
     }
+
     if (/[A-Za-z_]/.test(ch)) {
       const m = line.slice(i).match(/^[A-Za-z_][A-Za-z0-9_]*/);
       if (m) {
@@ -60,16 +60,20 @@ function tokenizeLine(line: string): Array<{ t: string; k: string }> {
         else if (tok.startsWith('glut') && tok.length > 4) kind = 'glfn';
         else if (line[i + tok.length] === '(') kind = 'fn';
         else if (tok === tok.toUpperCase() && tok.length > 1) kind = 'const';
+
         out.push({ t: tok, k: kind });
         i += tok.length; continue;
       }
     }
+
     if (/[{}()[\];,.:]/.test(ch)) { out.push({ t: ch, k: 'punct' }); i++; continue; }
+
     if (/[+\-*/%=<>!&|^~?]/.test(ch)) {
       let j = i + 1;
       while (j < n && /[+\-*/%=<>!&|^~?]/.test(line[j])) j++;
       out.push({ t: line.slice(i, j), k: 'op' }); i = j; continue;
     }
+
     out.push({ t: ch, k: 'ws' }); i++;
   }
   return out;
@@ -93,7 +97,6 @@ const CodeViewer = memo(function CodeViewer({
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
-
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const lineElsRef = useRef<Map<number, HTMLDivElement>>(new Map());
 
@@ -115,14 +118,39 @@ const CodeViewer = memo(function CodeViewer({
   const highlightedLines = useMemo(() => {
     const highlighted = new Set<number>();
     if (!highlightTarget) return highlighted;
-    let inTargetBlock = false;
+
+    let inDrawBlock = false;
+    let inVboBlock = false;
+
+    const targetRegex = new RegExp(`\\b(draw|state|verts|colors|indices|vbo|cbo|ebo)_${highlightTarget}\\b`);
+    const bufferOpRegex = new RegExp(`\\b(vbo|cbo|ebo|verts|colors|indices)_${highlightTarget}\\b`);
+
     lines.forEach((line, index) => {
-      if (line.includes(`draw_${highlightTarget}()`)) highlighted.add(index);
-      if (line.includes(`state_${highlightTarget} `)) highlighted.add(index);
-      if (line.trim() === `void draw_${highlightTarget}()`) inTargetBlock = true;
-      if (inTargetBlock) {
+      const trimmed = line.trim();
+
+      if (trimmed === `void draw_${highlightTarget}()`) inDrawBlock = true;
+
+      if (inDrawBlock) {
         highlighted.add(index);
-        if (line.trim() === '}' && line.startsWith('}')) inTargetBlock = false;
+        if (trimmed === '}' && line.startsWith('}')) inDrawBlock = false;
+      } else if (inVboBlock) {
+        if (trimmed === '') {
+          inVboBlock = false; // Buffer setups/updates always end with a blank line
+        } else {
+          highlighted.add(index);
+        }
+      } else if (targetRegex.test(line)) {
+        highlighted.add(index);
+        
+        // Include the preceding explanatory comment if it exists
+        if (index > 0 && lines[index - 1].trim().startsWith('//')) {
+          highlighted.add(index - 1);
+        }
+
+        // Begin capturing an indented VBO setup/update block
+        if (line.startsWith('    ') && bufferOpRegex.test(line)) {
+          inVboBlock = true;
+        }
       }
     });
     return highlighted;
@@ -144,6 +172,7 @@ const CodeViewer = memo(function CodeViewer({
   const annotationByLine = useMemo(() => {
     const map = new Map<number, CodeAnnotation>();
     if (!annotations || annotations.length === 0) return map;
+
     lines.forEach((line, idx) => {
       const trimmed = line.trim();
       if (!trimmed) return;
@@ -157,18 +186,6 @@ const CodeViewer = memo(function CodeViewer({
     return map;
   }, [lines, annotations]);
 
-  /* ------------------------------------------------------------------ */
-  /*  Vertical-only auto-scroll to the topmost changed line.            */
-  /*                                                                    */
-  /*  We deliberately ignore the user's horizontal scroll position —    */
-  /*  even if a long generated line is scrolled out to the right, we    */
-  /*  only adjust the vertical scroll. This matches the spec ("never    */
-  /*  trigger horizontal scrolling").                                   */
-  /*                                                                    */
-  /*  Re-runs when:                                                     */
-  /*    - the changed-line set changes (new step), OR                   */
-  /*    - the code itself changed (so line offsets are fresh).          */
-  /* ------------------------------------------------------------------ */
   useEffect(() => {
     if (!changedLines || changedLines.length === 0) return;
     const scroller = scrollAreaRef.current;
@@ -178,22 +195,15 @@ const CodeViewer = memo(function CodeViewer({
     const target = lineElsRef.current.get(topIdx);
     if (!target) return;
 
-    // Defer one frame so the new code lines have laid out at their final
-    // heights before we measure offsets.
     const raf = requestAnimationFrame(() => {
-      // Re-fetch in case the map has been rebuilt during layout.
       const el = lineElsRef.current.get(topIdx);
       if (!el || !scroller.contains(el)) return;
 
       const scrollerRect = scroller.getBoundingClientRect();
       const elRect = el.getBoundingClientRect();
-
-      // Distance from the top of the scroller to the target line.
       const elTopWithinScroller =
         scroller.scrollTop + (elRect.top - scrollerRect.top);
 
-      // Center the changed region. If it's taller than the viewport,
-      // align its top with a small breathing margin instead.
       const viewportH = scroller.clientHeight;
       const regionEnd = Math.max(...changedLines);
       const regionEndEl = lineElsRef.current.get(regionEnd);
@@ -204,18 +214,18 @@ const CodeViewer = memo(function CodeViewer({
 
       let targetTop = elTopWithinScroller - (viewportH / 2) + (regionHeight / 2);
       const topWithPadding = elTopWithinScroller - 24;
+
       if (regionHeight > viewportH * 0.7 || targetTop > topWithPadding) {
         targetTop = topWithPadding;
       }
 
-      // Honor reduced-motion preference.
       const prefersReduced =
         typeof window !== 'undefined' &&
         window.matchMedia &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-      // Vertical-only: explicitly preserve scrollLeft.
       const preservedLeft = scroller.scrollLeft;
+
       scroller.scrollTo({
         top: Math.max(0, targetTop),
         left: preservedLeft,
@@ -224,8 +234,6 @@ const CodeViewer = memo(function CodeViewer({
     });
 
     return () => cancelAnimationFrame(raf);
-    // `code` is intentionally in the dep list so we recompute offsets when
-    // generation has produced new line heights.
   }, [changedLines, code]);
 
   const stats = useMemo(() => {
@@ -242,12 +250,14 @@ const CodeViewer = memo(function CodeViewer({
           <span className="code-lang">C++ · OpenGL 1.5</span>
           <span className="code-sep">•</span>
           <span className="code-stat">{stats.lines} lines</span>
+
           {annotationByLine.size > 0 && !highlightTarget && (
             <span className="code-annot-hint" title="Hover an underlined line for an explanation">
               <Info size={11} />
               <span>hover lines for notes</span>
             </span>
           )}
+
           {isLessonMode && changeBadgeCount > 0 && (
             <span
               className="code-change-badge"
@@ -258,12 +268,14 @@ const CodeViewer = memo(function CodeViewer({
               <span>updated · {changeBadgeCount}</span>
             </span>
           )}
+
           {highlightTarget && (
             <span className="code-focus" title={`Highlighting: ${highlightTarget}`}>
               focus: <code>{highlightTarget}</code>
             </span>
           )}
         </div>
+
         <div className="code-header-right">
           {!isLessonMode && (
             <>
@@ -307,6 +319,7 @@ const CodeViewer = memo(function CodeViewer({
           )}
         </div>
       </div>
+
       <div className="code-content" ref={scrollAreaRef}>
         <div className="line-numbers" aria-hidden="true">
           {Array.from({ length: lineCount }, (_, i) => (
@@ -340,6 +353,7 @@ const CodeViewer = memo(function CodeViewer({
               >
                 {isChanged && <span className="change-marker" aria-hidden />}
                 {line ? <TokenizedLine line={line} /> : ' '}
+
                 {annotation && (
                   <span className="code-annot" role="tooltip">
                     <span className="annot-title">{annotation.title}</span>

@@ -1,36 +1,6 @@
 import type { Lesson } from '@/core/types/lesson';
 import { useVamsStore } from '@/core/store';
 
-/* ----------------------------------------------------------------------- */
-/*  Notes for Stage 3 lesson authoring                                      */
-/* ----------------------------------------------------------------------- */
-/*                                                                         */
-/*  • The generated program nests glBegin/glEnd inside a per-object draw   */
-/*    function (e.g. draw_TRIANGLES_1) which is called from draw(), which  */
-/*    is called from display(). Lesson narration must respect that         */
-/*    structure — never claim glBegin "lives in display()".                */
-/*                                                                         */
-/*  • DYNAMIC and STREAM VBOs cause the generator to emit an               */
-/*    `update_buffers()` function and register it as glutIdleFunc.         */
-/*    Inside that function:                                                 */
-/*       - DYNAMIC + BUFFER_SUB_DATA → glBufferSubData                     */
-/*       - DYNAMIC + MAP_BUFFER      → glMapBuffer / glUnmapBuffer         */
-/*       - STREAM                    → glBufferData (full re-upload)       */
-/*                                                                         */
-/*    STATIC objects never appear in update_buffers(); that's the lesson. */
-/*                                                                         */
-/*  • The DMA pointer diagram in the math panel is keyed off `dmaStep` on  */
-/*    each step. Use that to keep narration and visualization in lockstep. */
-/*    Indices map 1:1 to MAP_STEPS in BuffersMathContent.tsx:              */
-/*       0 → bind                                                           */
-/*       1 → glMapBuffer (caret on cell 0)                                  */
-/*       2 → ptr[0] = … (caret on cell 1, cell 0 written)                   */
-/*       3 → ptr[1] = … (caret on cell 2, cells 0–1 written)                */
-/*       4 → ptr[2..3] = … (caret on cell 4, cells 0–3 written)             */
-/*       5 → glUnmapBuffer (pointer invalid, all written cells stay green)  */
-/*                                                                         */
-/* ----------------------------------------------------------------------- */
-
 export const BUFFERS_LESSONS: Record<string, Lesson> = {
   'buffers-demo-1': {
     id: 'buffers-demo-1',
@@ -85,7 +55,7 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         },
       },
       {
-        narration: "Watch the code panel as we switch the rendering mode.",
+        narration: "Watch the code panel as the rendering mode is switched to Vertex Array.",
         waitForUser: true,
         focusPanel: 'buffers-panel',
         action: (state) => {
@@ -122,7 +92,7 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         },
       },
       {
-        narration: "Switch the mode to VBO and watch where the heavy lifting moves.",
+        narration: "Notice where the heavy lifting moves as the rendering mode is switched to VBO.",
         waitForUser: true,
         focusPanel: 'buffers-panel',
         action: (state) => {
@@ -160,16 +130,6 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
     ],
   },
 
-  /* --------------------------------------------------------------------- */
-  /*  Demo 4 — usage hints, reframed.                                       */
-  /*                                                                       */
-  /*  The pedagogical center of gravity is now the code panel diff: when   */
-  /*  the student moves from STATIC to DYNAMIC, an entire update_buffers() */
-  /*  function springs into existence and gets registered as the idle      */
-  /*  callback. STREAM swaps out the body for a full glBufferData call.    */
-  /*  The flow timeline still reinforces the cost story.                   */
-  /* --------------------------------------------------------------------- */
-
   'buffers-demo-4': {
     id: 'buffers-demo-4',
     title: 'Buffer Usage Hints',
@@ -197,7 +157,7 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         focusPanel: 'buffers-panel',
       },
       {
-        narration: "Switch to DYNAMIC and watch the code panel — a whole new function appears.",
+        narration: "Watch the code panel as the hint is changed to DYNAMIC — a whole new function appears.",
         waitForUser: true,
         focusPanel: 'buffers-panel',
         action: (state) => {
@@ -210,7 +170,7 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         waitForUser: true,
       },
       {
-        narration: "Now switch to STREAM. Same function, but the body changes.",
+        narration: "Now observe what happens when the hint changes to STREAM. The same function remains, but its body changes.",
         waitForUser: true,
         focusPanel: 'buffers-panel',
         action: (state) => {
@@ -223,21 +183,11 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         waitForUser: true,
       },
       {
-        narration: "Look at the math panel's traffic timeline as you flip between the three. STATIC is one green cell. DYNAMIC is sparse blue. STREAM is solid orange. The hint matches the cost.",
+        narration: "Look at the math panel's traffic timeline to see the difference. STATIC is one green cell. DYNAMIC is sparse blue. STREAM is solid orange. The hint matches the actual data transfer cost.",
         waitForUser: true,
       },
     ],
   },
-
-  /* --------------------------------------------------------------------- */
-  /*  Demo 5 — DYNAMIC + glMapBuffer.                                       */
-  /*                                                                       */
-  /*  Now grounded in concrete code: the student switches to DYNAMIC,      */
-  /*  then to MAP_BUFFER, and the math-panel diagram appears at the same   */
-  /*  moment the generator emits the corresponding lifecycle inside        */
-  /*  update_buffers(). The pointer diagram is the visual companion to the */
-  /*  code that was just generated, not a parallel curiosity.              */
-  /* --------------------------------------------------------------------- */
 
   'buffers-demo-5': {
     id: 'buffers-demo-5',
@@ -267,7 +217,7 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         focusPanel: 'buffers-panel',
       },
       {
-        narration: "Switching now.",
+        narration: "Switching to Map Buffer now.",
         waitForUser: true,
         focusPanel: 'buffers-panel',
         action: (state) => {
@@ -310,7 +260,7 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         dmaStep: 5,
       },
       {
-        narration: "Now let's actually do this — drag the top vertex of the triangle. Behind the scenes, this is exactly the kind of small, in-place change mapping is designed for.",
+        narration: "Now watch what happens as the top vertex of the triangle is moved automatically. Behind the scenes, this is exactly the kind of small, in-place change mapping is designed for.",
         waitForUser: true,
         dmaStep: 5,
         action: (state) => {
@@ -324,8 +274,6 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
       },
     ],
   },
-
-  /* ----------------------- EXERCISES ----------------------- */
 
   'buffers-exercise-1': {
     id: 'buffers-exercise-1',
@@ -400,7 +348,6 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         waitForUser: true,
         focusPanel: 'buffers-panel',
         action: (state) => {
-          // A quad as TRIANGLES with the shared diagonal duplicated.
           state.addCustomObject('TRIANGLES', [
             { x: -0.4, y: -0.4 }, { x: 0.4, y: -0.4 }, { x: -0.4, y: 0.4 },
             { x: 0.4, y: -0.4 },  { x: 0.4, y: 0.4 },  { x: -0.4, y: 0.4 },
