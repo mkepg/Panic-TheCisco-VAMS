@@ -82,7 +82,6 @@ const CALLBACK_TEMPLATES: Record<RegisteredCallback['kind'], CallbackTemplate> =
 
 function generateCallbackStubs(callbacks: RegisteredCallback[]): string {
   if (callbacks.length === 0) return '';
-
   let out = `// --- Callback handlers ---\n`;
   callbacks.forEach((cb) => {
     const tpl = CALLBACK_TEMPLATES[cb.kind];
@@ -94,7 +93,6 @@ function generateCallbackStubs(callbacks: RegisteredCallback[]): string {
 
 function generateCallbackForwardDecls(callbacks: RegisteredCallback[]): string {
   if (callbacks.length === 0) return '';
-
   let out = '';
   callbacks.forEach((cb) => {
     const tpl = CALLBACK_TEMPLATES[cb.kind];
@@ -105,7 +103,6 @@ function generateCallbackForwardDecls(callbacks: RegisteredCallback[]): string {
 
 function generateCallbackRegistrations(callbacks: RegisteredCallback[]): string {
   if (callbacks.length === 0) return '';
-
   let out = '';
   callbacks.forEach((cb) => {
     const tpl = CALLBACK_TEMPLATES[cb.kind];
@@ -123,6 +120,11 @@ function callbacksNeedStdlib(callbacks: RegisteredCallback[]): boolean {
   return callbacks.some((cb) => cb.kind === 'keyboard');
 }
 
+/** Check if any visible object uses VBOs, which requires GLEW on Windows */
+function objectsNeedGlew(objects: SceneNode[]): boolean {
+  return objects.some((obj) => obj.renderingMode === 'VBO');
+}
+
 export const generateAppOutput = (
   objectsToDeclare: SceneNode[],
   objectsToCallInDraw: SceneNode[],
@@ -132,23 +134,28 @@ export const generateAppOutput = (
   emptyMessage: string = "    // Empty scene\n",
   callbacks: RegisteredCallback[] = []
 ): string => {
-  let fullCode = `#include <GL/freeglut.h>\n#include <cmath>\n`;
-
+  const usesGlew = objectsNeedGlew(visibleObjects);
+  
+  let fullCode = '';
+  
+  if (usesGlew) {
+    fullCode += `#include <GL/glew.h>\n`;
+  }
+  
+  fullCode += `#include <GL/freeglut.h>\n#include <cmath>\n`;
+  
   if (callbacksNeedStdio(callbacks)) fullCode += `#include <cstdio>\n`;
   if (callbacksNeedStdlib(callbacks)) fullCode += `#include <cstdlib>\n`;
-
   fullCode += `\n`;
 
   fullCode += generateState(objectsToDeclare.length > 0 ? visibleObjects : []);
-
-  // Stage 3: vertex arrays, index arrays, VBO handles
   fullCode += generateBufferGlobals(visibleObjects);
 
-  // Forward declarations
   objectsToDeclare.forEach(obj => {
     fullCode += `void draw_${sanitizeName(obj.name)}();\n`;
   });
   if (objectsToDeclare.length > 0) fullCode += `\n`;
+
   fullCode += `void init();\n\n`;
 
   fullCode += generateCallbackForwardDecls(callbacks);
@@ -175,7 +182,6 @@ export const generateAppOutput = (
   fullCode += `    glutSwapBuffers();\n`;
   fullCode += `}\n\n`;
 
-  // Stage 3: init() — one-time GPU setup, runs before glutMainLoop.
   fullCode += `// One-time setup, called once before the main loop\n`;
   fullCode += `void init()\n{\n`;
   fullCode += generateInitBody(visibleObjects);
@@ -192,9 +198,14 @@ export const generateAppOutput = (
   fullCode += `    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_MULTISAMPLE);\n`;
   fullCode += `    glutInitWindowSize(${canvasSize.width}, ${canvasSize.height});\n`;
   fullCode += `    glutCreateWindow("VAMS Preview");\n`;
-  fullCode += `    glClearColor(${bgR}f, ${bgG}f, ${bgB}f, 1.0f);\n\n`;
-  fullCode += `    init();\n\n`;
 
+  if (usesGlew) {
+    fullCode += `\n    // Initialize GLEW for VBO support (OpenGL 1.5+)\n`;
+    fullCode += `    if (glewInit() != GLEW_OK) return 1;\n`;
+  }
+
+  fullCode += `\n    glClearColor(${bgR}f, ${bgG}f, ${bgB}f, 1.0f);\n\n`;
+  fullCode += `    init();\n\n`;
   fullCode += `    glutDisplayFunc(display);\n`;
   fullCode += generateCallbackRegistrations(callbacks);
 
