@@ -1,5 +1,6 @@
 import type { VamsState } from '@/core/store/types';
 import type { CurriculumSection } from '@/core/store/types';
+import type { CodeChangeFocus } from '@/features/code-generation/model/code-diff';
 
 export type ExerciseWidget =
   | {
@@ -38,6 +39,24 @@ export interface LessonStep {
    * When omitted/null, the diagram falls back to its standalone state.
    */
   dmaStep?: number | null;
+
+  /**
+   * Controls how the code panel highlights what changed in this step.
+   *
+   *  - omitted / 'auto'  → auto-diff the generated code before vs. after the
+   *    step's action and amber-highlight every line that differs.
+   *  - 'none'            → suppress the highlight entirely (use for steps
+   *    that touch state in a way that's not pedagogically interesting).
+   *  - number[]          → explicit 0-indexed line numbers in the generated
+   *    output to highlight (use sparingly — brittle if the generator changes).
+   *  - string[]          → substring matchers; every line in the new code
+   *    that contains any matcher gets highlighted.
+   *
+   * Most steps need nothing here — auto-diff handles them. The override
+   * exists for cases where the diff over- or under-highlights and a hand-
+   * tuned focus reads better.
+   */
+  codeChangeFocus?: CodeChangeFocus;
 }
 
 export interface Lesson {

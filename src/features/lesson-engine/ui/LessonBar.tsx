@@ -11,6 +11,9 @@ import { useVamsStore } from '@/core/store';
 import { LESSON_REGISTRY } from '../model/lesson-registry';
 import MultipleChoiceWidget from './exercise-widgets/MultipleChoiceWidget';
 import OrderListWidget from './exercise-widgets/OrderListWidget';
+import { useCanvasSize } from '@/features/code-generation/model/useCanvasSize';
+import { generateCodeFromState } from '@/features/code-generation/model/generate-from-state';
+import { resolveChangedLines } from '@/features/code-generation/model/code-diff';
 import './lesson-bar.scss';
 
 export default function LessonBar() {
@@ -25,13 +28,24 @@ export default function LessonBar() {
 
   const [sessionSeed, setSessionSeed] = useState(0);
   const objects = useVamsStore((s) => s.objects);
-  const callbacks = useVamsStore((s) => s.callbacks); // Added to listen for callback changes
-  
+  const callbacks = useVamsStore((s) => s.callbacks); // listen for callback changes
+
   const lastExecutedStepRef = useRef<string | null>(null);
   const lastStepIndexRef = useRef<number>(-1);
 
   const [mcAnswer, setMcAnswer] = useState<string | null>(null);
   const [orderAnswer, setOrderAnswer] = useState<string[] | null>(null);
+
+  /* ------------------------------------------------------------------ */
+  /*  Canvas size — kept in a ref so the step-execution effect always   */
+  /*  reads the latest value without needing it in its dependency array */
+  /*  (which would re-fire the action on every window resize).          */
+  /* ------------------------------------------------------------------ */
+  const canvasSize = useCanvasSize();
+  const canvasSizeRef = useRef(canvasSize);
+  useEffect(() => {
+    canvasSizeRef.current = canvasSize;
+  }, [canvasSize]);
 
   useEffect(() => {
     if (activeLessonId) {
@@ -87,6 +101,19 @@ export default function LessonBar() {
     }
   }, [activeLessonId, currentStepIndex, step]);
 
+  /* ------------------------------------------------------------------ */
+  /*  Step execution + change-highlight diff.                            */
+  /*                                                                    */
+  /*  We snapshot the generated code immediately before and after the   */
+  /*  step's action mutates state, run a line-level diff, and write the */
+  /*  result into `changedCodeLines`. SceneCodePanel reads that and     */
+  /*  passes it to CodeViewer, which renders the amber highlight + auto-*/
+  /*  scrolls vertically to the topmost change.                         */
+  /*                                                                    */
+  /*  Both snapshots use the SAME canvas size, so window-size-only      */
+  /*  differences (the `glutInitWindowSize` line) never show up as a    */
+  /*  spurious change.                                                  */
+  /* ------------------------------------------------------------------ */
   useEffect(() => {
     if (!lesson || !activeLessonId) return;
 
@@ -100,13 +127,35 @@ export default function LessonBar() {
     const store = useVamsStore.getState();
     store.startBatch();
 
+    const cs = canvasSizeRef.current;
+    const currentStep = lesson.steps[currentStepIndex];
+
+    const snapshotCode = () => {
+      const s = useVamsStore.getState();
+      return generateCodeFromState(
+        {
+          objects: s.objects,
+          canvasBackgroundColor: s.canvasBackgroundColor,
+          callbacks: s.callbacks,
+        },
+        cs,
+      );
+    };
+
+    let preCode = '';
+    let postCode = '';
+
     if (isForwardOne) {
-      const newStep = lesson.steps[currentStepIndex];
-      if (newStep.action) newStep.action(useVamsStore.getState());
-      store.setLessonFocusPanel(newStep.focusPanel || null);
-      // Drive (or release) the DMA pointer diagram for Stage 3 demos.
-      store.setDmaDriverStep(newStep.dmaStep ?? null);
+      preCode = snapshotCode();
+
+      if (currentStep.action) currentStep.action(useVamsStore.getState());
+
+      postCode = snapshotCode();
+
+      store.setLessonFocusPanel(currentStep.focusPanel || null);
+      store.setDmaDriverStep(currentStep.dmaStep ?? null);
     } else {
+      // Non-linear navigation (Back, lesson-start, jump): rebuild from scratch.
       useVamsStore.setState({
         objects: [],
         callbacks: { keyboard: '', mouse: '', reshape: '', motion: '', idle: '' },
@@ -115,13 +164,25 @@ export default function LessonBar() {
         interactionMode: 'SELECT',
       });
 
-      for (let i = 0; i <= currentStepIndex; i++) {
+      // Replay every step BEFORE the current one to recreate the pre-state.
+      for (let i = 0; i < currentStepIndex; i++) {
         const pastStep = lesson.steps[i];
         if (pastStep.action) pastStep.action(useVamsStore.getState());
       }
-      store.setLessonFocusPanel(lesson.steps[currentStepIndex].focusPanel || null);
-      store.setDmaDriverStep(lesson.steps[currentStepIndex].dmaStep ?? null);
+
+      // Snapshot pre-state (= state at the end of step N-1, or empty if N=0).
+      preCode = snapshotCode();
+
+      // Now run step N's action and snapshot post-state.
+      if (currentStep.action) currentStep.action(useVamsStore.getState());
+      postCode = snapshotCode();
+
+      store.setLessonFocusPanel(currentStep.focusPanel || null);
+      store.setDmaDriverStep(currentStep.dmaStep ?? null);
     }
+
+    const changed = resolveChangedLines(preCode, postCode, currentStep.codeChangeFocus);
+    store.setChangedCodeLines(changed);
 
     store.endBatch();
     lastExecutedStepRef.current = stepKey;
@@ -146,7 +207,7 @@ export default function LessonBar() {
 
     if (step.successCheck) {
       void objects;
-      void callbacks; // Ensures changes to callbacks re-trigger this evaluation
+      void callbacks;
       return step.successCheck(useVamsStore.getState());
     }
 

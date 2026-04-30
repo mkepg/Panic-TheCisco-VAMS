@@ -146,6 +146,7 @@ export interface LessonSlice {
    * number → diagram displays this step and hides its controls.
    */
   dmaDriverStep: number | null;
+  changedCodeLines: number[]
 
   setActiveLesson: (lessonId: string | null) => void;
   setCurrentStep: (index: number) => void;
@@ -154,6 +155,7 @@ export interface LessonSlice {
   setLessonFocusPanel: (panelId: string | null) => void;
   setDmaDriverStep: (index: number | null) => void;
   clearLessonState: () => void;
+  setChangedCodeLines: (lines: number[]) => void;
 }
 
 export interface CallbacksSlice {

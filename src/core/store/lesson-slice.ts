@@ -20,6 +20,8 @@ export const createLessonSlice: StateCreator<VamsState, [], [], LessonSlice> = (
   canvasBackgroundColorBackup: null,
   lessonFocusPanel: null,
   dmaDriverStep: null,
+  changedCodeLines: [],
+
   setActiveLesson: (lessonId) => {
     const state = get();
     if (lessonId && !state.activeLessonId) {
@@ -38,21 +40,28 @@ export const createLessonSlice: StateCreator<VamsState, [], [], LessonSlice> = (
         interactionMode: 'SELECT',
         lessonFocusPanel: null,
         dmaDriverStep: null,
+        changedCodeLines: [],
       });
     } else {
-      set({ activeLessonId: lessonId, lessonFocusPanel: null, dmaDriverStep: null });
+      set({
+        activeLessonId: lessonId,
+        lessonFocusPanel: null,
+        dmaDriverStep: null,
+        changedCodeLines: [],
+      });
     }
   },
   setCurrentStep: (index) => set({ currentStepIndex: index }),
   setExerciseAnswer: (stepId, answer) => set((state) => ({
     exerciseAnswers: {
       ...state.exerciseAnswers,
-      [stepId]: answer
-    }
+      [stepId]: answer,
+    },
   })),
   setSuccessState: (success) => set({ isSuccess: success }),
   setLessonFocusPanel: (panelId) => set({ lessonFocusPanel: panelId }),
   setDmaDriverStep: (index) => set({ dmaDriverStep: index }),
+  setChangedCodeLines: (lines) => set({ changedCodeLines: lines }),
   clearLessonState: () => {
     const state = get();
     set({
@@ -69,6 +78,7 @@ export const createLessonSlice: StateCreator<VamsState, [], [], LessonSlice> = (
       selectedObjectId: null,
       lessonFocusPanel: null,
       dmaDriverStep: null,
+      changedCodeLines: [],
     });
   },
 });

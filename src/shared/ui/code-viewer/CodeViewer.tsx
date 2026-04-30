@@ -9,6 +9,13 @@ interface CodeViewerProps {
   highlightTarget?: string | null;
   isLessonMode?: boolean;
   annotations?: CodeAnnotation[];
+  /**
+   * 0-indexed line numbers flagged as "changed in the current lesson step".
+   * Rendered as a distinct amber layer on top of the existing blue selection
+   * highlight, and the topmost line in this set is auto-scrolled into view
+   * (vertically only).
+   */
+  changedLines?: number[];
 }
 
 const KEYWORDS = new Set([
@@ -80,12 +87,15 @@ const TokenizedLine = memo(function TokenizedLine({ line }: { line: string }) {
 });
 
 const CodeViewer = memo(function CodeViewer({
-  code, highlightTarget, isLessonMode, annotations,
+  code, highlightTarget, isLessonMode, annotations, changedLines,
 }: CodeViewerProps) {
   const [copied, setCopied] = useState(false);
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const lineElsRef = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const lines = useMemo(() => code.split('\n'), [code]);
   const lineCount = lines.length;
@@ -126,7 +136,11 @@ const CodeViewer = memo(function CodeViewer({
     return m;
   }, [lines, search]);
 
-  // Map line indices → annotation
+  const changedSet = useMemo(() => {
+    if (!changedLines || changedLines.length === 0) return new Set<number>();
+    return new Set(changedLines);
+  }, [changedLines]);
+
   const annotationByLine = useMemo(() => {
     const map = new Map<number, CodeAnnotation>();
     if (!annotations || annotations.length === 0) return map;
@@ -143,10 +157,83 @@ const CodeViewer = memo(function CodeViewer({
     return map;
   }, [lines, annotations]);
 
+  /* ------------------------------------------------------------------ */
+  /*  Vertical-only auto-scroll to the topmost changed line.            */
+  /*                                                                    */
+  /*  We deliberately ignore the user's horizontal scroll position —    */
+  /*  even if a long generated line is scrolled out to the right, we    */
+  /*  only adjust the vertical scroll. This matches the spec ("never    */
+  /*  trigger horizontal scrolling").                                   */
+  /*                                                                    */
+  /*  Re-runs when:                                                     */
+  /*    - the changed-line set changes (new step), OR                   */
+  /*    - the code itself changed (so line offsets are fresh).          */
+  /* ------------------------------------------------------------------ */
+  useEffect(() => {
+    if (!changedLines || changedLines.length === 0) return;
+    const scroller = scrollAreaRef.current;
+    if (!scroller) return;
+
+    const topIdx = Math.min(...changedLines);
+    const target = lineElsRef.current.get(topIdx);
+    if (!target) return;
+
+    // Defer one frame so the new code lines have laid out at their final
+    // heights before we measure offsets.
+    const raf = requestAnimationFrame(() => {
+      // Re-fetch in case the map has been rebuilt during layout.
+      const el = lineElsRef.current.get(topIdx);
+      if (!el || !scroller.contains(el)) return;
+
+      const scrollerRect = scroller.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+
+      // Distance from the top of the scroller to the target line.
+      const elTopWithinScroller =
+        scroller.scrollTop + (elRect.top - scrollerRect.top);
+
+      // Center the changed region. If it's taller than the viewport,
+      // align its top with a small breathing margin instead.
+      const viewportH = scroller.clientHeight;
+      const regionEnd = Math.max(...changedLines);
+      const regionEndEl = lineElsRef.current.get(regionEnd);
+      const regionHeight =
+        regionEndEl
+          ? regionEndEl.getBoundingClientRect().bottom - elRect.top
+          : elRect.height;
+
+      let targetTop = elTopWithinScroller - (viewportH / 2) + (regionHeight / 2);
+      const topWithPadding = elTopWithinScroller - 24;
+      if (regionHeight > viewportH * 0.7 || targetTop > topWithPadding) {
+        targetTop = topWithPadding;
+      }
+
+      // Honor reduced-motion preference.
+      const prefersReduced =
+        typeof window !== 'undefined' &&
+        window.matchMedia &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // Vertical-only: explicitly preserve scrollLeft.
+      const preservedLeft = scroller.scrollLeft;
+      scroller.scrollTo({
+        top: Math.max(0, targetTop),
+        left: preservedLeft,
+        behavior: prefersReduced ? 'auto' : 'smooth',
+      });
+    });
+
+    return () => cancelAnimationFrame(raf);
+    // `code` is intentionally in the dep list so we recompute offsets when
+    // generation has produced new line heights.
+  }, [changedLines, code]);
+
   const stats = useMemo(() => {
     const bytes = new Blob([code]).size;
     return { lines: lineCount, bytes };
   }, [code, lineCount]);
+
+  const changeBadgeCount = changedSet.size;
 
   return (
     <div className={`code-viewer-container ${isLessonMode ? 'lesson-mode' : ''}`}>
@@ -159,6 +246,16 @@ const CodeViewer = memo(function CodeViewer({
             <span className="code-annot-hint" title="Hover an underlined line for an explanation">
               <Info size={11} />
               <span>hover lines for notes</span>
+            </span>
+          )}
+          {isLessonMode && changeBadgeCount > 0 && (
+            <span
+              className="code-change-badge"
+              title="Lines updated in this step"
+              aria-label={`${changeBadgeCount} line${changeBadgeCount === 1 ? '' : 's'} updated in this step`}
+            >
+              <span className="change-dot" aria-hidden />
+              <span>updated · {changeBadgeCount}</span>
             </span>
           )}
           {highlightTarget && (
@@ -210,12 +307,15 @@ const CodeViewer = memo(function CodeViewer({
           )}
         </div>
       </div>
-      <div className="code-content">
+      <div className="code-content" ref={scrollAreaRef}>
         <div className="line-numbers" aria-hidden="true">
           {Array.from({ length: lineCount }, (_, i) => (
             <div
               key={i}
-              className={`line-num ${highlightedLines.has(i) ? 'highlight' : ''} ${searchMatches.has(i) ? 'match' : ''}`}
+              className={`line-num
+                ${highlightedLines.has(i) ? 'highlight' : ''}
+                ${searchMatches.has(i) ? 'match' : ''}
+                ${changedSet.has(i) ? 'changed' : ''}`}
             >
               {i + 1}
             </div>
@@ -224,11 +324,21 @@ const CodeViewer = memo(function CodeViewer({
         <pre>
           {lines.map((line, i) => {
             const annotation = annotationByLine.get(i);
+            const isChanged = changedSet.has(i);
             return (
               <div
                 key={i}
-                className={`code-line ${highlightedLines.has(i) ? 'highlight' : ''} ${searchMatches.has(i) ? 'match' : ''} ${annotation ? 'has-annot' : ''}`}
+                ref={(el) => {
+                  if (el) lineElsRef.current.set(i, el);
+                  else lineElsRef.current.delete(i);
+                }}
+                className={`code-line
+                  ${highlightedLines.has(i) ? 'highlight' : ''}
+                  ${searchMatches.has(i) ? 'match' : ''}
+                  ${annotation ? 'has-annot' : ''}
+                  ${isChanged ? 'changed' : ''}`}
               >
+                {isChanged && <span className="change-marker" aria-hidden />}
                 {line ? <TokenizedLine line={line} /> : ' '}
                 {annotation && (
                   <span className="code-annot" role="tooltip">
