@@ -14,6 +14,7 @@ export default function SceneCodePanel() {
   const activeSection = useVamsStore(s => s.activeSection);
   const callbacks = useVamsStore(s => s.callbacks);
   const changedCodeLines = useVamsStore(s => s.changedCodeLines);
+  const viewportLimits = useVamsStore(s => s.viewportLimits);
   const canvasSize = useCanvasSize();
 
   const selectedObject = objects.find(o => o.id === selectedObjectId);
@@ -21,10 +22,10 @@ export default function SceneCodePanel() {
 
   const generatedCode = useMemo(
     () => generateCodeFromState(
-      { objects, canvasBackgroundColor, callbacks },
+      { objects, canvasBackgroundColor, callbacks, viewportLimits },
       canvasSize,
     ),
-    [objects, canvasBackgroundColor, callbacks, canvasSize],
+    [objects, canvasBackgroundColor, callbacks, canvasSize, viewportLimits],
   );
 
   const showAnnotations = activeSection === 'Pipeline' && objects.length === 0;

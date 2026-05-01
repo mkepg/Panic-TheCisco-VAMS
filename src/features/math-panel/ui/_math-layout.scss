@@ -61,10 +61,10 @@
     }
   }
 
-  // Shared structural wrapper for all internal math panels
   .pipeline-math,
   .primitives-math,
-  .buffers-math {
+  .buffers-math,
+  .transforms-math {
     display: flex;
     flex-direction: column;
     gap: 0.85rem;
@@ -90,10 +90,10 @@
         color: var(--accent-blue-light);
       }
 
-      .math-section-body { 
-        display: flex; 
-        flex-direction: column; 
-        gap: 0.4rem; 
+      .math-section-body {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
       }
 
       .explanation {
@@ -101,7 +101,9 @@
         font-size: 0.8rem;
         line-height: 1.5;
         color: $text-muted;
+
         strong { color: $text-main; font-weight: 600; }
+
         code {
           font-family: $font-mono;
           font-size: 0.74rem;

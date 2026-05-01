@@ -1,5 +1,4 @@
 import type { Lesson } from '@/core/types/lesson';
-import { useVamsStore } from '@/core/store';
 
 export const PIPELINE_LESSONS: Record<string, Lesson> = {
   'pipeline-demo-1': {
@@ -159,10 +158,11 @@ export const PIPELINE_LESSONS: Record<string, Lesson> = {
           state.setPipelineMode('Playground');
           const exists = state.objects.find((o) => o.type === 'POINTS');
           if (!exists) {
+            // RELIES ON NATIVE BEHAVIOR: addCustomObject automatically handles selection.
             state.addCustomObject('POINTS', [{ x: 0, y: 0 }]);
-            const freshState = useVamsStore.getState();
-            const newObj = freshState.objects.find(o => o.type === 'POINTS');
-            if (newObj) freshState.selectObject(newObj.id);
+          } else {
+            // Select the existing point if the user already had one in the scene
+            state.selectObject(exists.id);
           }
         },
       },
@@ -170,8 +170,13 @@ export const PIPELINE_LESSONS: Record<string, Lesson> = {
         narration: "Drag the point to land on (0.5, 0.5). Just get reasonably close.",
         waitForUser: true,
         successCheck: (state) => {
-          const pt = state.objects.find((o) => o.type === 'POINTS');
+          // STRUCTURAL FIX: Rely on the selected object ID rather than a generic array search
+          const id = state.selectedObjectId;
+          if (!id) return false;
+          
+          const pt = state.objects.find((o) => o.id === id);
           if (!pt) return false;
+          
           const dx = pt.transform.translateX - 0.5;
           const dy = pt.transform.translateY - 0.5;
           return Math.abs(dx) < 0.15 && Math.abs(dy) < 0.15;

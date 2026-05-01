@@ -21,10 +21,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
             { x: -0.5, y: -0.5 },
             { x: 0.5, y: -0.5 },
           ]);
-          
-          const freshState = useVamsStore.getState();
-          const newObj = freshState.objects[0];
-          if (newObj) freshState.selectObject(newObj.id);
         },
       },
       {
@@ -32,8 +28,8 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
         waitForUser: true,
         focusPanel: 'scene-hierarchy',
         action: (state) => {
-          const triangle = state.objects.find((o) => o.type === 'TRIANGLES');
-          if (triangle) state.toggleObjectVisibility(triangle.id);
+          const id = state.selectedObjectId;
+          if (id) state.toggleObjectVisibility(id);
         },
       },
       {
@@ -59,10 +55,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
           state.addCustomObject('POINTS', [
             { x: -0.5, y: 0.5 }, { x: 0, y: 0.5 }, { x: 0.5, y: 0.5 }
           ]);
-          
-          const freshState = useVamsStore.getState();
-          const obj = freshState.objects[0];
-          if (obj) freshState.selectObject(obj.id);
         }
       },
       {
@@ -73,14 +65,11 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
         narration: "Now, let's see GL_LINE_STRIP using the exact same three vertices.",
         waitForUser: true,
         action: (state) => {
-          state.deleteObject(state.objects[0]?.id);
+          const prevId = state.selectedObjectId;
+          if (prevId) state.deleteObject(prevId);
           state.addCustomObject('LINE_STRIP', [
             { x: -0.5, y: 0 }, { x: 0, y: -0.5 }, { x: 0.5, y: 0 }
           ]);
-          
-          const freshState = useVamsStore.getState();
-          const obj = freshState.objects[0];
-          if (obj) freshState.selectObject(obj.id);
         }
       },
       {
@@ -91,14 +80,11 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
         narration: "Finally, let's build a solid surface using GL_TRIANGLES.",
         waitForUser: true,
         action: (state) => {
-          state.deleteObject(state.objects[0]?.id);
+          const prevId = state.selectedObjectId;
+          if (prevId) state.deleteObject(prevId);
           state.addCustomObject('TRIANGLES', [
             { x: 0, y: 0.5 }, { x: -0.5, y: -0.5 }, { x: 0.5, y: -0.5 }
           ]);
-          
-          const freshState = useVamsStore.getState();
-          const obj = freshState.objects[0];
-          if (obj) freshState.selectObject(obj.id);
         }
       },
       {
@@ -120,10 +106,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
           state.addCustomObject('TRIANGLES', [
             { x: 0, y: 0.5 }, { x: -0.5, y: -0.4 }, { x: 0.5, y: -0.4 }
           ]);
-          
-          const freshState = useVamsStore.getState();
-          const obj = freshState.objects[0];
-          if (obj) freshState.selectObject(obj.id);
         }
       },
       {
@@ -131,8 +113,11 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
         waitForUser: true,
         focusPanel: 'appearance-panel',
         action: (state) => {
-          const obj = state.objects[0];
-          if (obj) state.updateVertexColor(obj.id, obj.vertices[0].id, '#ef4444');
+          const id = useVamsStore.getState().selectedObjectId;
+          const obj = useVamsStore.getState().objects.find(o => o.id === id);
+          if (obj && obj.vertices[0]) {
+            state.updateVertexColor(obj.id, obj.vertices[0].id, '#ef4444');
+          }
         }
       },
       {
@@ -140,10 +125,12 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
         waitForUser: true,
         focusPanel: 'appearance-panel',
         action: (state) => {
-          const obj = state.objects[0];
-          if (!obj) return;
-          state.updateVertexColor(obj.id, obj.vertices[1].id, '#22c55e');
-          state.updateVertexColor(obj.id, obj.vertices[2].id, '#3b82f6');
+          const id = useVamsStore.getState().selectedObjectId;
+          const obj = useVamsStore.getState().objects.find(o => o.id === id);
+          if (obj && obj.vertices.length >= 3) {
+            state.updateVertexColor(obj.id, obj.vertices[1].id, '#22c55e');
+            state.updateVertexColor(obj.id, obj.vertices[2].id, '#3b82f6');
+          }
         }
       },
       {
@@ -165,10 +152,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
           state.addCustomObject('LINE_LOOP', [
             { x: -0.5, y: 0.5 }, { x: 0.5, y: 0.5 }, { x: 0.5, y: -0.5 }, { x: -0.5, y: -0.5 }
           ]);
-          
-          const freshState = useVamsStore.getState();
-          const obj = freshState.objects[0];
-          if (obj) freshState.selectObject(obj.id);
         }
       },
       {
@@ -176,8 +159,8 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
         waitForUser: true,
         focusPanel: 'line-style-panel',
         action: (state) => {
-          const obj = state.objects[0];
-          if (obj) state.updateLineWidth(obj.id, 5);
+          const id = useVamsStore.getState().selectedObjectId;
+          if (id) state.updateLineWidth(id, 5);
         }
       },
       {
@@ -185,8 +168,8 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
         waitForUser: true,
         focusPanel: 'line-style-panel',
         action: (state) => {
-          const obj = state.objects[0];
-          if (obj) state.updateLineStipple(obj.id, { factor: 2, pattern: 0x00FF });
+          const id = useVamsStore.getState().selectedObjectId;
+          if (id) state.updateLineStipple(id, { factor: 2, pattern: 0x00FF });
         }
       },
       {
@@ -207,10 +190,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
         focusPanel: 'text-node-panel',
         action: (state) => {
           state.addTextObject('Hello\nOpenGL!', -0.3, 0);
-          
-          const freshState = useVamsStore.getState();
-          const obj = freshState.objects[0];
-          if (obj) freshState.selectObject(obj.id);
         }
       },
       {
@@ -253,11 +232,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
       }
     ],
   },
-
-  // --------------------------------------------------------------------------
-  // EXERCISES
-  // --------------------------------------------------------------------------
-
   'primitives-exercise-1': {
     id: 'primitives-exercise-1',
     title: 'Quad Assembly',
@@ -267,7 +241,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
       {
         narration: "Let's test your geometry skills. Clear the scene (if it isn't already) and use the Primitive Palette to create a GL_QUADS object.",
         waitForUser: true,
-        focusPanel: 'primitive-palette',
         successCheck: (state) =>
           state.objects.some((o) => o.type === 'QUADS' && o.vertices.length >= 4),
       },
@@ -294,10 +267,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
                { x: 0, y: 0.5 }, { x: -0.5, y: -0.4 }, { x: 0.5, y: -0.4 }
              ]);
           }
-          
-          const freshState = useVamsStore.getState();
-          const targetObj = freshState.objects.find(o => o.type === 'TRIANGLES');
-          if (targetObj) freshState.selectObject(targetObj.id);
         },
         successCheck: (state) => {
           const obj = state.objects.find(o => o.id === state.selectedObjectId);
@@ -313,19 +282,15 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
         successCheck: (state) => {
           const obj = state.objects.find(o => o.id === state.selectedObjectId);
           if (!obj) return false;
-          
           let hasGreen = false;
           let hasMagenta = false;
-
           obj.vertices.forEach(v => {
             const r = parseInt(v.color.slice(1, 3), 16);
             const g = parseInt(v.color.slice(3, 5), 16);
             const b = parseInt(v.color.slice(5, 7), 16);
-            
             if (r < 50 && g > 200 && b < 50) hasGreen = true;
             if (r > 200 && g < 50 && b > 200) hasMagenta = true;
           });
-
           return hasGreen && hasMagenta;
         },
       },
@@ -348,10 +313,6 @@ export const PRIMITIVES_LESSONS: Record<string, Lesson> = {
            state.addCustomObject('LINE_LOOP', [
              { x: -0.6, y: 0.6 }, { x: 0.6, y: 0.6 }, { x: 0.6, y: -0.6 }, { x: -0.6, y: -0.6 }
            ]);
-           
-           const freshState = useVamsStore.getState();
-           const obj = freshState.objects[0];
-           if (obj) freshState.selectObject(obj.id);
         }
       },
       {

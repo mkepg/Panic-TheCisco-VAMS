@@ -1,4 +1,4 @@
-import type { SceneNode } from "@/core/types/scene";
+import type { SceneNode, ViewportLimits } from "@/core/types/scene";
 import { sanitizeName } from './generator/utils';
 import { generateState } from './generator/state';
 import { generateObjectDrawBody } from './generator/render';
@@ -19,6 +19,17 @@ interface CallbackTemplate {
   signature: string;
   body: string;
   needsStdio?: boolean;
+}
+
+const DEFAULT_LIMITS: ViewportLimits = { minX: -1, maxX: 1, minY: -1, maxY: 1 };
+
+/** glOrtho takes GLdouble — emit plain decimals, no `f` suffix. */
+function fmtOrtho(v: number): string {
+  return v.toFixed(4);
+}
+
+function orthoArgList(limits: ViewportLimits): string {
+  return `${fmtOrtho(limits.minX)}, ${fmtOrtho(limits.maxX)}, ${fmtOrtho(limits.minY)}, ${fmtOrtho(limits.maxY)}, -1.0, 1.0`;
 }
 
 /**
@@ -52,7 +63,10 @@ function buildIdleBody(needsUpdates: boolean): string {
   ].join('\n');
 }
 
-function getCallbackTemplates(needsUpdates: boolean): Record<RegisteredCallback['kind'], CallbackTemplate> {
+function getCallbackTemplates(
+  needsUpdates: boolean,
+  viewportLimits: ViewportLimits,
+): Record<RegisteredCallback['kind'], CallbackTemplate> {
   return {
     keyboard: {
       fn: 'glutKeyboardFunc',
@@ -93,13 +107,16 @@ function getCallbackTemplates(needsUpdates: boolean): Record<RegisteredCallback[
     reshape: {
       fn: 'glutReshapeFunc',
       signature: 'void {{name}}(int width, int height)',
+      // The reshape stub mirrors the projection setup that runs at the top of
+      // display(), so resizing the window keeps the same visible volume the
+      // student configured in the glOrtho editor.
       body: [
         '    // Map the OpenGL viewport to the new window size.',
         '    glViewport(0, 0, width, height);',
-        '    // Reset the projection matrix to a 2D orthographic view.',
+        '    // Reset the projection matrix to the configured 2D orthographic view.',
         '    glMatrixMode(GL_PROJECTION);',
         '    glLoadIdentity();',
-        '    glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);',
+        `    glOrtho(${orthoArgList(viewportLimits)});`,
         '    glMatrixMode(GL_MODELVIEW);',
         '    glLoadIdentity();',
         '',
@@ -164,12 +181,13 @@ export const generateAppOutput = (
   canvasBackgroundColor: string,
   canvasSize: { width: number; height: number },
   emptyMessage: string = "    // Empty scene\n",
-  callbacks: RegisteredCallback[] = []
+  callbacks: RegisteredCallback[] = [],
+  viewportLimits: ViewportLimits = DEFAULT_LIMITS,
 ): string => {
   const usesGlew = objectsNeedGlew(visibleObjects);
   const needsUpdates = sceneNeedsBufferUpdates(visibleObjects);
   const userHasIdle = callbacks.some((cb) => cb.kind === 'idle');
-  const templates = getCallbackTemplates(needsUpdates);
+  const templates = getCallbackTemplates(needsUpdates, viewportLimits);
 
   let fullCode = '';
 
@@ -213,8 +231,22 @@ export const generateAppOutput = (
   }
   fullCode += `}\n\n`;
 
+  // -----------------------------------------------------------------
+  // display(): clear, set the projection from glOrtho, switch to
+  // modelview, then walk the scene. Putting glOrtho here (rather than
+  // hiding it in init()) is intentional — it's a curriculum surface,
+  // and seeing it run every frame matches how students will read the
+  // pipeline: projection → modelview → draw.
+  // -----------------------------------------------------------------
   fullCode += `void display()\n{\n`;
-  fullCode += `    glClear(GL_COLOR_BUFFER_BIT);\n`;
+  fullCode += `    glClear(GL_COLOR_BUFFER_BIT);\n\n`;
+  fullCode += `    // 2D orthographic projection — see glOrtho editor in VAMS\n`;
+  fullCode += `    glMatrixMode(GL_PROJECTION);\n`;
+  fullCode += `    glLoadIdentity();\n`;
+  fullCode += `    glOrtho(${orthoArgList(viewportLimits)});\n\n`;
+  fullCode += `    // Switch to the modelview stack for object transforms\n`;
+  fullCode += `    glMatrixMode(GL_MODELVIEW);\n`;
+  fullCode += `    glLoadIdentity();\n\n`;
   fullCode += `    draw();\n`;
   fullCode += `    glutSwapBuffers();\n`;
   fullCode += `}\n\n`;

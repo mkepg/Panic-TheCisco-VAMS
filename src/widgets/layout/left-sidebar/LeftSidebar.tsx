@@ -1,4 +1,4 @@
-import { GitCommit, Shapes, Database, Move3d, Image as ImageIcon, BoxSelect } from 'lucide-react';
+import { GitCommit, Shapes, Database, Move3d, Image as ImageIcon } from 'lucide-react';
 import { useVamsStore } from '@/core/store';
 import type { CurriculumSection } from '@/core/store/types';
 
@@ -11,6 +11,8 @@ import ObjectAppearancePanel from '@/features/object-appearance/ui/ObjectAppeara
 import LineStylePanel from '@/features/line-style/ui/LineStylePanel';
 import CallbacksPanel from '@/features/callbacks/ui/CallbacksPanel';
 import BuffersPanel from '@/features/buffers/ui/BuffersPanel';
+import OrthoEditorPanel from '@/features/ortho-editor/ui/OrthoEditorPanel';
+
 import './left-sidebar.scss';
 
 export default function LeftSidebar() {
@@ -28,6 +30,7 @@ export default function LeftSidebar() {
 
   const handleTabClick = (section: CurriculumSection) => {
     if (activeSection === section) return;
+    
     if (appMode === 'Lesson') {
       const confirmLeave = window.confirm('Leave current lesson? Progress will be lost.');
       if (confirmLeave) {
@@ -60,9 +63,6 @@ export default function LeftSidebar() {
             <TextNodePanel />
             <div className="separator" />
             <ObjectAppearancePanel />
-            {/* LineStylePanel self-hides for non-line primitives, so it can sit
-                here unconditionally — keeps the layout stable when the user
-                switches between selections. */}
             <LineStylePanel />
             <div className="separator" />
             <CallbacksPanel />
@@ -82,7 +82,8 @@ export default function LeftSidebar() {
         return (
           <div className="tab-pane">
             <SceneHierarchyPanel />
-            {selectedObject ? <ObjectTransformPanel /> : <EmptySelectionState />}
+            {selectedObject && <ObjectTransformPanel />}
+            <OrthoEditorPanel />
           </div>
         );
       case 'Textures':
@@ -130,16 +131,5 @@ function SidebarTab({ label, icon, isActive, onClick }: SidebarTabProps) {
       <span className="tab-icon">{icon}</span>
       <span className="tab-label">{label}</span>
     </button>
-  );
-}
-
-function EmptySelectionState() {
-  return (
-    <div className="empty-selection-state">
-      <BoxSelect size={40} className="empty-icon" strokeWidth={1.5} />
-      <h4>No Node Selected</h4>
-      <p>Select a scene node from the hierarchy to edit properties.</p>
-      <div className="separator" />
-    </div>
   );
 }

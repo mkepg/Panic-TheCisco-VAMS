@@ -1,4 +1,4 @@
-import type { GlutCallbackKind, SceneNode } from '@/core/types/scene';
+import type { GlutCallbackKind, SceneNode, ViewportLimits } from '@/core/types/scene';
 import {
   generateAppOutput,
   type RegisteredCallback,
@@ -18,6 +18,12 @@ interface GenerateInput {
   objects: SceneNode[];
   canvasBackgroundColor: string;
   callbacks: Record<GlutCallbackKind, string>;
+  /**
+   * Optional. When omitted the generator falls back to the (-1, 1, -1, 1)
+   * default ortho — same as before this argument existed, so legacy
+   * callers continue to behave identically.
+   */
+  viewportLimits?: ViewportLimits;
 }
 
 function isEffectivelyHidden(
@@ -53,7 +59,7 @@ export function generateCodeFromState(
   input: GenerateInput,
   canvasSize: { width: number; height: number }
 ): string {
-  const { objects, canvasBackgroundColor, callbacks } = input;
+  const { objects, canvasBackgroundColor, callbacks, viewportLimits } = input;
   const cbs = getRegisteredCallbacks(callbacks);
 
   if (objects.length === 0) {
@@ -63,6 +69,7 @@ export function generateCodeFromState(
       canvasSize,
       '    // Empty scene\n',
       cbs,
+      viewportLimits,
     );
   }
 
@@ -76,5 +83,6 @@ export function generateCodeFromState(
     canvasSize,
     '    // Empty scene\n',
     cbs,
+    viewportLimits,
   );
 }

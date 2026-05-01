@@ -16,6 +16,8 @@ import { generateCodeFromState } from '@/features/code-generation/model/generate
 import { resolveChangedLines } from '@/features/code-generation/model/code-diff';
 import './lesson-bar.scss';
 
+const DEFAULT_LESSON_VIEWPORT = { minX: -1, maxX: 1, minY: -1, maxY: 1 };
+
 export default function LessonBar() {
   const {
     appMode,
@@ -29,6 +31,7 @@ export default function LessonBar() {
   const [sessionSeed, setSessionSeed] = useState(0);
   const objects = useVamsStore((s) => s.objects);
   const callbacks = useVamsStore((s) => s.callbacks); // listen for callback changes
+  const viewportLimits = useVamsStore((s) => s.viewportLimits); // ortho changes affect successChecks too
 
   const lastExecutedStepRef = useRef<string | null>(null);
   const lastStepIndexRef = useRef<number>(-1);
@@ -137,6 +140,7 @@ export default function LessonBar() {
           objects: s.objects,
           canvasBackgroundColor: s.canvasBackgroundColor,
           callbacks: s.callbacks,
+          viewportLimits: s.viewportLimits,
         },
         cs,
       );
@@ -156,10 +160,14 @@ export default function LessonBar() {
       store.setDmaDriverStep(currentStep.dmaStep ?? null);
     } else {
       // Non-linear navigation (Back, lesson-start, jump): rebuild from scratch.
+      // Reset every piece of pedagogically-relevant state so step replay starts
+      // from a clean baseline — including viewportLimits, which Stage 4 lessons
+      // mutate.
       useVamsStore.setState({
         objects: [],
         callbacks: { keyboard: '', mouse: '', reshape: '', motion: '', idle: '' },
         canvasBackgroundColor: '#000000',
+        viewportLimits: { ...DEFAULT_LESSON_VIEWPORT },
         selectedObjectId: null,
         interactionMode: 'SELECT',
       });
@@ -208,11 +216,12 @@ export default function LessonBar() {
     if (step.successCheck) {
       void objects;
       void callbacks;
+      void viewportLimits;
       return step.successCheck(useVamsStore.getState());
     }
 
     return true;
-  }, [step, mcAnswer, orderAnswer, objects, callbacks]);
+  }, [step, mcAnswer, orderAnswer, objects, callbacks, viewportLimits]);
 
   const handleNext = useCallback(() => {
     if (lesson && currentStepIndex < lesson.steps.length - 1) {

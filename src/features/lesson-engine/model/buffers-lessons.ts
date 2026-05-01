@@ -9,17 +9,14 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
     section: 'Buffers',
     steps: [
       {
-        narration: "Let's begin with how OpenGL 1.x has worked since the start: immediate mode.",
+        narration: "Welcome to Buffers! Let's begin with how OpenGL 1.x has worked since the start: immediate mode.",
         waitForUser: true,
         action: (state) => {
           state.addCustomObject('TRIANGLES', [
             { x: -0.5, y: -0.4 }, { x: 0.5, y: -0.4 }, { x: 0, y: 0.5 },
           ]);
-          const obj = useVamsStore.getState().objects[0];
-          if (obj) {
-            useVamsStore.getState().selectObject(obj.id);
-            useVamsStore.getState().updateRenderingMode(obj.id, 'IMMEDIATE');
-          }
+          const id = useVamsStore.getState().selectedObjectId;
+          if (id) state.updateRenderingMode(id, 'IMMEDIATE');
         },
       },
       {
@@ -36,7 +33,6 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
       },
     ],
   },
-
   'buffers-demo-2': {
     id: 'buffers-demo-2',
     title: 'Converting to Vertex Arrays',
@@ -50,8 +46,6 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
           state.addCustomObject('TRIANGLES', [
             { x: -0.5, y: -0.4 }, { x: 0.5, y: -0.4 }, { x: 0, y: 0.5 },
           ]);
-          const obj = useVamsStore.getState().objects[0];
-          if (obj) useVamsStore.getState().selectObject(obj.id);
         },
       },
       {
@@ -59,8 +53,8 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         waitForUser: true,
         focusPanel: 'buffers-panel',
         action: (state) => {
-          const obj = state.objects[0];
-          if (obj) state.updateRenderingMode(obj.id, 'VERTEX_ARRAY');
+          const id = state.selectedObjectId;
+          if (id) state.updateRenderingMode(id, 'VERTEX_ARRAY');
         },
       },
       {
@@ -73,7 +67,6 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
       },
     ],
   },
-
   'buffers-demo-3': {
     id: 'buffers-demo-3',
     title: 'VBOs: Send Once',
@@ -87,8 +80,6 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
           state.addCustomObject('TRIANGLES', [
             { x: -0.5, y: -0.4 }, { x: 0.5, y: -0.4 }, { x: 0, y: 0.5 },
           ]);
-          const obj = useVamsStore.getState().objects[0];
-          if (obj) useVamsStore.getState().selectObject(obj.id);
         },
       },
       {
@@ -96,8 +87,8 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         waitForUser: true,
         focusPanel: 'buffers-panel',
         action: (state) => {
-          const obj = state.objects[0];
-          if (obj) state.updateRenderingMode(obj.id, 'VBO');
+          const id = state.selectedObjectId;
+          if (id) state.updateRenderingMode(id, 'VBO');
         },
       },
       {
@@ -116,11 +107,8 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
             { x: -0.7, y: 0.55 }, { x: -0.3, y: 0.55 },
             { x: -0.3, y: 0.85 }, { x: -0.7, y: 0.85 },
           ]);
-          const obj = useVamsStore.getState().objects[0];
-          if (obj) {
-            useVamsStore.getState().selectObject(obj.id);
-            useVamsStore.getState().updateRenderingMode(obj.id, 'VBO');
-          }
+          const id = useVamsStore.getState().selectedObjectId;
+          if (id) state.updateRenderingMode(id, 'VBO');
         },
       },
       {
@@ -129,7 +117,6 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
       },
     ],
   },
-
   'buffers-demo-4': {
     id: 'buffers-demo-4',
     title: 'Buffer Usage Hints',
@@ -143,11 +130,10 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
           state.addCustomObject('TRIANGLES', [
             { x: -0.5, y: -0.4 }, { x: 0.5, y: -0.4 }, { x: 0, y: 0.5 },
           ]);
-          const obj = useVamsStore.getState().objects[0];
-          if (obj) {
-            useVamsStore.getState().selectObject(obj.id);
-            useVamsStore.getState().updateRenderingMode(obj.id, 'VBO');
-            useVamsStore.getState().updateBufferUsage(obj.id, 'STATIC');
+          const id = useVamsStore.getState().selectedObjectId;
+          if (id) {
+            state.updateRenderingMode(id, 'VBO');
+            state.updateBufferUsage(id, 'STATIC');
           }
         },
       },
@@ -161,8 +147,8 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         waitForUser: true,
         focusPanel: 'buffers-panel',
         action: (state) => {
-          const obj = state.objects[0];
-          if (obj) state.updateBufferUsage(obj.id, 'DYNAMIC');
+          const id = state.selectedObjectId;
+          if (id) state.updateBufferUsage(id, 'DYNAMIC');
         },
       },
       {
@@ -174,8 +160,8 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         waitForUser: true,
         focusPanel: 'buffers-panel',
         action: (state) => {
-          const obj = state.objects[0];
-          if (obj) state.updateBufferUsage(obj.id, 'STREAM');
+          const id = state.selectedObjectId;
+          if (id) state.updateBufferUsage(id, 'STREAM');
         },
       },
       {
@@ -188,7 +174,6 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
       },
     ],
   },
-
   'buffers-demo-5': {
     id: 'buffers-demo-5',
     title: 'Updating in Place: glMapBuffer',
@@ -202,12 +187,11 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
           state.addCustomObject('TRIANGLES', [
             { x: -0.5, y: -0.4 }, { x: 0.5, y: -0.4 }, { x: 0, y: 0.5 },
           ]);
-          const obj = useVamsStore.getState().objects[0];
-          if (obj) {
-            useVamsStore.getState().selectObject(obj.id);
-            useVamsStore.getState().updateRenderingMode(obj.id, 'VBO');
-            useVamsStore.getState().updateBufferUsage(obj.id, 'DYNAMIC');
-            useVamsStore.getState().updateUpdateMethod(obj.id, 'BUFFER_SUB_DATA');
+          const id = useVamsStore.getState().selectedObjectId;
+          if (id) {
+            state.updateRenderingMode(id, 'VBO');
+            state.updateBufferUsage(id, 'DYNAMIC');
+            state.updateUpdateMethod(id, 'BUFFER_SUB_DATA');
           }
         },
       },
@@ -221,8 +205,8 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         waitForUser: true,
         focusPanel: 'buffers-panel',
         action: (state) => {
-          const obj = state.objects[0];
-          if (obj) state.updateUpdateMethod(obj.id, 'MAP_BUFFER');
+          const id = state.selectedObjectId;
+          if (id) state.updateUpdateMethod(id, 'MAP_BUFFER');
         },
       },
       {
@@ -235,12 +219,12 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         dmaStep: 0,
       },
       {
-        narration: "Step two: map it. The driver hands back a raw C pointer — that blue caret in the diagram is your pointer.",
+        narration: "Step two: map it. The driver hands back a pointer to GPU memory you can write to directly — no upload, no copy.",
         waitForUser: true,
         dmaStep: 1,
       },
       {
-        narration: "Step three: ptr[0] = 0.5f. The first slot is rewritten in place — no upload, no copy. Watch cell 0 turn green.",
+        narration: "Step three: ptr[0] = 0.5f. The first slot is updated in place.",
         waitForUser: true,
         dmaStep: 2,
       },
@@ -264,17 +248,20 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         waitForUser: true,
         dmaStep: 5,
         action: (state) => {
-          const obj = state.objects[0];
-          if (obj) state.updateVertexPosition(obj.id, obj.vertices[2].id, 0, 0.7);
+          const id = state.selectedObjectId;
+          if (!id) return;
+          const obj = state.objects.find(o => o.id === id);
+          if (obj && obj.vertices[2]) {
+            state.updateVertexPosition(id, obj.vertices[2].id, 0, 0.7);
+          }
         },
       },
       {
-        narration: "Sub-data and Map Buffer reach the same destination — both update the GPU's copy. The difference is whether you're pushing bytes over or editing in place. Pick the one that matches the shape of your update.",
+        narration: "Sub-data and Map Buffer reach the same destination — both update the GPU's copy. Pick the one that matches the shape of your update.",
         waitForUser: true,
       },
     ],
   },
-
   'buffers-exercise-1': {
     id: 'buffers-exercise-1',
     title: 'Switch to VBO',
@@ -289,8 +276,6 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
           state.addCustomObject('TRIANGLES', [
             { x: -0.5, y: -0.4 }, { x: 0.5, y: -0.4 }, { x: 0, y: 0.5 },
           ]);
-          const obj = useVamsStore.getState().objects[0];
-          if (obj) useVamsStore.getState().selectObject(obj.id);
         },
         successCheck: (state) => {
           const obj = state.objects.find(o => o.id === state.selectedObjectId);
@@ -298,12 +283,11 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         },
       },
       {
-        narration: "Done. The GPU upload moved into init() and the draw function now just binds the buffer — that's the whole point of a VBO.",
+        narration: "Excellent! The GPU upload moved into init() and the draw function now just binds the buffer — that's the whole point of a VBO.",
         waitForUser: true,
       },
     ],
   },
-
   'buffers-exercise-2': {
     id: 'buffers-exercise-2',
     title: 'Use Static for Unchanging Data',
@@ -318,11 +302,10 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
           state.addCustomObject('QUADS', [
             { x: -0.4, y: -0.4 }, { x: 0.4, y: -0.4 }, { x: 0.4, y: 0.4 }, { x: -0.4, y: 0.4 },
           ]);
-          const obj = useVamsStore.getState().objects[0];
-          if (obj) {
-            useVamsStore.getState().selectObject(obj.id);
-            useVamsStore.getState().updateRenderingMode(obj.id, 'VBO');
-            useVamsStore.getState().updateBufferUsage(obj.id, 'DYNAMIC');
+          const id = useVamsStore.getState().selectedObjectId;
+          if (id) {
+            state.updateRenderingMode(id, 'VBO');
+            state.updateBufferUsage(id, 'DYNAMIC');
           }
         },
         successCheck: (state) => {
@@ -331,12 +314,11 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         },
       },
       {
-        narration: "GL_STATIC_DRAW — perfect. Notice update_buffers() disappeared from the code panel; STATIC has nothing to refresh.",
+        narration: "Perfect! GL_STATIC_DRAW is exactly right. Notice update_buffers() disappeared from the code panel; STATIC has nothing to refresh.",
         waitForUser: true,
       },
     ],
   },
-
   'buffers-exercise-3': {
     id: 'buffers-exercise-3',
     title: 'Reduce Memory with Indexed Drawing',
@@ -352,11 +334,8 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
             { x: -0.4, y: -0.4 }, { x: 0.4, y: -0.4 }, { x: -0.4, y: 0.4 },
             { x: 0.4, y: -0.4 },  { x: 0.4, y: 0.4 },  { x: -0.4, y: 0.4 },
           ]);
-          const obj = useVamsStore.getState().objects[0];
-          if (obj) {
-            useVamsStore.getState().selectObject(obj.id);
-            useVamsStore.getState().updateRenderingMode(obj.id, 'VERTEX_ARRAY');
-          }
+          const id = useVamsStore.getState().selectedObjectId;
+          if (id) state.updateRenderingMode(id, 'VERTEX_ARRAY');
         },
         successCheck: (state) => {
           const obj = state.objects.find(o => o.id === state.selectedObjectId);
@@ -364,12 +343,11 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         },
       },
       {
-        narration: "Look at Array vs Indexed in the math panel — the indexed version stores 4 vertices plus 6 indices instead of 6 full vertices. The code panel now uses glDrawElements.",
+        narration: "Brilliant! Look at Array vs Indexed in the math panel — the indexed version stores 4 vertices plus 6 indices instead of 6 full vertices. The code panel now uses glDrawElements.",
         waitForUser: true,
       },
     ],
   },
-
   'buffers-exercise-4': {
     id: 'buffers-exercise-4',
     title: 'Pick the Right Usage Hint',
@@ -392,7 +370,7 @@ export const BUFFERS_LESSONS: Record<string, Lesson> = {
         },
       },
       {
-        narration: "Right — Stream tells the driver this data is short-lived. Anything else and you'd waste memory or stall the GPU.",
+        narration: "Spot on! Stream tells the driver this data is short-lived. Anything else and you'd waste memory or stall the GPU.",
         waitForUser: true,
       },
     ],
