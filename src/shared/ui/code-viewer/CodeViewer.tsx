@@ -67,7 +67,6 @@ function tokenizeLine(line: string): Array<{ t: string; k: string }> {
     }
 
     if (/[{}()[\];,.:]/.test(ch)) { out.push({ t: ch, k: 'punct' }); i++; continue; }
-
     if (/[+\-*/%=<>!&|^~?]/.test(ch)) {
       let j = i + 1;
       while (j < n && /[+\-*/%=<>!&|^~?]/.test(line[j])) j++;
@@ -96,6 +95,7 @@ const CodeViewer = memo(function CodeViewer({
   const [copied, setCopied] = useState(false);
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
+  
   const searchRef = useRef<HTMLInputElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const lineElsRef = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -121,7 +121,6 @@ const CodeViewer = memo(function CodeViewer({
 
     let inDrawBlock = false;
     let inVboBlock = false;
-
     const targetRegex = new RegExp(`\\b(draw|state|verts|colors|indices|vbo|cbo|ebo)_${highlightTarget}\\b`);
     const bufferOpRegex = new RegExp(`\\b(vbo|cbo|ebo|verts|colors|indices)_${highlightTarget}\\b`);
 
@@ -141,13 +140,10 @@ const CodeViewer = memo(function CodeViewer({
         }
       } else if (targetRegex.test(line)) {
         highlighted.add(index);
-        
         // Include the preceding explanatory comment if it exists
         if (index > 0 && lines[index - 1].trim().startsWith('//')) {
           highlighted.add(index - 1);
         }
-
-        // Begin capturing an indented VBO setup/update block
         if (line.startsWith('    ') && bufferOpRegex.test(line)) {
           inVboBlock = true;
         }
@@ -306,17 +302,18 @@ const CodeViewer = memo(function CodeViewer({
                   <Search size={13} />
                 </button>
               )}
-              <button
-                className={`copy-button ${copied ? 'copied' : ''}`}
-                onClick={handleCopy}
-                title="Copy code"
-                type="button"
-              >
-                {copied ? <TbCheck size={14} /> : <TbCopy size={14} />}
-                <span>{copied ? 'Copied' : 'Copy'}</span>
-              </button>
             </>
           )}
+          
+          <button
+            className={`copy-button ${copied ? 'copied' : ''}`}
+            onClick={handleCopy}
+            title="Copy code"
+            type="button"
+          >
+            {copied ? <TbCheck size={14} /> : <TbCopy size={14} />}
+            <span>{copied ? 'Copied' : 'Copy'}</span>
+          </button>
         </div>
       </div>
 
@@ -334,10 +331,12 @@ const CodeViewer = memo(function CodeViewer({
             </div>
           ))}
         </div>
+
         <pre>
           {lines.map((line, i) => {
             const annotation = annotationByLine.get(i);
             const isChanged = changedSet.has(i);
+
             return (
               <div
                 key={i}
@@ -353,7 +352,6 @@ const CodeViewer = memo(function CodeViewer({
               >
                 {isChanged && <span className="change-marker" aria-hidden />}
                 {line ? <TokenizedLine line={line} /> : ' '}
-
                 {annotation && (
                   <span className="code-annot" role="tooltip">
                     <span className="annot-title">{annotation.title}</span>

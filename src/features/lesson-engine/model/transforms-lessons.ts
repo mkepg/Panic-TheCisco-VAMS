@@ -4,7 +4,6 @@ import type { VamsState } from '@/core/store/types';
 
 const DEFAULT_VIEWPORT = { minX: -1, maxX: 1, minY: -1, maxY: 1 };
 
-/** Update the selected object's transform via the standard store action. */
 function patchSelectedTransform(
   state: VamsState,
   patch: Partial<{
@@ -19,7 +18,6 @@ function patchSelectedTransform(
   if (!id) return;
   const obj = state.objects.find((o) => o.id === id);
   if (!obj) return;
-  
   state.updateObjectTransform(id, { ...obj.transform, ...patch });
 }
 
@@ -42,7 +40,6 @@ export const TRANSFORMS_LESSONS: Record<string, Lesson> = {
         narration:
           'Translate moves the shape in world space. Watch the X coordinate — the triangle slides to the right. In the generated code, that becomes a glTranslatef call.',
         focusPanel: 'object-transform',
-        codeChangeFocus: ['glTranslatef'],
         action: (state) => {
           patchSelectedTransform(state, { translateX: 0.4 });
         },
@@ -51,7 +48,6 @@ export const TRANSFORMS_LESSONS: Record<string, Lesson> = {
         narration:
           'Rotate spins the shape around its origin. Thirty degrees counter-clockwise is enough to see clearly. The angle becomes the first argument to glRotatef.',
         focusPanel: 'object-transform',
-        codeChangeFocus: ['glRotatef'],
         action: (state) => {
           patchSelectedTransform(state, { rotate: 30 });
         },
@@ -60,7 +56,6 @@ export const TRANSFORMS_LESSONS: Record<string, Lesson> = {
         narration:
           'Scale stretches the shape on each axis. We’ll grow it 1.5× in both X and Y. glScalef takes the two factors directly.',
         focusPanel: 'object-transform',
-        codeChangeFocus: ['glScalef'],
         action: (state) => {
           patchSelectedTransform(state, { scaleX: 1.5, scaleY: 1.5 });
         },
@@ -140,19 +135,15 @@ export const TRANSFORMS_LESSONS: Record<string, Lesson> = {
         focusPanel: 'scene-hierarchy',
         action: (state) => {
           state.addCustomObject('TRIANGLES', [{x: 0, y: 0.5}, {x: -0.5, y: -0.5}, {x: 0.5, y: -0.5}]);
-          // MUST fetch fresh state because the snapshot `state` parameter does not know the new ID
           const triangleId = useVamsStore.getState().selectedObjectId;
-          
           useVamsStore.getState().addCustomObject('QUADS', [
-            {x: -0.15, y: -0.15}, {x: 0.15, y: -0.15}, 
+            {x: -0.15, y: -0.15}, {x: 0.15, y: -0.15},
             {x: 0.15, y: 0.15}, {x: -0.15, y: 0.15}
           ]);
           const quadId = useVamsStore.getState().selectedObjectId;
-          
           if (quadId) {
             useVamsStore.getState().setAllVertexColors(quadId, '#ef4444');
           }
-
           if (triangleId && quadId) {
             useVamsStore.getState().createGroup([triangleId, quadId]);
           }
@@ -172,7 +163,6 @@ export const TRANSFORMS_LESSONS: Record<string, Lesson> = {
         narration:
           'Rotate the Group container 30°. Because the quad sits on top of the Group’s matrix, the quad rotates with it — even though the quad’s own rotate value never changed.',
         focusPanel: 'object-transform',
-        codeChangeFocus: ['glRotatef'],
         action: (state) => {
           const group = state.objects.find((o) => o.type === 'GROUP');
           if (group) {
