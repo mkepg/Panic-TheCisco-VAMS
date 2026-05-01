@@ -1,0 +1,37 @@
+@use '../../../shared/styles/tokens' as *;
+
+.pipeline-math {
+  .ndc-readout {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+
+    .coord-pair {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.4rem;
+      padding: 0.35rem 0.65rem;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid $border-color;
+      border-radius: 4px;
+      font-family: $font-mono;
+      flex: 1;
+      min-width: 0;
+
+      .axis {
+        font-size: 0.62rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        font-weight: 700;
+        &.x { color: #f87171; }
+        &.y { color: #4ade80; }
+      }
+
+      .value {
+        font-size: 0.95rem;
+        color: $text-main;
+        font-variant-numeric: tabular-nums;
+      }
+    }
+  }
+}
