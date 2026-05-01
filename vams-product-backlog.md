@@ -65,13 +65,36 @@ Based on the `plan.md` and the current state of the repository, here is the comp
 ## Epic: Stage 4 — Transforms (Status: Partial)
 **Purpose:** Matrix math, transformations, matrix stack, orthographic viewing.
 
-- [x] Transform gizmo (translate/rotate/scale), numeric inputs, non-uniform scale with aspect lock.
-- [ ] Matrix stack panel, glOrtho editor, matrix math content, demos, and exercises.
+- [x] **Transform Gizmo:** Canvas overlay for selected object with Translate, Rotate, and Scale modes.
+- [x] **Numeric Inputs:** Panel for explicit coordinate, degree, and scale adjustments, including non-uniform scale with an aspect lock toggle.
+- [ ] **Code Generator — Transforms:** Emit `glMatrixMode`, `glLoadIdentity`, and nested `glPushMatrix`/`glPopMatrix` sequences reflecting the parent-child hierarchy in `display()`.
+- [ ] **Code Generator — Ortho:** Emit `glOrtho(...)` call at the top of the `display()` function.
+- [ ] **glOrtho Editor:** Dedicated UI panel with left, right, bottom, and top numeric inputs that update both the canvas viewport and the generated code.
+- [ ] **Math Panel — Selected Matrix:** Live 4×4 matrix display of the selected object's current transform.
+- [ ] **Math Panel — Matrix Stack:** Compact vertical list visualization reflecting the selected object's ancestor chain and composition trace.
+- [ ] **Math Panel — Ortho:** Display the `glOrtho` window-to-viewport mapping equation.
+- [ ] **Demos (4):** Translate, Rotate, Scale; Matrix Representation; The Matrix Stack; glOrtho: Changing the View.
+- [ ] **Exercises (4):** Translate to Position, Rotate to Angle, Build a Hierarchy, Set the Viewport Range.
 
 ---
 
 ## Epic: Stage 5 — Textures (Status: To Do)
-Untouched — see `plan.md` for full scope.
+**Purpose:** Texture mapping, image loading, UV coordinates, filtering, wrapping.
+
+- [ ] **Texture Library:** UI in the Tools Rail to upload images, view a thumbnail list, and delete textures.
+- [ ] **Sample Textures:** Pre-load a seamless pattern, a checker pattern (for UV debugging), and a UV test pattern without requiring uploads.
+- [ ] **Texture Attachment Control:** UI to apply a loaded texture from the library to the currently selected scene object.
+- [ ] **Filter & Wrap Controls:** Toggles for filter mode (`GL_NEAREST` / `GL_LINEAR`) and wrap mode (`GL_REPEAT` / `GL_CLAMP_TO_EDGE`).
+- [ ] **UV Editor:** Compact inline panel showing the attached texture with draggable UV handles (one per vertex) that update the canvas live.
+- [ ] **Canvas Rendering:** Visually render textured objects, accurately reflecting the active filter and wrap settings on the canvas.
+- [ ] **Code Generator — Setup:** Emit full texture generation/binding setup (`glGenTextures`, `glBindTexture`, `glTexImage2D`, `glTexParameteri`) inside `init()`.
+- [ ] **Code Generator — Draw:** Emit per-object texture binds and interleaved `glTexCoord2f` + `glVertex2f` calls in `display()`.
+- [ ] **Project I/O — Texture Persistence:** Bundle texture image data directly into the saved project file for self-containment.
+- [ ] **Project I/O — Missing Textures:** Handle missing textures gracefully on load by detaching them and surfacing a single, calm toast message.
+- [ ] **Math Panel — UVs & Sampling:** Display UV coordinate tables, texel sampling equations (based on filter), wrap equations, and UV barycentric interpolation.
+- [ ] **Constraint Audit:** Ensure absolutely no lighting APIs (`glEnable(GL_LIGHTING)`, `glNormal3f`, etc.) or lighting terminology leak into the UI or code.
+- [ ] **Demos (5):** From Image to Texture, UV Coordinates, Filtering, Wrapping, Texture on a Triangle.
+- [ ] **Exercises (4):** Apply a Texture, Tile the Texture, Pixelate, Map UVs to Match Target.
 
 ---
 
