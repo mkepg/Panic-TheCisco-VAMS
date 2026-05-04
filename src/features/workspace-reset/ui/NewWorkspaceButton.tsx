@@ -14,9 +14,16 @@ export default function NewWorkspaceButton() {
     const hasCustomBackground = state.canvasBackgroundColor !== '#000000';
     const isBuildingShape = state.pendingShapeType !== null;
     const hasCallbacks = Object.values(state.callbacks).some(cb => cb.trim() !== '');
+    
+    // Check if the viewport has been modified from the default orthographic bounds
+    const hasViewportChanges = 
+      state.viewportLimits.minX !== -1 ||
+      state.viewportLimits.maxX !== 1 ||
+      state.viewportLimits.minY !== -1 ||
+      state.viewportLimits.maxY !== 1;
 
     // Prevent action if the workspace is already a completely blank slate
-    if (!hasObjects && !hasCustomBackground && !isBuildingShape && !hasCallbacks) {
+    if (!hasObjects && !hasCustomBackground && !isBuildingShape && !hasCallbacks && !hasViewportChanges) {
       return;
     }
 
@@ -28,7 +35,9 @@ export default function NewWorkspaceButton() {
         pendingVertices: [],
         interactionMode: 'SELECT',
         selectedVertexId: null,
-        callbacks: { keyboard: '', mouse: '', reshape: '', motion: '', idle: '' }
+        callbacks: { keyboard: '', mouse: '', reshape: '', motion: '', idle: '' },
+        // Explicitly reset the viewport limits back to default
+        viewportLimits: { minX: -1, maxX: 1, minY: -1, maxY: 1 }
       });
       setCanvasBackgroundColor('#000000');
       clearHistory();

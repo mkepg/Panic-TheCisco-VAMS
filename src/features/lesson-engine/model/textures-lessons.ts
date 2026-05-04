@@ -59,7 +59,7 @@ export const TEXTURES_LESSONS: Record<string, Lesson> = {
       },
       {
         narration:
-          "In the display() function, we call glBindTexture before drawing the quad. OpenGL then uses glTexCoord2f to pin corners of the image to the corners of the geometry.",
+          "Inside the quad's specific draw function, we call glBindTexture before drawing the shape. OpenGL then uses glTexCoord2f to pin corners of the image to the corners of the geometry.",
         waitForUser: true,
       },
     ],

@@ -60,7 +60,6 @@ function tokenizeLine(line: string): Array<{ t: string; k: string }> {
         else if (tok.startsWith('glut') && tok.length > 4) kind = 'glfn';
         else if (line[i + tok.length] === '(') kind = 'fn';
         else if (tok === tok.toUpperCase() && tok.length > 1) kind = 'const';
-
         out.push({ t: tok, k: kind });
         i += tok.length; continue;
       }
@@ -95,7 +94,6 @@ const CodeViewer = memo(function CodeViewer({
   const [copied, setCopied] = useState(false);
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
-  
   const searchRef = useRef<HTMLInputElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const lineElsRef = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -118,23 +116,23 @@ const CodeViewer = memo(function CodeViewer({
   const highlightedLines = useMemo(() => {
     const highlighted = new Set<number>();
     if (!highlightTarget) return highlighted;
-
     let inDrawBlock = false;
-    let inVboBlock = false;
-    const targetRegex = new RegExp(`\\b(draw|state|verts|colors|indices|vbo|cbo|ebo)_${highlightTarget}\\b`);
-    const bufferOpRegex = new RegExp(`\\b(vbo|cbo|ebo|verts|colors|indices)_${highlightTarget}\\b`);
-
+    let inConfigBlock = false;
+    
+    // Added 'tex' to both regexes to catch texture globals and init blocks
+    const targetRegex = new RegExp(`\\b(draw|state|verts|colors|indices|vbo|cbo|ebo|tex)_${highlightTarget}\\b`);
+    const configOpRegex = new RegExp(`\\b(vbo|cbo|ebo|verts|colors|indices|tex)_${highlightTarget}\\b`);
+    
     lines.forEach((line, index) => {
       const trimmed = line.trim();
-
       if (trimmed === `void draw_${highlightTarget}()`) inDrawBlock = true;
-
+      
       if (inDrawBlock) {
         highlighted.add(index);
         if (trimmed === '}' && line.startsWith('}')) inDrawBlock = false;
-      } else if (inVboBlock) {
+      } else if (inConfigBlock) {
         if (trimmed === '') {
-          inVboBlock = false; // Buffer setups/updates always end with a blank line
+          inConfigBlock = false; // Config setups/updates always end with a blank line
         } else {
           highlighted.add(index);
         }
@@ -144,8 +142,8 @@ const CodeViewer = memo(function CodeViewer({
         if (index > 0 && lines[index - 1].trim().startsWith('//')) {
           highlighted.add(index - 1);
         }
-        if (line.startsWith('    ') && bufferOpRegex.test(line)) {
-          inVboBlock = true;
+        if (line.startsWith('    ') && configOpRegex.test(line)) {
+          inConfigBlock = true;
         }
       }
     });
@@ -209,8 +207,8 @@ const CodeViewer = memo(function CodeViewer({
           : elRect.height;
 
       let targetTop = elTopWithinScroller - (viewportH / 2) + (regionHeight / 2);
-      const topWithPadding = elTopWithinScroller - 24;
 
+      const topWithPadding = elTopWithinScroller - 24;
       if (regionHeight > viewportH * 0.7 || targetTop > topWithPadding) {
         targetTop = topWithPadding;
       }
@@ -304,7 +302,7 @@ const CodeViewer = memo(function CodeViewer({
               )}
             </>
           )}
-          
+
           <button
             className={`copy-button ${copied ? 'copied' : ''}`}
             onClick={handleCopy}
