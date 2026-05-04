@@ -4,6 +4,7 @@ import {
   generateAppOutput,
   type RegisteredCallback,
 } from './code-generator';
+
 interface GenerateInput {
   objects: SceneNode[];
   canvasBackgroundColor: string;
@@ -11,6 +12,7 @@ interface GenerateInput {
   viewportLimits?: ViewportLimits;
   textures?: TextureAsset[];
 }
+
 function isEffectivelyHidden(
   obj: SceneNode,
   byId: Map<string, SceneNode>
@@ -22,13 +24,16 @@ function isEffectivelyHidden(
   }
   return false;
 }
+
 function getEffectivelyVisibleObjects(objects: SceneNode[]): SceneNode[] {
   const byId = new Map(objects.map((o) => [o.id, o]));
   return objects.filter((o) => !isEffectivelyHidden(o, byId));
 }
+
 const CALLBACK_KINDS: GlutCallbackKind[] = [
   'keyboard', 'mouse', 'reshape', 'motion', 'idle',
 ];
+
 function getRegisteredCallbacks(
   callbacks: Record<GlutCallbackKind, string>
 ): RegisteredCallback[] {
@@ -36,18 +41,22 @@ function getRegisteredCallbacks(
     .filter((k) => callbacks[k] && callbacks[k].trim().length > 0)
     .map((k) => ({ kind: k, handlerName: callbacks[k].trim() }));
 }
+
 export function generateCodeFromState(
   input: GenerateInput,
   canvasSize: { width: number; height: number }
 ): string {
   const { objects, canvasBackgroundColor, callbacks, viewportLimits } = input;
+
   const cbs = getRegisteredCallbacks(callbacks);
   const texMap = new Map<string, TextureAsset>(
     (input.textures ?? []).map((t) => [t.id, t]),
   );
+
   if (objects.length === 0) {
     return generateAppOutput(
-      [], [], [],
+      [], // rootObjects
+      [], // allObjects
       canvasBackgroundColor,
       canvasSize,
       '    // Empty scene\n',
@@ -56,12 +65,13 @@ export function generateCodeFromState(
       texMap
     );
   }
+
   const visible = getEffectivelyVisibleObjects(objects);
   const roots = visible.filter((o) => !o.parentId);
+
   return generateAppOutput(
-    visible,
-    roots,
-    visible,
+    roots,   // rootObjects
+    visible, // allObjects
     canvasBackgroundColor,
     canvasSize,
     '    // Empty scene\n',

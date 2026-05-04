@@ -22,7 +22,6 @@ export interface RegisteredCallback {
 }
 
 export function generateAppOutput(
-  visibleObjects: SceneNode[],
   rootObjects: SceneNode[],
   allObjects: SceneNode[],
   canvasBackgroundColor: string,
