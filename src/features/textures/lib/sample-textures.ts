@@ -1,6 +1,5 @@
 import type { TextureAsset } from '@/core/types/textures';
 
-/** Build a procedural canvas, return its data URL + dimensions. */
 function buildCanvas(
   size: number,
   draw: (ctx: CanvasRenderingContext2D, size: number) => void,
@@ -13,90 +12,159 @@ function buildCanvas(
   return { dataUrl: canvas.toDataURL('image/png'), width: size, height: size };
 }
 
-function drawChecker(ctx: CanvasRenderingContext2D, size: number) {
-  const cells = 8;
-  const cell = size / cells;
-  for (let y = 0; y < cells; y++) {
-    for (let x = 0; x < cells; x++) {
-      ctx.fillStyle = (x + y) % 2 === 0 ? '#1f2937' : '#f3f4f6';
-      ctx.fillRect(x * cell, y * cell, cell, cell);
-    }
-  }
-}
+// 1. Texture Atlas / Sprite Sheet (UV Coordinates Demo)
+// A 2x2 grid of distinct items. Demonstrates how manipulating UV coordinates
+// from [0, 1] down to [0, 0.5] isolates specific sprites from a single sheet.
+function drawTextureAtlas(ctx: CanvasRenderingContext2D, size: number) {
+  const half = size / 2;
 
-function drawUVTest(ctx: CanvasRenderingContext2D, size: number) {
-  // Red along U, green along V, with a faint grid + corner markers.
-  const img = ctx.createImageData(size, size);
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const i = (y * size + x) * 4;
-      img.data[i + 0] = Math.round((x / (size - 1)) * 255);
-      img.data[i + 1] = Math.round(((size - 1 - y) / (size - 1)) * 255);
-      img.data[i + 2] = 60;
-      img.data[i + 3] = 255;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
+  // Subtle background distinctions for each quadrant
+  ctx.fillStyle = '#1e293b'; ctx.fillRect(0, 0, half, half);       // Top-Left
+  ctx.fillStyle = '#334155'; ctx.fillRect(half, 0, half, half);    // Top-Right
+  ctx.fillStyle = '#0f172a'; ctx.fillRect(0, half, half, half);    // Bottom-Left
+  ctx.fillStyle = '#1e293b'; ctx.fillRect(half, half, half, half); // Bottom-Right
 
-  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-  ctx.lineWidth = 1;
-  const lines = 8;
-  for (let i = 1; i < lines; i++) {
-    const p = (i / lines) * size;
+  const drawItem = (x: number, y: number, drawFn: () => void) => {
+    ctx.save();
+    ctx.translate(x * half + half / 2, y * half + half / 2);
+    drawFn();
+    ctx.restore();
+  };
+
+  // Top-Left: Red Heart
+  drawItem(0, 0, () => {
+    ctx.fillStyle = '#ef4444';
     ctx.beginPath();
-    ctx.moveTo(p, 0); ctx.lineTo(p, size);
-    ctx.moveTo(0, p); ctx.lineTo(size, p);
-    ctx.stroke();
-  }
+    ctx.arc(-15, -10, 15, 0, Math.PI * 2);
+    ctx.arc(15, -10, 15, 0, Math.PI * 2);
+    ctx.moveTo(-30, -10);
+    ctx.lineTo(0, 25);
+    ctx.lineTo(30, -10);
+    ctx.fill();
+  });
 
-  ctx.fillStyle = '#000';
-  ctx.font = 'bold 18px monospace';
-  ctx.fillText('(0,1)', 6, 22);
-  ctx.fillText('(1,1)', size - 60, 22);
-  ctx.fillText('(0,0)', 6, size - 8);
-  ctx.fillText('(1,0)', size - 60, size - 8);
+  // Top-Right: Gold Coin
+  drawItem(1, 0, () => {
+    ctx.fillStyle = '#eab308';
+    ctx.beginPath();
+    ctx.arc(0, 0, 28, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fef08a';
+    ctx.beginPath();
+    ctx.arc(0, 0, 18, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Bottom-Left: Blue Diamond
+  drawItem(0, 1, () => {
+    ctx.fillStyle = '#3b82f6';
+    ctx.beginPath();
+    ctx.moveTo(0, -25);
+    ctx.lineTo(25, 0);
+    ctx.lineTo(0, 25);
+    ctx.lineTo(-25, 0);
+    ctx.fill();
+  });
+
+  // Bottom-Right: Green Crate
+  drawItem(1, 1, () => {
+    ctx.fillStyle = '#22c55e';
+    ctx.fillRect(-22, -22, 44, 44);
+    ctx.strokeStyle = '#166534';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(-20, -20, 40, 40);
+    ctx.beginPath();
+    ctx.moveTo(-20, -20); ctx.lineTo(20, 20);
+    ctx.moveTo(20, -20); ctx.lineTo(-20, 20);
+    ctx.stroke();
+  });
+
+  // Dashed crosshair dividing the quadrants at exactly 0.5 UV marks
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath();
+  ctx.moveTo(half, 0); ctx.lineTo(half, size);
+  ctx.moveTo(0, half); ctx.lineTo(size, half);
+  ctx.stroke();
 }
 
-function drawSeamless(ctx: CanvasRenderingContext2D, size: number) {
-  // A seamless dotted weave that tiles cleanly under GL_REPEAT.
-  const grad = ctx.createLinearGradient(0, 0, size, size);
-  grad.addColorStop(0, '#1e3a8a');
-  grad.addColorStop(1, '#0f172a');
-  ctx.fillStyle = grad;
+// 2. Pixel Art (Filtering Demo)
+// Rendered at a tiny 64x64 size. When applied to a large shape, it vividly
+// shows the difference between GL_NEAREST (blocky pixels) and GL_LINEAR (blurred gradient).
+function drawPixelSprite(ctx: CanvasRenderingContext2D, size: number) {
+  const grid = [
+    [0,0,0,1,1,1,1,0,0,0],
+    [0,0,1,2,2,2,2,1,0,0],
+    [0,1,2,2,2,2,2,2,1,0],
+    [1,2,1,1,2,2,1,1,2,1],
+    [1,2,1,1,2,2,1,1,2,1],
+    [1,2,2,2,2,2,2,2,2,1],
+    [1,2,2,1,1,1,1,2,2,1],
+    [0,1,2,2,1,1,2,2,1,0],
+    [0,0,1,2,2,2,2,1,0,0],
+    [0,0,0,1,1,1,1,0,0,0],
+  ];
+  const colors = ['#0f172a', '#1e293b', '#38bdf8']; // 0: BG, 1: Outline, 2: Fill
+  const cols = grid[0].length;
+  const rows = grid.length;
+  const cellW = size / cols;
+  const cellH = size / rows;
+
+  ctx.fillStyle = colors[0];
   ctx.fillRect(0, 0, size, size);
 
-  ctx.fillStyle = 'rgba(96, 165, 250, 0.35)';
-  const step = size / 8;
-  for (let y = 0; y <= 8; y++) {
-    for (let x = 0; x <= 8; x++) {
-      ctx.beginPath();
-      ctx.arc(x * step, y * step, 4, 0, Math.PI * 2);
-      ctx.fill();
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const c = grid[y][x];
+      if (c > 0) {
+        ctx.fillStyle = colors[c];
+        // Math.ceil guards against floating-point edge bleeding in the canvas
+        ctx.fillRect(Math.floor(x * cellW), Math.floor(y * cellH), Math.ceil(cellW), Math.ceil(cellH));
+      }
     }
-  }
-
-  ctx.strokeStyle = 'rgba(125, 211, 252, 0.18)';
-  ctx.lineWidth = 1;
-  for (let i = 1; i < 8; i++) {
-    ctx.beginPath();
-    ctx.moveTo(0, i * step); ctx.lineTo(size, i * step);
-    ctx.moveTo(i * step, 0); ctx.lineTo(i * step, size);
-    ctx.stroke();
   }
 }
 
-/** Lazily-built sample textures. Cached after first call. */
+// 3. Tiling Bricks (Wrapping Demo)
+// A seamless pattern that naturally implies repetition for testing GL_REPEAT vs GL_CLAMP_TO_EDGE.
+function drawBricks(ctx: CanvasRenderingContext2D, size: number) {
+  ctx.fillStyle = '#cbd5e1'; // Mortar
+  ctx.fillRect(0, 0, size, size);
+
+  const rows = 4;
+  const cols = 2;
+  const brickH = size / rows;
+  const brickW = size / cols;
+  const mortar = 8;
+
+  ctx.fillStyle = '#b91c1c'; // Brick red
+
+  for (let r = 0; r < rows; r++) {
+    // Offset alternating rows to create the interlocking brick pattern
+    const offset = (r % 2 === 0) ? 0 : brickW / 2;
+    for (let c = -1; c <= cols; c++) {
+      const x = c * brickW + offset;
+      const y = r * brickH;
+      ctx.fillRect(x + mortar / 2, y + mortar / 2, brickW - mortar, brickH - mortar);
+    }
+  }
+}
+
 let cached: TextureAsset[] | null = null;
 
 export function getSampleTextures(): TextureAsset[] {
   if (cached) return cached;
-  const checker = buildCanvas(256, drawChecker);
-  const uv = buildCanvas(256, drawUVTest);
-  const seamless = buildCanvas(256, drawSeamless);
+
+  const atlas = buildCanvas(256, drawTextureAtlas);
+  const pixelSprite = buildCanvas(64, drawPixelSprite); 
+  const bricks = buildCanvas(256, drawBricks);
+
   cached = [
-    { id: 'sample-checker',  name: 'Checker',  isSample: true, ...checker },
-    { id: 'sample-uvtest',   name: 'UV Test',  isSample: true, ...uv },
-    { id: 'sample-seamless', name: 'Seamless', isSample: true, ...seamless },
+    { id: 'sample-atlas',  name: 'Texture Atlas', isSample: true, ...atlas },
+    { id: 'sample-pixel',  name: 'Pixel Art',     isSample: true, ...pixelSprite },
+    { id: 'sample-bricks', name: 'Tiling Bricks', isSample: true, ...bricks },
   ];
+
   return cached;
 }
