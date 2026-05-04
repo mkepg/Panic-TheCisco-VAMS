@@ -17,23 +17,61 @@ function isLine(t: SceneNode['type']): boolean {
   return t === 'LINES' || t === 'LINE_STRIP' || t === 'LINE_LOOP';
 }
 
+/**
+ * Color section — split into:
+ *   1. A "stage" with a large swatch on the left and three R/G/B channel
+ *      chips on the right (each chip uses the same hue convention as the
+ *      pipeline panel's x/y axes — R red, G green, B blue).
+ *   2. Two glColor* call cards stacked, with the float variant flagged as
+ *      `result` to mirror the "result" treatment used in the Transforms
+ *      composition trace.
+ *   3. A faint conversion formula footer.
+ */
 function ColorConversion({ hex }: { hex: string }) {
   const [r, g, b] = hexToRGB255(hex);
   const [rf, gf, bf] = rgb255ToFloat([r, g, b]);
 
   return (
     <div className="primitives-color-conv">
-      <div className="cc-swatch" style={{ background: hex }} aria-hidden />
-      <div className="cc-row">
-        <span className="cc-mode">glColor3f</span>
-        <code className="cc-value">
-          ({rf.toFixed(2)}f, {gf.toFixed(2)}f, {bf.toFixed(2)}f)
-        </code>
+      <div className="cc-stage">
+        <div className="cc-swatch" style={{ background: hex }}>
+          <span className="cc-swatch-hex">{hex.toUpperCase()}</span>
+        </div>
+        <div className="cc-channels">
+          <div className="cc-chan r">
+            <span className="cc-chan-label">R</span>
+            <code className="cc-chan-byte">{r}</code>
+            <span className="cc-chan-sep">·</span>
+            <code className="cc-chan-float">{rf.toFixed(2)}f</code>
+          </div>
+          <div className="cc-chan g">
+            <span className="cc-chan-label">G</span>
+            <code className="cc-chan-byte">{g}</code>
+            <span className="cc-chan-sep">·</span>
+            <code className="cc-chan-float">{gf.toFixed(2)}f</code>
+          </div>
+          <div className="cc-chan b">
+            <span className="cc-chan-label">B</span>
+            <code className="cc-chan-byte">{b}</code>
+            <span className="cc-chan-sep">·</span>
+            <code className="cc-chan-float">{bf.toFixed(2)}f</code>
+          </div>
+        </div>
       </div>
-      <div className="cc-row">
-        <span className="cc-mode">glColor3ub</span>
-        <code className="cc-value">({r}, {g}, {b})</code>
+
+      <div className="cc-calls">
+        <div className="cc-call">
+          <span className="cc-call-mode">glColor3ub</span>
+          <code className="cc-call-args">({r}, {g}, {b})</code>
+        </div>
+        <div className="cc-call result">
+          <span className="cc-call-mode">glColor3f</span>
+          <code className="cc-call-args">
+            ({rf.toFixed(2)}f, {gf.toFixed(2)}f, {bf.toFixed(2)}f)
+          </code>
+        </div>
       </div>
+
       <div className="cc-formula">
         <span className="cc-formula-label">conversion</span>
         <code>float = byte / 255.0</code>
@@ -42,6 +80,15 @@ function ColorConversion({ hex }: { hex: string }) {
   );
 }
 
+/**
+ * Stipple — three rows: a stat header (hex / factor / lit count), the bits
+ * themselves with the bit value printed inside each cell, and a "renders"
+ * preview strip showing how the pattern would actually appear when drawn.
+ *
+ * The preview iterates each bit `factor` times since glLineStipple repeats
+ * each bit `factor` pixels in the rasterizer — this is the feature that
+ * `factor` actually controls, so we visualize it.
+ */
 function StippleBits({ pattern, factor }: { pattern: number; factor: number }) {
   const bits = useMemo(() => {
     const out: boolean[] = [];
@@ -52,24 +99,65 @@ function StippleBits({ pattern, factor }: { pattern: number; factor: number }) {
   const hex = `0x${pattern.toString(16).toUpperCase().padStart(4, '0')}`;
   const onCount = bits.filter(Boolean).length;
 
+  // Bit 0 is rendered first along the line, so the preview reads bit 0 → 15
+  // (i.e. the reverse of the visual bit array).
+  const previewBits = useMemo(() => {
+    const out: boolean[] = [];
+    for (let i = 0; i < 16; i++) out.push(((pattern >> i) & 1) === 1);
+    return out;
+  }, [pattern]);
+
   return (
     <div className="primitives-stipple">
-      <div className="ps-bits" aria-hidden>
-        {bits.map((on, i) => (
-          <span key={i} className={`ps-bit ${on ? 'on' : ''}`} />
-        ))}
+      <div className="ps-header">
+        <code className="ps-hex">{hex}</code>
+        <div className="ps-meta-pill">
+          <span className="ps-meta-label">factor</span>
+          <code>×{factor}</code>
+        </div>
+        <div className="ps-meta-pill">
+          <span className="ps-meta-num">{onCount}</span>
+          <span className="ps-meta-total">/16 lit</span>
+        </div>
       </div>
-      <div className="ps-meta">
-        <code>{hex}</code>
-        <span className="ps-sep">·</span>
-        <span>×{factor}</span>
-        <span className="ps-sep">·</span>
-        <span>{onCount}/16 lit</span>
+
+      <div className="ps-bits-stage">
+        <div className="ps-bits">
+          {bits.map((on, i) => (
+            <span key={i} className={`ps-bit ${on ? 'on' : ''}`}>
+              {on ? '1' : '0'}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="ps-preview">
+        <span className="ps-preview-label">renders</span>
+        <div className="ps-preview-line">
+          {previewBits.map((on, bi) =>
+            Array.from({ length: factor }).map((_, fi) => (
+              <span key={`${bi}-${fi}`} className={`ps-pixel ${on ? 'on' : ''}`} />
+            )),
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
+/**
+ * Barycentric mixer.
+ *
+ * For triangles (3 vertices) we draw a small SVG with three corner-anchored
+ * radial gradients composited with `mix-blend-mode: screen` inside a
+ * triangular clip. This is not a mathematically faithful reproduction of
+ * barycentric interpolation (which would be a per-pixel weighted sum), but
+ * it produces a continuous, intuition-correct gradient between the three
+ * corner colors — much more illustrative than a list of swatches alone.
+ *
+ * For non-triangle multi-vertex primitives we fall back to the corner row
+ * with the centroid result.
+ */
 function BarycentricMixer({ vertices }: { vertices: Vertex[] }) {
   if (vertices.length < 2) return null;
 
@@ -87,25 +175,83 @@ function BarycentricMixer({ vertices }: { vertices: Vertex[] }) {
     Math.round(gSum / num),
     Math.round(bSum / num),
   ];
-
   const avgHex = `#${avg.map((n) => n.toString(16).padStart(2, '0')).join('')}`;
 
-  // Dynamically generate subscripts for the weights formula based on vertex count
   const getSubscript = (n: number) => {
     const subs = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'];
-    return n.toString().split('').map(c => subs[parseInt(c)]).join('');
+    return n.toString().split('').map((c) => subs[parseInt(c)]).join('');
   };
 
   const terms = vertices.map((_, i) => `w${getSubscript(i)}·C${getSubscript(i)}`).join(' + ');
   const weights = vertices.map((_, i) => `w${getSubscript(i)}`).join(' + ');
 
+  const showTriangle = vertices.length === 3;
+
   return (
     <div className="primitives-bary">
+      {showTriangle && (
+        <div className="pb-mesh">
+          <svg
+            viewBox="0 0 220 160"
+            className="pb-mesh-svg"
+            preserveAspectRatio="xMidYMid meet"
+          >
+            <defs>
+              <radialGradient id="bary-c0" cx="50%" cy="10%" r="95%">
+                <stop offset="0%" stopColor={vertices[0].color} stopOpacity="1" />
+                <stop offset="100%" stopColor={vertices[0].color} stopOpacity="0" />
+              </radialGradient>
+              <radialGradient id="bary-c1" cx="92%" cy="88%" r="95%">
+                <stop offset="0%" stopColor={vertices[1].color} stopOpacity="1" />
+                <stop offset="100%" stopColor={vertices[1].color} stopOpacity="0" />
+              </radialGradient>
+              <radialGradient id="bary-c2" cx="8%" cy="88%" r="95%">
+                <stop offset="0%" stopColor={vertices[2].color} stopOpacity="1" />
+                <stop offset="100%" stopColor={vertices[2].color} stopOpacity="0" />
+              </radialGradient>
+              <clipPath id="bary-tri-clip">
+                <polygon points="110,15 200,140 20,140" />
+              </clipPath>
+            </defs>
+
+            <g clipPath="url(#bary-tri-clip)">
+              <rect x="0" y="0" width="220" height="160" fill="#000" />
+              <g style={{ mixBlendMode: 'screen' }}>
+                <rect x="0" y="0" width="220" height="160" fill="url(#bary-c0)" />
+                <rect x="0" y="0" width="220" height="160" fill="url(#bary-c1)" />
+                <rect x="0" y="0" width="220" height="160" fill="url(#bary-c2)" />
+              </g>
+            </g>
+
+            <polygon
+              points="110,15 200,140 20,140"
+              fill="none"
+              stroke="rgba(255,255,255,0.22)"
+              strokeWidth="1"
+            />
+
+            <g>
+              <circle cx="110" cy="15" r="7" fill={vertices[0].color}
+                stroke="rgba(0,0,0,0.55)" strokeWidth="1.5" />
+              <circle cx="200" cy="140" r="7" fill={vertices[1].color}
+                stroke="rgba(0,0,0,0.55)" strokeWidth="1.5" />
+              <circle cx="20" cy="140" r="7" fill={vertices[2].color}
+                stroke="rgba(0,0,0,0.55)" strokeWidth="1.5" />
+
+              <text x="110" y="9" textAnchor="middle" className="pb-mesh-label">C₀</text>
+              <text x="208" y="148" textAnchor="start" className="pb-mesh-label">C₁</text>
+              <text x="12" y="148" textAnchor="end" className="pb-mesh-label">C₂</text>
+            </g>
+          </svg>
+        </div>
+      )}
+
       <div className="pb-formula">
         <code>C = {terms}</code>
         <span className="pb-note">{weights} = 1</span>
       </div>
-      <div className="pb-corners" style={{ flexWrap: 'wrap' }}>
+
+      <div className="pb-corners">
         {vertices.map((v, i) => (
           <div key={v.id} className="pb-corner">
             <span className="pb-corner-swatch" style={{ background: v.color }} />
@@ -129,16 +275,16 @@ function VertexTable({ vertices }: { vertices: Vertex[] }) {
     <div className="primitives-vertex-table">
       <div className="pvt-head">
         <span>#</span>
-        <span>x</span>
-        <span>y</span>
+        <span className="pvt-axis x">x</span>
+        <span className="pvt-axis y">y</span>
         <span>color</span>
       </div>
       <div className="pvt-body">
         {vertices.map((v, i) => (
           <div key={v.id} className="pvt-row">
             <span className="pvt-i">V{i}</span>
-            <code>{v.x.toFixed(3)}</code>
-            <code>{v.y.toFixed(3)}</code>
+            <code className="pvt-x">{v.x.toFixed(3)}</code>
+            <code className="pvt-y">{v.y.toFixed(3)}</code>
             <span className="pvt-c">
               <span className="pvt-swatch" style={{ background: v.color }} />
               <code>{v.color.toUpperCase()}</code>
@@ -182,23 +328,19 @@ export default function PrimitivesMathContent() {
   }
 
   const firstColor = selected.vertices[0]?.color || '#ffffff';
-  
-  // Check if the object actually has multiple colors applied to its vertices
-  const isMultiColor = selected.vertices.length > 1 && 
+
+  const isMultiColor =
+    selected.vertices.length > 1 &&
     selected.vertices.some((v) => v.color !== selected.vertices[0].color);
 
-  // Applies interpolation to all multi-vertex primitives (everything except points) that have mixed colors
   const showBarycentric = selected.type !== 'POINTS' && isMultiColor;
 
   return (
     <div className="primitives-math">
-      
-      {/* Always show the base Color Conversion section */}
       <Section title="Color">
         <ColorConversion hex={firstColor} />
       </Section>
 
-      {/* Conditionally show Barycentric Interpolation when color mixing is happening */}
       {showBarycentric && (
         <Section title="Barycentric Interpolation">
           <BarycentricMixer vertices={selected.vertices} />

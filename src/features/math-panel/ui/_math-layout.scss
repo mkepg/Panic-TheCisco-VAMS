@@ -64,7 +64,8 @@
   .pipeline-math,
   .primitives-math,
   .buffers-math,
-  .transforms-math {
+  .transforms-math,
+  .textures-math {
     display: flex;
     flex-direction: column;
     gap: 0.85rem;
