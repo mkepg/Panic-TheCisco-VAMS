@@ -1,0 +1,115 @@
+@use '../../../shared/styles/tokens' as *;
+
+.tx-math {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  font-family: $font-mono;
+
+  .tx-math-head {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--accent-blue-light);
+    h4 {
+      margin: 0;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      color: $text-main;
+    }
+  }
+
+  section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+
+    h5 {
+      margin: 0;
+      font-size: 0.62rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: $text-dim;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    p {
+      margin: 0;
+      font-size: 0.74rem;
+      line-height: 1.5;
+      color: $text-muted;
+
+      strong { color: $text-main; }
+    }
+  }
+}
+
+.tx-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid $border-color;
+  border-radius: 4px;
+
+  span {
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: $text-dim;
+  }
+  strong {
+    font-size: 0.74rem;
+    color: $text-main;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+}
+
+.tx-eq {
+  margin: 0;
+  padding: 0.5rem 0.7rem;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid $border-color;
+  border-left: 2px solid var(--accent-blue-light);
+  border-radius: 4px;
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: $text-main;
+  white-space: pre-wrap;
+  font-family: $font-mono;
+}
+
+.tx-uv-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid $border-color;
+  border-radius: 4px;
+  overflow: hidden;
+
+  .tx-uv-table-head,
+  .tx-uv-table-row {
+    display: grid;
+    grid-template-columns: 32px 1fr 1fr;
+    gap: 0.4rem;
+    padding: 0.3rem 0.55rem;
+    font-size: 0.7rem;
+  }
+
+  .tx-uv-table-head {
+    background: rgba(255, 255, 255, 0.04);
+    color: $text-dim;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.62rem;
+  }
+
+  .tx-uv-table-row {
+    border-top: 1px solid $border-color;
+    color: $text-main;
+    span:first-child { color: $text-dim; }
+  }
+}

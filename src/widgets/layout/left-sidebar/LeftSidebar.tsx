@@ -1,7 +1,6 @@
 import { GitCommit, Shapes, Database, Move3d, Image as ImageIcon } from 'lucide-react';
 import { useVamsStore } from '@/core/store';
 import type { CurriculumSection } from '@/core/store/types';
-
 import PipelineModeControls from '@/features/pipeline-controls/ui/PipelineModeControls';
 import CustomShapeBuilderPanel from '@/features/custom-shapes/ui/CustomShapeBuilderPanel';
 import TextNodePanel from '@/features/text-nodes/ui/TextNodePanel';
@@ -12,7 +11,9 @@ import LineStylePanel from '@/features/line-style/ui/LineStylePanel';
 import CallbacksPanel from '@/features/callbacks/ui/CallbacksPanel';
 import BuffersPanel from '@/features/buffers/ui/BuffersPanel';
 import OrthoEditorPanel from '@/features/ortho-editor/ui/OrthoEditorPanel';
-
+import TextureLibraryPanel from '@/features/textures/ui/TextureLibraryPanel';
+import TextureAttachmentPanel from '@/features/textures/ui/TextureAttachmentPanel';
+import UVEditorPanel from '@/features/textures/ui/UVEditorPanel';
 import './left-sidebar.scss';
 
 export default function LeftSidebar() {
@@ -25,12 +26,9 @@ export default function LeftSidebar() {
     setAppMode,
     clearLessonState
   } = useVamsStore();
-
   const selectedObject = objects.find((object) => object.id === selectedObjectId);
-
   const handleTabClick = (section: CurriculumSection) => {
     if (activeSection === section) return;
-    
     if (appMode === 'Lesson') {
       const confirmLeave = window.confirm('Leave current lesson? Progress will be lost.');
       if (confirmLeave) {
@@ -42,7 +40,6 @@ export default function LeftSidebar() {
       setActiveSection(section);
     }
   };
-
   const renderSectionContent = () => {
     switch (activeSection) {
       case 'Pipeline':
@@ -90,13 +87,18 @@ export default function LeftSidebar() {
         return (
           <div className="tab-pane">
             <SceneHierarchyPanel />
+            <div className="separator" />
+            <CustomShapeBuilderPanel />
+            <div className="separator" />
+            <TextureLibraryPanel />
+            <TextureAttachmentPanel />
+            <UVEditorPanel />
           </div>
         );
       default:
         return null;
     }
   };
-
   return (
     <aside className="left-sidebar">
       <div className="sidebar-tabs">
@@ -112,14 +114,12 @@ export default function LeftSidebar() {
     </aside>
   );
 }
-
 type SidebarTabProps = {
   label: string;
   icon: React.ReactNode;
   isActive: boolean;
   onClick: () => void;
 };
-
 function SidebarTab({ label, icon, isActive, onClick }: SidebarTabProps) {
   return (
     <button

@@ -13,19 +13,15 @@ interface UseSceneRendererProps {
   overlayRef: React.MutableRefObject<SelectionOverlay | null>;
   applyViewportTransform: () => void;
 }
-
 interface DragInfo {
   id: string;
   offsetX: number;
   offsetY: number;
   historyPushed: boolean;
 }
-
-// Custom interface to cleanly type our hovered state without using 'any'
 interface HandleGraphics extends PIXI.Graphics {
   isHovered?: boolean;
 }
-
 export function useSceneRenderer({
   pixiReady,
   appRef,
@@ -42,10 +38,8 @@ export function useSceneRenderer({
   const prevObjectsRef = useRef<Map<string, SceneNode>>(new Map());
   const prevSelectedObjectIdRef = useRef<string | null>(null);
   const prevWorldScaleRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  
   const vertexOverlayRef = useRef<Container | null>(null);
   const handleGraphicsRef = useRef<HandleGraphics[]>([]);
-
   const objects = useVamsStore((s) => s.objects);
   const selectedObjectId = useVamsStore((s) => s.selectedObjectId);
   const interactionMode = useVamsStore((s) => s.interactionMode);
@@ -53,70 +47,50 @@ export function useSceneRenderer({
   const updateObjectTransform = useVamsStore((s) => s.updateObjectTransform);
   const updateVertexPosition = useVamsStore((s) => s.updateVertexPosition);
   const pushToHistory = useVamsStore((s) => s.pushToHistory);
-
   const updateVertexPositionRef = useRef(updateVertexPosition);
-
   useEffect(() => {
     updateVertexPositionRef.current = updateVertexPosition;
   }, [updateVertexPosition]);
-
   useEffect(() => {
     interactionModeRef.current = interactionMode;
   }, [interactionMode]);
-
   useEffect(() => {
     pushToHistoryRef.current = pushToHistory;
   }, [pushToHistory]);
-
   useEffect(() => {
     objectsRef.current = objects;
   }, [objects]);
-
-  // UI Overlays Initialization & Ticker (Bounding Box & Vertex Handles)
   useEffect(() => {
     const app = appRef.current;
     const overlay = overlayRef.current;
     const world = worldRef.current;
     if (!app || !overlay || !world || !pixiReady) return;
-
-    // Isolate vertex handles in their own top-level container
     const vertexOverlay = new Container();
-    vertexOverlay.zIndex = 10001; 
+    vertexOverlay.zIndex = 10001;
     world.addChild(vertexOverlay);
     vertexOverlayRef.current = vertexOverlay;
-
     const tickerFn = () => {
       if (overlay) overlay.update();
-
-      // Vertex Handles Logic (Seamless integration in SELECT mode)
       if (interactionModeRef.current === 'SELECT' && prevSelectedObjectIdRef.current) {
         const layer = vertexOverlayRef.current;
         const container = containersRef.current.get(prevSelectedObjectIdRef.current);
         const obj = objectsRef.current.find(o => o.id === prevSelectedObjectIdRef.current);
-        
         if (layer && container && obj && obj.type !== 'GROUP' && obj.type !== 'TEXT') {
           layer.visible = true;
-          
-          // Calculate inverse scale so handles remain a fixed pixel size regardless of zoom
           const worldScale = Math.abs(world.scale.x);
           const inverseScale = worldScale > 0 ? 1 / worldScale : 1;
-
-          // Ensure we have enough graphics instances
           while (handleGraphicsRef.current.length < obj.vertices.length) {
             const g = new PIXI.Graphics() as HandleGraphics;
             g.eventMode = 'static';
             g.cursor = 'move';
             g.isHovered = false;
-            
             g.on('pointerover', () => { g.isHovered = true; });
             g.on('pointerout', () => { g.isHovered = false; });
             g.on('pointerdown', (e: FederatedPointerEvent) => {
               if (interactionModeRef.current !== 'SELECT') return;
-              e.stopPropagation(); // Prevents object drag from capturing the pointer
-              
+              e.stopPropagation();
               const idx = handleGraphicsRef.current.indexOf(g);
               const currentObj = objectsRef.current.find(o => o.id === prevSelectedObjectIdRef.current);
-              
               if (currentObj && currentObj.vertices[idx]) {
                 vertexDragRef.current = {
                   objectId: currentObj.id,
@@ -129,22 +103,15 @@ export function useSceneRenderer({
             layer.addChild(g);
             handleGraphicsRef.current.push(g);
           }
-
-          // Update positions, scale, and visibility for each handle
           handleGraphicsRef.current.forEach((g, i) => {
             if (i < obj.vertices.length) {
               g.visible = true;
               const v = obj.vertices[i];
-              
-              // Map local object coordinates back to world coordinates for the overlay
               const globalPos = container.toGlobal({ x: v.x, y: v.y });
               const worldPos = world.toLocal(globalPos);
               g.position.copyFrom(worldPos);
-
               const hoverScale = g.isHovered ? 1.3 : 1.0;
               g.scale.set(inverseScale * hoverScale);
-
-              // Paint handle
               g.clear();
               g.circle(0, 0, 5);
               g.fill({ color: 0xffffff });
@@ -160,9 +127,7 @@ export function useSceneRenderer({
         vertexOverlayRef.current.visible = false;
       }
     };
-
     app.ticker.add(tickerFn);
-    
     return () => {
       app.ticker.remove(tickerFn);
       if (vertexOverlayRef.current) {
@@ -172,63 +137,48 @@ export function useSceneRenderer({
       handleGraphicsRef.current = [];
     };
   }, [pixiReady, appRef, overlayRef, worldRef]);
-
-  // Global Drag Interaction (Routes to vertex drag OR object drag)
   useEffect(() => {
     const app = appRef.current;
     const world = worldRef.current;
     const overlay = overlayRef.current;
     if (!app || !world || !overlay || !pixiReady) return;
-
     const onStageMove = (e: FederatedPointerEvent) => {
-      // 1. Handle Vertex Dragging
       const vDrag = vertexDragRef.current;
       if (vDrag && world) {
         if (app.canvas.style.cursor !== "grabbing") app.canvas.style.cursor = "grabbing";
-        
         const container = containersRef.current.get(vDrag.objectId);
         if (container) {
-          // Map mouse's global position precisely into the object's transformed local space
           const localPos = container.toLocal(e.global);
           updateVertexPositionRef.current(vDrag.objectId, vDrag.vertexId, localPos.x, localPos.y);
         }
-        
         if (!vDrag.historyPushed) {
           pushToHistoryRef.current();
           vDrag.historyPushed = true;
         }
-        return; 
+        return;
       }
-
-      // 2. Handle Object Dragging
       const drag = dragRef.current;
       if (!drag || !world) return;
       if (app.canvas.style.cursor !== "grabbing") app.canvas.style.cursor = "grabbing";
-
       const p = world.toLocal(e.global);
       const newX = p.x - drag.offsetX;
       const newY = p.y - drag.offsetY;
-
       const container = containersRef.current.get(drag.id);
       if (container) {
         container.position.set(newX, newY);
       }
-
       if (overlay) overlay.update();
-
       if (!drag.historyPushed) {
         pushToHistoryRef.current();
         drag.historyPushed = true;
       }
     };
-
     const endDrag = () => {
       if (vertexDragRef.current) {
         vertexDragRef.current = null;
         app.canvas.style.cursor = "default";
         return;
       }
-
       const drag = dragRef.current;
       if (!drag) return;
       const container = containersRef.current.get(drag.id);
@@ -241,12 +191,10 @@ export function useSceneRenderer({
       dragRef.current = null;
       app.canvas.style.cursor = "grab";
     };
-
     app.stage.on("globalpointermove", onStageMove);
     app.stage.on("pointerup", endDrag);
     app.stage.on("pointerupoutside", endDrag);
     app.stage.on("pointercancel", endDrag);
-
     return () => {
       app.stage.off("globalpointermove", onStageMove);
       app.stage.off("pointerup", endDrag);
@@ -254,40 +202,31 @@ export function useSceneRenderer({
       app.stage.off("pointercancel", endDrag);
     };
   }, [pixiReady, appRef, worldRef, overlayRef, updateObjectTransform]);
-
-  // Object Instantiation & Cleanup
   useEffect(() => {
     const world = worldRef.current;
     const app = appRef.current;
     const overlay = overlayRef.current;
     if (!world || !app || !overlay || !pixiReady) return;
-
     applyViewportTransform();
-
     const unusedIds = new Set(containersRef.current.keys());
     const nextContainers = new Map<string, Container>();
     const nextObjectsMap = new Map<string, SceneNode>();
     const worldScaleX = world.scale.x;
     const worldScaleY = world.scale.y;
-
     const worldScaleChanged =
       prevWorldScaleRef.current.x !== worldScaleX ||
       prevWorldScaleRef.current.y !== worldScaleY;
-
     objects.forEach((obj, index) => {
       nextObjectsMap.set(obj.id, obj);
       let container = containersRef.current.get(obj.id);
       const prevObj = prevObjectsRef.current.get(obj.id);
-
       const isSelected = obj.id === selectedObjectId;
       const wasSelected = prevSelectedObjectIdRef.current === obj.id;
-
       const stippleChanged =
         (prevObj?.lineStipple === null && obj.lineStipple !== null) ||
         (prevObj?.lineStipple !== null && obj.lineStipple === null) ||
         (prevObj?.lineStipple?.factor !== obj.lineStipple?.factor) ||
         (prevObj?.lineStipple?.pattern !== obj.lineStipple?.pattern);
-
       let needsRebuild =
         !container ||
         !prevObj ||
@@ -297,15 +236,19 @@ export function useSceneRenderer({
         prevObj.textContent !== obj.textContent ||
         prevObj.shading !== obj.shading ||
         prevObj.lineWidth !== obj.lineWidth ||
-        stippleChanged;
-
+        stippleChanged ||
+        prevObj.texture            !== obj.texture            ||
+        prevObj.texture?.textureId !== obj.texture?.textureId ||
+        prevObj.texture?.filter    !== obj.texture?.filter    ||
+        prevObj.texture?.wrap      !== obj.texture?.wrap      ||
+        prevObj.uvs                !== obj.uvs;
+        
       if (
         obj.type === "GROUP" &&
         (isSelected !== wasSelected || prevObj?.children !== obj.children || isSelected)
       ) {
         needsRebuild = true;
       }
-
       if (needsRebuild) {
         if (container) {
           container.removeChildren();
@@ -335,9 +278,7 @@ export function useSceneRenderer({
           });
         }
       }
-
       unusedIds.delete(obj.id);
-
       const t = obj.transform;
       container!.position.set(t.translateX, t.translateY);
       container!.rotation = (t.rotate * Math.PI) / 180;
@@ -346,13 +287,10 @@ export function useSceneRenderer({
       container!.zIndex = objects.length - index;
       container!.label = obj.id;
       container!.sortableChildren = true;
-
       const listenersNeedUpdate = needsRebuild || !prevObj;
-
       if (listenersNeedUpdate) {
         container!.removeAllListeners();
         container!.eventMode = "static";
-        
         container!.on("pointerover", () => {
           if (!dragRef.current && !vertexDragRef.current) {
             const mode = interactionModeRef.current;
@@ -363,7 +301,6 @@ export function useSceneRenderer({
             }
           }
         });
-        
         container!.on("pointerout", () => {
           if (!dragRef.current && !vertexDragRef.current) {
             const mode = interactionModeRef.current;
@@ -374,13 +311,10 @@ export function useSceneRenderer({
             }
           }
         });
-        
         container!.on("pointerdown", (e: FederatedPointerEvent) => {
           if (interactionModeRef.current === "VERTEX_PLACE") return;
           e.stopPropagation();
           selectObject(obj.id);
-          
-          // Initialize object drag
           if (e.button === 0 && interactionModeRef.current === "SELECT") {
             const p = world.toLocal(e.global);
             const currentObj = objectsRef.current.find((o) => o.id === obj.id);
@@ -396,12 +330,9 @@ export function useSceneRenderer({
           }
         });
       }
-
       nextContainers.set(obj.id, container!);
     });
-
     if (overlay.parent) overlay.parent.removeChild(overlay);
-
     objects.forEach((obj) => {
       const container = nextContainers.get(obj.id);
       if (!container) return;
@@ -419,7 +350,6 @@ export function useSceneRenderer({
         }
       }
     });
-
     unusedIds.forEach((id) => {
       const c = containersRef.current.get(id);
       if (c) {
@@ -432,12 +362,10 @@ export function useSceneRenderer({
         if (c.parent) c.parent.removeChild(c);
       }
     });
-
     containersRef.current = nextContainers;
     prevObjectsRef.current = nextObjectsMap;
     prevSelectedObjectIdRef.current = selectedObjectId;
     prevWorldScaleRef.current = { x: worldScaleX, y: worldScaleY };
-
     world.addChild(overlay);
   }, [
     pixiReady,
@@ -449,7 +377,6 @@ export function useSceneRenderer({
     selectObject,
     applyViewportTransform,
   ]);
-
   useEffect(() => {
     const overlay = overlayRef.current;
     if (!overlay) return;

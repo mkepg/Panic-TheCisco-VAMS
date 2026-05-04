@@ -63,7 +63,7 @@ export function usePixiApp(
       overlayRef.current = null;
       setPixiReady(false);
     };
-  }, [canvasRef]);
+  }, [canvasRef, canvasBackgroundColor]);
   useEffect(() => {
     if (appRef.current) {
       appRef.current.renderer.background.color = canvasBackgroundColor;

@@ -1,7 +1,6 @@
 import type { StateCreator } from 'zustand';
 import type { VamsState, LessonSlice } from '@/core/store/types';
 import type { GlutCallbackKind, ViewportLimits } from '@/core/types/scene';
-
 const EMPTY_CALLBACKS: Record<GlutCallbackKind, string> = {
   keyboard: '',
   mouse: '',
@@ -9,9 +8,7 @@ const EMPTY_CALLBACKS: Record<GlutCallbackKind, string> = {
   motion: '',
   idle: '',
 };
-
 const DEFAULT_VIEWPORT: ViewportLimits = { minX: -1, maxX: 1, minY: -1, maxY: 1 };
-
 export const createLessonSlice: StateCreator<VamsState, [], [], LessonSlice> = (set, get) => ({
   activeLessonId: null,
   currentStepIndex: 0,
@@ -21,10 +18,10 @@ export const createLessonSlice: StateCreator<VamsState, [], [], LessonSlice> = (
   callbacksBackup: null,
   canvasBackgroundColorBackup: null,
   viewportLimitsBackup: null,
+  uploadedTexturesBackup: null,
   lessonFocusPanel: null,
   dmaDriverStep: null,
   changedCodeLines: [],
-  
   setActiveLesson: (lessonId) => {
     const state = get();
     if (lessonId && !state.activeLessonId) {
@@ -33,17 +30,15 @@ export const createLessonSlice: StateCreator<VamsState, [], [], LessonSlice> = (
         currentStepIndex: 0,
         exerciseAnswers: {},
         isSuccess: false,
-        
         sceneBackup: state.objects,
         callbacksBackup: state.callbacks,
         canvasBackgroundColorBackup: state.canvasBackgroundColor,
         viewportLimitsBackup: state.viewportLimits,
-        
+        uploadedTexturesBackup: state.uploadedTextures,
         objects: [],
         callbacks: { ...EMPTY_CALLBACKS },
         canvasBackgroundColor: '#000000',
         viewportLimits: { ...DEFAULT_VIEWPORT },
-        
         selectedObjectId: null,
         interactionMode: 'SELECT',
         lessonFocusPanel: null,
@@ -59,24 +54,17 @@ export const createLessonSlice: StateCreator<VamsState, [], [], LessonSlice> = (
       });
     }
   },
-  
   setCurrentStep: (index) => set({ currentStepIndex: index }),
-  
   setExerciseAnswer: (stepId, answer) => set((state) => ({
     exerciseAnswers: {
       ...state.exerciseAnswers,
       [stepId]: answer,
     },
   })),
-  
   setSuccessState: (success) => set({ isSuccess: success }),
-  
   setLessonFocusPanel: (panelId) => set({ lessonFocusPanel: panelId }),
-  
   setDmaDriverStep: (index) => set({ dmaDriverStep: index }),
-  
   setChangedCodeLines: (lines) => set({ changedCodeLines: lines }),
-  
   clearLessonState: () => {
     const state = get();
     set({
@@ -84,17 +72,16 @@ export const createLessonSlice: StateCreator<VamsState, [], [], LessonSlice> = (
       currentStepIndex: 0,
       exerciseAnswers: {},
       isSuccess: false,
-      
       objects: state.sceneBackup || [],
       callbacks: state.callbacksBackup || { ...EMPTY_CALLBACKS },
       canvasBackgroundColor: state.canvasBackgroundColorBackup || '#000000',
       viewportLimits: state.viewportLimitsBackup || { ...DEFAULT_VIEWPORT },
-      
+      uploadedTextures: state.uploadedTexturesBackup ?? state.uploadedTextures,
       sceneBackup: null,
       callbacksBackup: null,
       canvasBackgroundColorBackup: null,
       viewportLimitsBackup: null,
-      
+      uploadedTexturesBackup: null,
       selectedObjectId: null,
       lessonFocusPanel: null,
       dmaDriverStep: null,

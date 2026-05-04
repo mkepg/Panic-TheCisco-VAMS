@@ -18,13 +18,15 @@ import type {
   Vertex,
   ViewportLimits,
 } from '@/core/types/scene';
+import type {
+  TextureAsset,
+  TextureAttachment,
+  TextureFilter,
+  TextureWrap,
+  UV,
+} from '@/core/types/textures';
 
-// Bumped to 5 — Stage 3 follow-up adds the `updateMethod` discriminator that
-// tells the generator whether DYNAMIC VBOs use glBufferSubData or glMapBuffer.
-// Older save files (v2/v3/v4) still load cleanly because every new field has a
-// safe default fallback in the sanitizer below.
-export const VAMS_PROJECT_SCHEMA_VERSION = 5 as const;
-
+export const VAMS_PROJECT_SCHEMA_VERSION = 7;
 export type VamsProjectData = {
   objects: SceneNode[];
   viewportLimits: ViewportLimits;
@@ -41,26 +43,23 @@ export type VamsProjectData = {
   pendingMinVertices: number;
   pendingVertexStride: number | null;
   callbacks: Record<GlutCallbackKind, string>;
+  uploadedTextures: TextureAsset[];
 };
-
 export type VamsProjectFile = {
   app: 'VAMS';
   schemaVersion: number;
   exportedAt: string;
   data: VamsProjectData;
 };
-
 const ALLOWED_OBJECT_TYPES: ReadonlySet<SceneNodeType> = new Set([
   'POINTS', 'LINES', 'LINE_STRIP', 'LINE_LOOP',
   'TRIANGLES', 'TRIANGLE_STRIP', 'TRIANGLE_FAN',
   'QUADS', 'QUAD_STRIP', 'POLYGON',
   'TEXT', 'GROUP',
 ]);
-
 const CALLBACK_KINDS: GlutCallbackKind[] = [
   'keyboard', 'mouse', 'reshape', 'motion', 'idle',
 ];
-
 const DEFAULT_VIEWPORT: ViewportLimits = { minX: -1, maxX: 1, minY: -1, maxY: 1 };
 const DEFAULT_AXIS: AxisVisibility = { showGlobalAxes: true, showLocalAxes: true, showOriginMarker: true, showGridlines: true };
 const DEFAULT_LEARNING: LearningSettings = { gridSnapping: false, snapIncrement: 0.1 };
@@ -68,7 +67,6 @@ const DEFAULT_TRANSFORM: TransformState = { translateX: 0, translateY: 0, rotate
 const DEFAULT_CALLBACKS: Record<GlutCallbackKind, string> = {
   keyboard: '', mouse: '', reshape: '', motion: '', idle: '',
 };
-
 const DEFAULT_DATA: VamsProjectData = {
   objects: [],
   viewportLimits: DEFAULT_VIEWPORT,
@@ -85,8 +83,8 @@ const DEFAULT_DATA: VamsProjectData = {
   pendingMinVertices: 1,
   pendingVertexStride: null,
   callbacks: { ...DEFAULT_CALLBACKS },
+  uploadedTextures: [],
 };
-
 function isRecord(v: unknown): v is Record<string, unknown> { return typeof v === 'object' && v !== null; }
 function toNumber(v: unknown, fallback: number): number { return typeof v === 'number' && Number.isFinite(v) ? v : fallback; }
 function toBoolean(v: unknown, fallback: boolean): boolean { return typeof v === 'boolean' ? v : fallback; }
@@ -121,7 +119,6 @@ function toPrimitiveType(v: unknown): PrimitiveType | null {
   ];
   return allowed.includes(v as PrimitiveType) ? (v as PrimitiveType) : null;
 }
-
 function sanitizeViewport(v: unknown): ViewportLimits {
   if (!isRecord(v)) return DEFAULT_VIEWPORT;
   return { minX: toNumber(v.minX, DEFAULT_VIEWPORT.minX), maxX: toNumber(v.maxX, DEFAULT_VIEWPORT.maxX), minY: toNumber(v.minY, DEFAULT_VIEWPORT.minY), maxY: toNumber(v.maxY, DEFAULT_VIEWPORT.maxY) };
@@ -154,19 +151,51 @@ function sanitizeStipple(v: unknown): LineStipple | null {
   const pattern = Math.floor(toNumber(v.pattern, 0xFFFF)) & 0xFFFF;
   return { factor, pattern };
 }
-
+function toFilter(v: unknown): TextureFilter {
+  return v === 'NEAREST' ? 'NEAREST' : 'LINEAR';
+}
+function toWrap(v: unknown): TextureWrap {
+  return v === 'CLAMP_TO_EDGE' ? 'CLAMP_TO_EDGE' : 'REPEAT';
+}
+function sanitizeTextureAttachment(v: unknown): TextureAttachment | null {
+  if (!isRecord(v)) return null;
+  const id = typeof v.textureId === 'string' ? v.textureId : null;
+  if (!id) return null;
+  return { textureId: id, filter: toFilter(v.filter), wrap: toWrap(v.wrap) };
+}
+function sanitizeUVs(v: unknown): UV[] | null {
+  if (!Array.isArray(v)) return null;
+  const out: UV[] = [];
+  for (const item of v) {
+    if (!isRecord(item)) continue;
+    out.push({ u: toNumber(item.u, 0), v: toNumber(item.v, 0) });
+  }
+  return out;
+}
+function sanitizeTextureAsset(v: unknown): TextureAsset | null {
+  if (!isRecord(v)) return null;
+  const id      = toString(v.id, '');
+  const dataUrl = toString(v.dataUrl, '');
+  if (!id || !dataUrl.startsWith('data:image/')) return null;
+  return {
+    id,
+    name:   toString(v.name, 'untitled'),
+    dataUrl,
+    width:  Math.max(1, Math.floor(toNumber(v.width, 1))),
+    height: Math.max(1, Math.floor(toNumber(v.height, 1))),
+    isSample: false,
+  };
+}
 function sanitizeObject(v: unknown, idx: number): SceneNode | null {
   if (!isRecord(v)) return null;
   const typeRaw = v.type;
   const type = (typeof typeRaw === 'string' ? typeRaw : '') as SceneNodeType;
   if (!ALLOWED_OBJECT_TYPES.has(type)) return null;
-
   const verticesRaw = Array.isArray(v.vertices) ? v.vertices : [];
   const visibleRaw = v.visible ?? v.isVisible;
   const childrenRaw = Array.isArray(v.children)
     ? v.children
     : Array.isArray(v.childIds) ? v.childIds : [];
-
   return {
     id: toString(v.id, `obj-${idx}`),
     name: toString(v.name, `${type}_${idx + 1}`),
@@ -179,20 +208,19 @@ function sanitizeObject(v: unknown, idx: number): SceneNode | null {
     rasterPosition: isRecord(v.rasterPosition) ? { x: toNumber(v.rasterPosition.x, 0), y: toNumber(v.rasterPosition.y, 0) } : undefined,
     parentId: typeof v.parentId === 'string' ? v.parentId : null,
     children: (childrenRaw as unknown[]).filter((id) => typeof id === 'string') as string[],
-    // Stage 2 additions
     colorMode: toColorMode(v.colorMode),
     lineWidth: typeof v.lineWidth === 'number' && Number.isFinite(v.lineWidth)
       ? Math.max(0.5, Math.min(20, v.lineWidth))
       : undefined,
     lineStipple: v.lineStipple == null ? null : sanitizeStipple(v.lineStipple),
-    // Stage 3 additions
     renderingMode: toRenderingMode(v.renderingMode),
     bufferUsage: toBufferUsage(v.bufferUsage),
     useIndexed: toBoolean(v.useIndexed, false),
     updateMethod: toUpdateMethod(v.updateMethod),
+    texture: sanitizeTextureAttachment(v.texture),
+    uvs:     sanitizeUVs(v.uvs),
   };
 }
-
 function fixHierarchy(objects: SceneNode[]): SceneNode[] {
   const ids = new Set(objects.map((o) => o.id));
   let normalized = objects.map((o) => ({ ...o, parentId: o.parentId && ids.has(o.parentId) ? o.parentId : null }));
@@ -203,7 +231,6 @@ function fixHierarchy(objects: SceneNode[]): SceneNode[] {
   });
   return normalized;
 }
-
 function sanitizeCallbacks(v: unknown): Record<GlutCallbackKind, string> {
   const out: Record<GlutCallbackKind, string> = { ...DEFAULT_CALLBACKS };
   if (!isRecord(v)) return out;
@@ -213,8 +240,7 @@ function sanitizeCallbacks(v: unknown): Record<GlutCallbackKind, string> {
   });
   return out;
 }
-
-export function buildProjectFile(state: VamsState): VamsProjectFile {
+export function buildProjectFile(state: VamsState & { uploadedTextures: TextureAsset[] }): VamsProjectFile {
   const data: VamsProjectData = {
     objects: state.objects,
     viewportLimits: state.viewportLimits,
@@ -231,6 +257,7 @@ export function buildProjectFile(state: VamsState): VamsProjectFile {
     pendingMinVertices: state.pendingMinVertices,
     pendingVertexStride: state.pendingVertexStride,
     callbacks: state.callbacks,
+    uploadedTextures: state.uploadedTextures,
   };
   return {
     app: 'VAMS',
@@ -239,7 +266,6 @@ export function buildProjectFile(state: VamsState): VamsProjectFile {
     data,
   };
 }
-
 export function createDefaultProjectFilename(prefix = 'vams-project'): string {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -248,7 +274,6 @@ export function createDefaultProjectFilename(prefix = 'vams-project'): string {
   )}-${pad(d.getSeconds())}`;
   return `${prefix}-${stamp}.vams`;
 }
-
 export function downloadJSON(filename: string, payload: unknown) {
   const json = JSON.stringify(payload, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
@@ -259,7 +284,6 @@ export function downloadJSON(filename: string, payload: unknown) {
   a.click();
   URL.revokeObjectURL(url);
 }
-
 export async function parseProjectFromFile(file: File): Promise<VamsProjectData> {
   return new Promise((resolve, reject) => {
     const workerCode = `
@@ -277,7 +301,6 @@ export async function parseProjectFromFile(file: File): Promise<VamsProjectData>
     const blob = new Blob([workerCode], { type: 'application/javascript' });
     const workerUrl = URL.createObjectURL(blob);
     const worker = new Worker(workerUrl);
-
     worker.onmessage = (e) => {
       URL.revokeObjectURL(workerUrl);
       worker.terminate();
@@ -297,46 +320,42 @@ export async function parseProjectFromFile(file: File): Promise<VamsProjectData>
         reject(new Error(e.data.error));
       }
     };
-
     worker.onerror = (err) => {
       URL.revokeObjectURL(workerUrl);
       worker.terminate();
       reject(err);
     };
-
     worker.postMessage(file);
   });
 }
-
 export function sanitizeProjectData(raw: unknown): VamsProjectData {
   if (!isRecord(raw)) return { ...DEFAULT_DATA };
-
   const objectsRaw = Array.isArray(raw.objects) ? raw.objects : [];
   const objects = fixHierarchy(
     objectsRaw.map((o, i) => sanitizeObject(o, i)).filter((o): o is SceneNode => o !== null)
   );
-
   const viewportLimits = sanitizeViewport(raw.viewportLimits);
   const axisVisibility = sanitizeAxis(raw.axisVisibility);
   const learningSettings = sanitizeLearning(raw.learningSettings);
   const pendingShapeType = toPrimitiveType(raw.pendingShapeType);
-
   const pendingVertices = Array.isArray(raw.pendingVertices)
     ? raw.pendingVertices
         .filter(isRecord)
         .map((v) => ({ x: toNumber(v.x, 0), y: toNumber(v.y, 0) }))
     : [];
-
   const selectedObjectIdRaw = typeof raw.selectedObjectId === 'string' ? raw.selectedObjectId : null;
   const selectedObjectId =
     selectedObjectIdRaw && objects.some((o) => o.id === selectedObjectIdRaw) ? selectedObjectIdRaw : null;
-
   const pendingVertexStrideRaw = raw.pendingVertexStride;
   const pendingVertexStride =
     typeof pendingVertexStrideRaw === 'number' && Number.isFinite(pendingVertexStrideRaw) && pendingVertexStrideRaw > 0
       ? Math.floor(pendingVertexStrideRaw)
       : null;
-
+  const uploadedTextures = Array.isArray(raw.uploadedTextures)
+    ? raw.uploadedTextures
+        .map(sanitizeTextureAsset)
+        .filter((a): a is TextureAsset => a !== null)
+    : [];
   return {
     objects,
     viewportLimits,
@@ -353,9 +372,9 @@ export function sanitizeProjectData(raw: unknown): VamsProjectData {
     pendingMinVertices: Math.max(1, Math.floor(toNumber(raw.pendingMinVertices, DEFAULT_DATA.pendingMinVertices))),
     pendingVertexStride,
     callbacks: sanitizeCallbacks(raw.callbacks),
+    uploadedTextures,
   };
 }
-
 export function toStorePatchFromProject(data: VamsProjectData): Partial<VamsState> {
   return {
     objects: data.objects,
@@ -373,5 +392,6 @@ export function toStorePatchFromProject(data: VamsProjectData): Partial<VamsStat
     pendingMinVertices: data.pendingMinVertices,
     pendingVertexStride: data.pendingVertexStride,
     callbacks: data.callbacks,
+    uploadedTextures: data.uploadedTextures,
   };
 }

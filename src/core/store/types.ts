@@ -17,6 +17,12 @@ import type {
   BufferUpdateMethod,
 } from '@/core/types/scene';
 
+import type {
+  TextureFilter,
+  TextureWrap,
+  UV,
+} from '@/core/types/textures';
+
 export interface SceneSlice {
   objects: SceneNode[];
   selectedObjectId: string | null;
@@ -45,15 +51,21 @@ export interface SceneSlice {
   updateBufferUsage: (id: string, usage: BufferUsage) => void;
   updateUseIndexed: (id: string, useIndexed: boolean) => void;
   updateUpdateMethod: (id: string, method: BufferUpdateMethod) => void;
+  
+  // Stage 5 — texture/UV ops
+  attachTexture: (objectId: string, textureId: string) => void;
+  detachTexture: (objectId: string) => void;
+  updateTextureFilter: (objectId: string, filter: TextureFilter) => void;
+  updateTextureWrap: (objectId: string, wrap: TextureWrap) => void;
+  updateUV: (objectId: string, vertexIndex: number, uv: UV) => void;
+  resetUVsToDefault: (objectId: string) => void;
 }
-
 export interface InteractionSlice {
   interactionMode: InteractionMode;
   selectedVertexId: string | null;
   setInteractionMode: (mode: InteractionMode) => void;
   setSelectedVertex: (vertexId: string | null) => void;
 }
-
 export interface ViewportSlice {
   viewportLimits: ViewportLimits;
   axisVisibility: AxisVisibility;
@@ -62,7 +74,6 @@ export interface ViewportSlice {
   setAxisVisibility: (visibility: Partial<AxisVisibility>) => void;
   setShowCoordinateTracker: (show: boolean) => void;
 }
-
 export interface SettingsSlice {
   learningSettings: LearningSettings;
   theme: 'dark' | 'light';
@@ -71,7 +82,6 @@ export interface SettingsSlice {
   toggleTheme: () => void;
   setCanvasBackgroundColor: (color: string) => void;
 }
-
 export interface CustomShapeBuilderSlice {
   pendingShapeType: PrimitiveType | null;
   pendingVertices: PendingVertex[];
@@ -85,7 +95,6 @@ export interface CustomShapeBuilderSlice {
   removePendingVertexAt: (index: number) => void;
   updatePendingVertex: (index: number, x: number, y: number) => void;
 }
-
 export interface HistorySnapshot {
   objects: SceneNode[];
   selectedObjectId: string | null;
@@ -97,7 +106,6 @@ export interface HistorySnapshot {
   pendingVertexStride: number | null;
   timestamp: number;
 }
-
 export interface HistorySlice {
   past: HistorySnapshot[];
   future: HistorySnapshot[];
@@ -112,11 +120,9 @@ export interface HistorySlice {
   canRedo: () => boolean;
   clearHistory: () => void;
 }
-
 export type AppMode = 'Author' | 'Lesson';
 export type CurriculumSection = 'Pipeline' | 'Primitives' | 'Buffers' | 'Transforms' | 'Textures';
 export type PipelineMode = 'Diagram' | 'Playground' | 'RasterVector';
-
 export interface RuntimeSlice {
   appMode: AppMode;
   activeSection: CurriculumSection;
@@ -129,7 +135,6 @@ export interface RuntimeSlice {
   setActivePipelineStage: (stageIndex: number | null) => void;
   setCursorWorld: (pos: { x: number; y: number } | null) => void;
 }
-
 export interface LessonSlice {
   activeLessonId: string | null;
   currentStepIndex: number;
@@ -139,6 +144,7 @@ export interface LessonSlice {
   callbacksBackup: Record<GlutCallbackKind, string> | null;
   canvasBackgroundColorBackup: string | null;
   viewportLimitsBackup: ViewportLimits | null;
+  uploadedTexturesBackup: import('@/core/types/textures').TextureAsset[] | null;
   lessonFocusPanel: string | null;
   dmaDriverStep: number | null;
   changedCodeLines: number[]
@@ -151,13 +157,14 @@ export interface LessonSlice {
   clearLessonState: () => void;
   setChangedCodeLines: (lines: number[]) => void;
 }
-
 export interface CallbacksSlice {
   callbacks: Record<GlutCallbackKind, string>;
   setCallbackHandler: (kind: GlutCallbackKind, handlerName: string) => void;
   clearCallback: (kind: GlutCallbackKind) => void;
   getRegisteredCallbacks: () => CallbackRegistration[];
 }
+
+export type { TextureSlice } from './texture-slice';
 
 export type VamsState = SceneSlice &
   InteractionSlice &
@@ -167,4 +174,5 @@ export type VamsState = SceneSlice &
   HistorySlice &
   RuntimeSlice &
   LessonSlice &
-  CallbacksSlice;
+  CallbacksSlice &
+  import('./texture-slice').TextureSlice;

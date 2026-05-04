@@ -1,31 +1,16 @@
 import type { GlutCallbackKind, SceneNode, ViewportLimits } from '@/core/types/scene';
+import type { TextureAsset } from '@/core/types/textures';
 import {
   generateAppOutput,
   type RegisteredCallback,
 } from './code-generator';
-
-/**
- * Pure, React-free version of the code-generation pipeline that
- * `SceneCodePanel` uses. The lesson engine calls this twice per step
- * transition (pre/post action) so it can diff the two snapshots without
- * coupling to the component tree.
- *
- * Visual output stays driven by `SceneCodePanel` — this file is only a
- * snapshot tool.
- */
-
 interface GenerateInput {
   objects: SceneNode[];
   canvasBackgroundColor: string;
   callbacks: Record<GlutCallbackKind, string>;
-  /**
-   * Optional. When omitted the generator falls back to the (-1, 1, -1, 1)
-   * default ortho — same as before this argument existed, so legacy
-   * callers continue to behave identically.
-   */
   viewportLimits?: ViewportLimits;
+  textures?: TextureAsset[];
 }
-
 function isEffectivelyHidden(
   obj: SceneNode,
   byId: Map<string, SceneNode>
@@ -37,16 +22,13 @@ function isEffectivelyHidden(
   }
   return false;
 }
-
 function getEffectivelyVisibleObjects(objects: SceneNode[]): SceneNode[] {
   const byId = new Map(objects.map((o) => [o.id, o]));
   return objects.filter((o) => !isEffectivelyHidden(o, byId));
 }
-
 const CALLBACK_KINDS: GlutCallbackKind[] = [
   'keyboard', 'mouse', 'reshape', 'motion', 'idle',
 ];
-
 function getRegisteredCallbacks(
   callbacks: Record<GlutCallbackKind, string>
 ): RegisteredCallback[] {
@@ -54,14 +36,15 @@ function getRegisteredCallbacks(
     .filter((k) => callbacks[k] && callbacks[k].trim().length > 0)
     .map((k) => ({ kind: k, handlerName: callbacks[k].trim() }));
 }
-
 export function generateCodeFromState(
   input: GenerateInput,
   canvasSize: { width: number; height: number }
 ): string {
   const { objects, canvasBackgroundColor, callbacks, viewportLimits } = input;
   const cbs = getRegisteredCallbacks(callbacks);
-
+  const texMap = new Map<string, TextureAsset>(
+    (input.textures ?? []).map((t) => [t.id, t]),
+  );
   if (objects.length === 0) {
     return generateAppOutput(
       [], [], [],
@@ -70,9 +53,9 @@ export function generateCodeFromState(
       '    // Empty scene\n',
       cbs,
       viewportLimits,
+      texMap
     );
   }
-
   const visible = getEffectivelyVisibleObjects(objects);
   const roots = visible.filter((o) => !o.parentId);
   return generateAppOutput(
@@ -84,5 +67,6 @@ export function generateCodeFromState(
     '    // Empty scene\n',
     cbs,
     viewportLimits,
+    texMap
   );
 }

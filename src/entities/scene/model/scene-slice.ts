@@ -1,10 +1,11 @@
 import type { StateCreator } from 'zustand';
 import type { VamsState, SceneSlice } from '@/core/store/types';
 import type { SceneNode, TransformState } from '@/core/types/scene';
+import type { UV } from '@/core/types/textures';
 
 const generateId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    try { return crypto.randomUUID(); } catch { /* fallback */ }
+    try { return crypto.randomUUID(); } catch { /* empty */ }
   }
   return 'id-' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
 };
@@ -81,14 +82,33 @@ const getGlobalMatrix = (objId: string, objects: SceneNode[]): number[] => {
   return mat;
 };
 
+function defaultUVsFor(vertices: SceneNode['vertices']): UV[] {
+  if (vertices.length === 0) return [];
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const v of vertices) {
+    if (v.x < minX) minX = v.x;
+    if (v.x > maxX) maxX = v.x;
+    if (v.y < minY) minY = v.y;
+    if (v.y > maxY) maxY = v.y;
+  }
+  const w = Math.max(1e-6, maxX - minX);
+  const h = Math.max(1e-6, maxY - minY);
+  return vertices.map((vert) => ({
+    u: (vert.x - minX) / w,
+    v: (vert.y - minY) / h,
+  }));
+}
+
 const isLinePrimitive = (t: SceneNode['type']): boolean =>
   t === 'LINES' || t === 'LINE_STRIP' || t === 'LINE_LOOP';
 
 export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (set, get) => ({
   objects: [],
   selectedObjectId: null,
+
   setSelection: (id) => get().selectObject(id),
   selectObject: (id) => set({ selectedObjectId: id, selectedVertexId: null }),
+
   addCustomObject: (type, placedVertices) => {
     get().pushToHistory();
     set((state) => {
@@ -100,9 +120,11 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         centerX = sumX / placedVertices.length;
         centerY = sumY / placedVertices.length;
       }
+      
       const vertices = placedVertices.map((pv, i) => ({
         id: `v${i}`, x: pv.x - centerX, y: pv.y - centerY, color: '#ffffff',
       }));
+
       const newObj: SceneNode = {
         id: newId,
         name: getUniqueName(type, state.objects),
@@ -114,16 +136,16 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         parentId: null,
         children: [],
         colorMode: 'FLOAT',
-        // Sensible defaults for line primitives; harmless on others (renderers ignore them).
         lineWidth: isLinePrimitive(type) ? 1 : undefined,
         lineStipple: null,
-        // Stage 3 defaults — generated code remains identical to Stage 2 output
-        // until the student opts into a non-IMMEDIATE rendering mode.
         renderingMode: 'IMMEDIATE',
         bufferUsage: 'STATIC',
         useIndexed: false,
         updateMethod: 'BUFFER_SUB_DATA',
+        texture: null,
+        uvs: null,
       };
+
       return {
         objects: [newObj, ...state.objects],
         selectedObjectId: newId,
@@ -134,14 +156,18 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
       };
     });
   },
+
   deleteObject: (id) => {
     get().pushToHistory();
     set((state) => {
       const obj = state.objects.find((o) => o.id === id);
       if (!obj) return state;
+
       const childrenToDelete = obj.type === 'GROUP' ? (obj.children || []) : [];
       const idsToDelete = [id, ...childrenToDelete];
+
       let updatedObjects = state.objects.filter((o) => !idsToDelete.includes(o.id));
+
       if (obj.parentId) {
         updatedObjects = updatedObjects.map((o) => {
           if (o.id === obj.parentId) {
@@ -150,7 +176,9 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
           return o;
         });
       }
+
       const isSelectedDeleted = state.selectedObjectId && idsToDelete.includes(state.selectedObjectId);
+
       return {
         objects: updatedObjects,
         selectedObjectId: isSelectedDeleted ? null : state.selectedObjectId,
@@ -158,13 +186,16 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
       };
     });
   },
+
   duplicateObject: (id) => {
     get().pushToHistory();
     set((state) => {
       const objIndex = state.objects.findIndex((o) => o.id === id);
       if (objIndex === -1) return state;
+      
       const obj = state.objects[objIndex];
       const newId = generateId();
+      
       const duplicate: SceneNode = {
         ...obj,
         id: newId,
@@ -173,21 +204,26 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         parentId: null,
         children: [],
       };
+      
       const newObjects = [...state.objects];
       newObjects.splice(objIndex + 1, 0, duplicate);
+      
       return { objects: newObjects, selectedObjectId: newId };
     });
   },
+
   updateObjectName: (id, name) => {
     get().pushToHistory();
     set((state) => ({ objects: state.objects.map((o) => (o.id === id ? { ...o, name } : o)) }));
   },
+
   toggleObjectVisibility: (id) => {
     get().pushToHistory();
     set((state) => {
       const target = state.objects.find(o => o.id === id);
       if (!target) return state;
       const nextVisible = !target.visible;
+
       if (target.type === 'GROUP') {
         const getAllDescendantIds = (parentId: string): string[] => {
           const children = state.objects.filter(o => o.parentId === parentId);
@@ -209,6 +245,7 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
       };
     });
   },
+
   updateObjectTransform: (id, update) => {
     set((state) => ({
       objects: state.objects.map((obj) =>
@@ -216,14 +253,24 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
       ),
     }));
   },
+
   updateVertexPosition: (objectId, vertexId, x, y) => {
     set((state) => ({
       objects: state.objects.map((obj) => {
         if (obj.id !== objectId) return obj;
-        return { ...obj, vertices: obj.vertices.map((v) => (v.id === vertexId ? { ...v, x, y } : v)) };
+        
+        const newVertices = obj.vertices.map((v) => (v.id === vertexId ? { ...v, x, y } : v));
+        
+        // Dynamically recalculate UVs to match the new bounding box dimensions
+        const newUvs = obj.uvs && obj.uvs.length === obj.vertices.length
+          ? defaultUVsFor(newVertices) 
+          : obj.uvs;
+
+        return { ...obj, vertices: newVertices, uvs: newUvs };
       }),
     }));
   },
+
   updateVertexColor: (objectId, vertexId, color) => {
     const state = get();
     if (!state.isBatchMode) state.pushToHistory();
@@ -234,6 +281,7 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
       }),
     }));
   },
+
   setAllVertexColors: (objectId, color) => {
     get().pushToHistory();
     set((state) => ({
@@ -243,12 +291,14 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
       }),
     }));
   },
+
   updateObjectShading: (id, mode) => {
     get().pushToHistory();
     set((state) => ({
       objects: state.objects.map((obj) => (obj.id === id ? { ...obj, shading: mode } : obj)),
     }));
   },
+
   addTextObject: (text, x, y) => {
     get().pushToHistory();
     set((state) => {
@@ -270,24 +320,29 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
       return { objects: [textObj, ...state.objects], selectedObjectId: newId };
     });
   },
+
   updateTextContent: (id, text) => {
     set((state) => ({
       objects: state.objects.map((obj) => obj.id === id ? { ...obj, textContent: text } : obj),
     }));
   },
+
   createGroup: (objectIds) => {
     if (objectIds.length < 2) return;
     get().pushToHistory();
     set((state) => {
       const groupId = generateId();
+      
       const validObjectIds = objectIds.filter((id) => {
         const obj = state.objects.find((o) => o.id === id);
         return obj && !obj.parentId;
       });
       if (validObjectIds.length < 2) return state;
+
       const objectsToGroup = state.objects.filter((o) => validObjectIds.includes(o.id));
       const centerX = objectsToGroup.reduce((sum, obj) => sum + obj.transform.translateX, 0) / objectsToGroup.length;
       const centerY = objectsToGroup.reduce((sum, obj) => sum + obj.transform.translateY, 0) / objectsToGroup.length;
+
       const groupObj: SceneNode = {
         id: groupId,
         name: getUniqueName('Group', state.objects),
@@ -299,6 +354,7 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         parentId: null,
         children: validObjectIds,
       };
+
       const updatedObjects = state.objects.map((obj) => {
         if (validObjectIds.includes(obj.id)) {
           return {
@@ -313,27 +369,33 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         }
         return obj;
       });
+
       return { objects: [groupObj, ...updatedObjects], selectedObjectId: groupId };
     });
   },
+
   ungroup: (groupId) => {
     get().pushToHistory();
     set((state) => {
       const group = state.objects.find((o) => o.id === groupId);
       if (!group || group.type !== 'GROUP') return state;
+
       const groupGlobalMat = getGlobalMatrix(groupId, state.objects);
       const newParentId = group.parentId ?? null;
       let newParentGlobalMat: number[] = [1, 0, 0, 0, 1, 0];
       if (newParentId) newParentGlobalMat = getGlobalMatrix(newParentId, state.objects);
       const invParentMat = invertMat(newParentGlobalMat);
+
       let updatedObjects = state.objects
         .filter((o) => o.id !== groupId)
         .map((obj) => {
           if (!group.children?.includes(obj.id)) return obj;
+
           const childLocalMat = getMatrix(obj.transform);
           const childGlobalMat = multiplyMat(groupGlobalMat, childLocalMat);
           const newLocalMat = multiplyMat(invParentMat, childGlobalMat);
           const newTransform = extractTransform(newLocalMat);
+
           return {
             ...obj,
             parentId: newParentId,
@@ -346,6 +408,7 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
             },
           };
         });
+
       if (newParentId) {
         updatedObjects = updatedObjects.map((o) => {
           if (o.id === newParentId) {
@@ -355,7 +418,9 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
           return o;
         });
       }
+
       const isSelectedDeleted = state.selectedObjectId === groupId;
+
       return {
         objects: updatedObjects,
         selectedObjectId: isSelectedDeleted ? null : state.selectedObjectId,
@@ -363,15 +428,19 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
       };
     });
   },
+
   deleteGroup: (groupId) => {
     get().pushToHistory();
     set((state) => {
       const group = state.objects.find((o) => o.id === groupId);
       if (!group || group.type !== 'GROUP') return state;
+
       const childrenToDelete = group.children || [];
       const idsToDelete = [groupId, ...childrenToDelete];
+
       const updatedObjects = state.objects.filter((o) => !idsToDelete.includes(o.id));
       const isSelectedDeleted = state.selectedObjectId && idsToDelete.includes(state.selectedObjectId);
+
       return {
         objects: updatedObjects,
         selectedObjectId: isSelectedDeleted ? null : state.selectedObjectId,
@@ -379,50 +448,65 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
       };
     });
   },
+
   reorderObject: (sourceId, targetId, position) => {
     get().pushToHistory();
     set((state) => {
       if (sourceId === targetId) return state;
+
       const sourceIndex = state.objects.findIndex((o) => o.id === sourceId);
       const targetIndex = state.objects.findIndex((o) => o.id === targetId);
       if (sourceIndex === -1 || targetIndex === -1) return state;
+
       const sourceObj = state.objects[sourceIndex];
       const targetObj = state.objects[targetIndex];
+
       let currentParent: string | null | undefined = targetObj.parentId;
       while (currentParent) {
         if (currentParent === sourceId) return state;
         const parentObj = state.objects.find((o) => o.id === currentParent);
         currentParent = parentObj?.parentId || null;
       }
+
       let newObjects = [...state.objects];
+
       const getDescendants = (id: string): SceneNode[] => {
         const children = newObjects.filter((o) => o.parentId === id);
         return children.reduce((acc, child) => [...acc, child, ...getDescendants(child.id)], children);
       };
+
       const sourceDescendants = getDescendants(sourceId);
       const sourceFamilyIds = new Set([sourceId, ...sourceDescendants.map((o) => o.id)]);
+
       const globalMat = getGlobalMatrix(sourceObj.id, state.objects);
       let newParentId: string | null = sourceObj.parentId ?? null;
+
       if (position === 'inside' && targetObj.type === 'GROUP') {
         newParentId = targetId;
       } else if (position === 'before' || position === 'after') {
         newParentId = targetObj.parentId ?? null;
       }
+
       let newParentGlobalMat: number[] = [1, 0, 0, 0, 1, 0];
       if (newParentId) newParentGlobalMat = getGlobalMatrix(newParentId, state.objects);
+      
       const invParentMat = invertMat(newParentGlobalMat);
       const newLocalMat = multiplyMat(invParentMat, globalMat);
       const newTransform = extractTransform(newLocalMat);
+      
       newTransform.translateX = parseFloat(newTransform.translateX.toFixed(4));
       newTransform.translateY = parseFloat(newTransform.translateY.toFixed(4));
       newTransform.rotate = parseFloat(newTransform.rotate.toFixed(4));
       newTransform.scaleX = parseFloat(newTransform.scaleX.toFixed(4));
       newTransform.scaleY = parseFloat(newTransform.scaleY.toFixed(4));
+
       const familyObjects = newObjects.filter((o) => sourceFamilyIds.has(o.id));
       newObjects = newObjects.filter((o) => !sourceFamilyIds.has(o.id));
       familyObjects[0] = { ...familyObjects[0], parentId: newParentId, transform: newTransform };
+
       const newTargetIndex = newObjects.findIndex((o) => o.id === targetId);
       let insertIndex = newTargetIndex;
+
       if (position === 'inside') {
         insertIndex = newTargetIndex + 1;
       } else if (position === 'after') {
@@ -430,7 +514,9 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         const validDescendantsCount = targetDescendants.filter((o) => !sourceFamilyIds.has(o.id)).length;
         insertIndex = newTargetIndex + 1 + validDescendantsCount;
       }
+
       newObjects.splice(insertIndex, 0, ...familyObjects);
+
       newObjects = newObjects.map((obj) => {
         if (obj.type === 'GROUP') {
           const actualChildren = newObjects.filter((o) => o.parentId === obj.id);
@@ -438,11 +524,10 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
         }
         return obj;
       });
+
       return { objects: newObjects };
     });
   },
-
-  /* ----------------------- Stage 2 — Per-object ops ----------------------- */
 
   updateObjectColorMode: (id, mode) => {
     get().pushToHistory();
@@ -466,8 +551,6 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
     }));
   },
 
-  /* ------------------------ Stage 3 — Buffer ops ------------------------- */
-
   updateRenderingMode: (id, mode) => {
     get().pushToHistory();
     set((state) => ({
@@ -476,10 +559,7 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
           ? {
               ...o,
               renderingMode: mode,
-              // VBO objects need a default usage hint if one wasn't set.
               bufferUsage: mode === 'VBO' ? (o.bufferUsage ?? 'STATIC') : o.bufferUsage,
-              // Likewise an update method default — only meaningful for
-              // VBO+DYNAMIC, but harmless to carry around.
               updateMethod: o.updateMethod ?? 'BUFFER_SUB_DATA',
             }
           : o,
@@ -505,6 +585,81 @@ export const createSceneSlice: StateCreator<VamsState, [], [], SceneSlice> = (se
     get().pushToHistory();
     set((state) => ({
       objects: state.objects.map((o) => (o.id === id ? { ...o, updateMethod: method } : o)),
+    }));
+  },
+
+  attachTexture: (objectId, textureId) => {
+    get().pushToHistory();
+    set((state) => ({
+      objects: state.objects.map((o) => {
+        if (o.id !== objectId) return o;
+        const uvs = o.uvs && o.uvs.length === o.vertices.length
+          ? o.uvs
+          : defaultUVsFor(o.vertices);
+        return {
+          ...o,
+          texture: {
+            textureId,
+            filter: o.texture?.filter ?? 'LINEAR',
+            wrap:   o.texture?.wrap   ?? 'REPEAT',
+          },
+          uvs,
+        };
+      }),
+    }));
+  },
+
+  detachTexture: (objectId) => {
+    get().pushToHistory();
+    set((state) => ({
+      objects: state.objects.map((o) =>
+        o.id === objectId ? { ...o, texture: null } : o,
+      ),
+    }));
+  },
+
+  updateTextureFilter: (objectId, filter) => {
+    get().pushToHistory();
+    set((state) => ({
+      objects: state.objects.map((o) => {
+        if (o.id !== objectId || !o.texture) return o;
+        return { ...o, texture: { ...o.texture, filter } };
+      }),
+    }));
+  },
+
+  updateTextureWrap: (objectId, wrap) => {
+    get().pushToHistory();
+    set((state) => ({
+      objects: state.objects.map((o) => {
+        if (o.id !== objectId || !o.texture) return o;
+        return { ...o, texture: { ...o.texture, wrap } };
+      }),
+    }));
+  },
+
+  updateUV: (objectId, vertexIndex, uv) => {
+    const state = get();
+    if (!state.isBatchMode) state.pushToHistory();
+    set((s) => ({
+      objects: s.objects.map((o) => {
+        if (o.id !== objectId) return o;
+        const uvs = (o.uvs && o.uvs.length === o.vertices.length)
+          ? [...o.uvs]
+          : defaultUVsFor(o.vertices);
+        if (vertexIndex < 0 || vertexIndex >= uvs.length) return o;
+        uvs[vertexIndex] = uv;
+        return { ...o, uvs };
+      }),
+    }));
+  },
+
+  resetUVsToDefault: (objectId) => {
+    get().pushToHistory();
+    set((state) => ({
+      objects: state.objects.map((o) =>
+        o.id === objectId ? { ...o, uvs: defaultUVsFor(o.vertices) } : o,
+      ),
     }));
   },
 });

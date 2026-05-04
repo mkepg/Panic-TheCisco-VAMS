@@ -16,25 +16,30 @@ export default function SceneCodePanel() {
   const changedCodeLines = useVamsStore(s => s.changedCodeLines);
   const viewportLimits = useVamsStore(s => s.viewportLimits);
   const canvasSize = useCanvasSize();
+  const getAllTextures = useVamsStore((s) => s.getAllTextures);
+  
+  // Re-render on uploads:
+  useVamsStore((s) => s.uploadedTextures);
 
   const selectedObject = objects.find(o => o.id === selectedObjectId);
   const highlightTarget = selectedObject ? sanitizeName(selectedObject.name) : null;
-
   const generatedCode = useMemo(
-    () => generateCodeFromState(
-      { objects, canvasBackgroundColor, callbacks, viewportLimits },
-      canvasSize,
-    ),
-    [objects, canvasBackgroundColor, callbacks, canvasSize, viewportLimits],
+    () =>
+      generateCodeFromState(
+        {
+          objects,
+          canvasBackgroundColor,
+          callbacks,
+          viewportLimits,
+          textures: getAllTextures(),
+        },
+        canvasSize,
+      ),
+    [objects, canvasBackgroundColor, callbacks, canvasSize, viewportLimits, getAllTextures],
   );
-
   const showAnnotations = activeSection === 'Pipeline' && objects.length === 0;
   const isLessonMode = appMode === 'Lesson';
-
-  // Change-highlights are intentionally lesson-only. Author Mode keeps the
-  // existing blue-only behavior.
   const changedLines = isLessonMode ? changedCodeLines : undefined;
-
   return (
     <CodeViewer
       code={generatedCode}

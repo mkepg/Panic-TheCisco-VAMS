@@ -1,3 +1,5 @@
+import type { TextureAttachment, UV } from './textures';
+
 export type PrimitiveType =
   | 'POINTS'
   | 'LINES'
@@ -9,33 +11,25 @@ export type PrimitiveType =
   | 'QUADS'
   | 'QUAD_STRIP'
   | 'POLYGON';
-
 export type SceneNodeType = PrimitiveType | 'TEXT' | 'GROUP';
 export type ShadingModel = 'FLAT' | 'SMOOTH';
-
-/** Per-object color emission mode. Affects generated code only — visual is identical. */
 export type ColorMode = 'FLOAT' | 'BYTE';
-
-/** A `glLineStipple(factor, pattern)` setting. `pattern` is a 16-bit mask. */
 export interface LineStipple {
-  factor: number;   // 1..256
-  pattern: number;  // 16-bit unsigned (0x0000..0xFFFF)
+  factor: number;
+  pattern: number;
 }
-
 export interface ViewportLimits {
   minX: number;
   maxX: number;
   minY: number;
   maxY: number;
 }
-
 export interface Vertex {
   id: string;
   x: number;
   y: number;
   color: string;
 }
-
 export interface TransformState {
   translateX: number;
   translateY: number;
@@ -43,7 +37,6 @@ export interface TransformState {
   scaleX: number;
   scaleY: number;
 }
-
 export interface SceneNode {
   id: string;
   name: string;
@@ -56,115 +49,55 @@ export interface SceneNode {
   rasterPosition?: { x: number; y: number };
   parentId?: string | null;
   children?: string[];
-
-  // --- Stage 2 additions (all optional for back-compat with older save files) ---
-
-  /** Float (`glColor3f`) vs Byte (`glColor3ub`). Defaults to FLOAT. */
   colorMode?: ColorMode;
-
-  /** Used only by line primitives. Defaults to 1. */
   lineWidth?: number;
-
-  /** Used only by line primitives. `null` means stippling disabled. */
   lineStipple?: LineStipple | null;
-
-  // --- Stage 3 additions ---
-
-  /** How an object is drawn at the OpenGL API level. Defaults to IMMEDIATE. */
   renderingMode?: RenderingMode;
-
-  /** glBufferData usage hint. Only relevant for VBO mode. Defaults to STATIC. */
   bufferUsage?: BufferUsage;
-
-  /** When true, switches the draw call from glDrawArrays to glDrawElements
-   *  with a deduplicated vertex set + index array. */
   useIndexed?: boolean;
-
-  /**
-   * How the buffer is *updated* each frame. Only meaningful for VBO mode with
-   * DYNAMIC usage — STATIC never updates, STREAM always re-uploads the whole
-   * buffer regardless. Defaults to BUFFER_SUB_DATA.
-   *
-   *  - BUFFER_SUB_DATA → `glBufferSubData(...)` pushes new bytes to a region.
-   *  - MAP_BUFFER      → `glMapBuffer(...)` hands back a raw pointer the
-   *                       student writes through directly, then unmaps.
-   */
   updateMethod?: BufferUpdateMethod;
-}
+  // --- Stage 5 additions ---
+  /** Active texture attachment. `null` / undefined means no texture. */
+  texture?: TextureAttachment | null;
 
+  /** Per-vertex UV coordinates. One entry per vertex.
+   *  Defaults to a unit-square mapping derived from the bounding box. */
+  uvs?: UV[] | null;
+}
 export interface LearningSettings {
   gridSnapping: boolean;
   snapIncrement: number;
 }
-
 export type InteractionMode =
   | 'SELECT'
   | 'VERTEX_PLACE'
   | 'VERTEX_EDIT';
-
 export type AxisVisibility = {
   showGlobalAxes: boolean;
   showLocalAxes: boolean;
   showOriginMarker: boolean;
   showGridlines: boolean;
 };
-
 export interface ProjectExportOptions {
   includeHTML: boolean;
   includeCPP: boolean;
   includeJSON: boolean;
   includeScaffold: boolean;
 }
-
 export interface PendingVertex {
   x: number;
   y: number;
 }
-
-/* -------------------------------------------------------------------------- */
-/*                            Stage 2 — GLUT callbacks                        */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Identifiers for the GLUT callback registrations the student can wire up.
- * Each maps directly to one `glut*Func()` call in the generated program.
- */
 export type GlutCallbackKind =
   | 'keyboard'
   | 'mouse'
   | 'reshape'
   | 'motion'
   | 'idle';
-
-/** A single registered handler — the user types the function name. */
 export interface CallbackRegistration {
   kind: GlutCallbackKind;
   handlerName: string;
 }
-
-/* -------------------------------------------------------------------------- */
-/*                            Stage 3 — Buffers                               */
-/* -------------------------------------------------------------------------- */
-
-/**
- * How an object is drawn at the OpenGL API level.
- *  - IMMEDIATE     → glBegin/glVertex/glEnd inline in display()
- *  - VERTEX_ARRAY  → client-side arrays, glDrawArrays in display()
- *  - VBO           → buffers uploaded once in init(), bound and drawn in display()
- *
- * Visual output is identical across modes — the difference is structural.
- */
 export type RenderingMode = 'IMMEDIATE' | 'VERTEX_ARRAY' | 'VBO';
-
-/** glBufferData usage hint. Only relevant for VBO mode. */
 export type BufferUsage = 'STATIC' | 'DYNAMIC' | 'STREAM';
-
-/**
- * For VBO + DYNAMIC objects, which API drives the per-frame update.
- *  - BUFFER_SUB_DATA → glBufferSubData (default)
- *  - MAP_BUFFER      → glMapBuffer / glUnmapBuffer pointer lifecycle
- *
- * STATIC ignores this (no update path is emitted) and STREAM always uses a
- * full glBufferData re-upload, which is structurally distinct from both.
- */
 export type BufferUpdateMethod = 'BUFFER_SUB_DATA' | 'MAP_BUFFER';

@@ -4,10 +4,10 @@ import PipelineMathContent from './PipelineMathContent';
 import PrimitivesMathContent from './PrimitivesMathContent';
 import BuffersMathContent from './BuffersMathContent';
 import TransformsMathContent from './TransformsMathContent';
+import TexturesMathContent from './TexturesMathContent';
 
 export default function MathPanel() {
   const activeSection = useVamsStore((s) => s.activeSection);
-
   return (
     <div className="math-panel-container">
       <div className="math-header">
@@ -19,16 +19,16 @@ export default function MathPanel() {
         {activeSection === 'Primitives' && <PrimitivesMathContent />}
         {activeSection === 'Buffers'    && <BuffersMathContent />}
         {activeSection === 'Transforms' && <TransformsMathContent />}
-        
+        {activeSection === 'Textures'   && <TexturesMathContent />}
         {activeSection !== 'Pipeline' &&
          activeSection !== 'Primitives' &&
          activeSection !== 'Buffers' &&
-         activeSection !== 'Transforms' && <DefaultEmpty />}
+         activeSection !== 'Transforms' &&
+         activeSection !== 'Textures' && <DefaultEmpty />}
       </div>
     </div>
   );
 }
-
 function DefaultEmpty() {
   return (
     <div className="empty-state">
