@@ -79,7 +79,6 @@ export type AxisVisibility = {
   showGridlines: boolean;
 };
 export interface ProjectExportOptions {
-  includeHTML: boolean;
   includeCPP: boolean;
   includeJSON: boolean;
   includeScaffold: boolean;

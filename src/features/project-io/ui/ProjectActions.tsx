@@ -9,6 +9,8 @@ import {
   parseProjectFromFile,
   toStorePatchFromProject,
 } from '@/entities/project/model/project-io';
+// Import the code generator
+import { generateCodeFromState } from '@/features/code-generation/model/generate-from-state';
 
 export default function ProjectActions() {
   const clearHistory = useVamsStore((state) => state.clearHistory);
@@ -46,12 +48,59 @@ export default function ProjectActions() {
     }
   };
 
-  const handleExport = (type: 'html' | 'cpp' | 'json' | 'scaffold') => {
+  const handleExport = (type: 'cpp' | 'json' | 'scaffold') => {
+    const state = useVamsStore.getState();
+
     if (type === 'json') {
       saveProjectToDownload();
       setShowExportMenu(false);
       return;
     }
+
+    if (type === 'cpp') {
+      try {
+        // Attempt to get the actual canvas size to match the viewport, default to 800x600
+        let width = 800;
+        let height = 600;
+        const el = document.querySelector('.canvas-wrapper');
+        if (el) {
+          width = Math.floor(el.clientWidth);
+          height = Math.floor(el.clientHeight);
+        }
+
+        // Generate the code using the current store state
+        const code = generateCodeFromState(
+          {
+            objects: state.objects,
+            canvasBackgroundColor: state.canvasBackgroundColor,
+            callbacks: state.callbacks,
+            viewportLimits: state.viewportLimits,
+            textures: state.getAllTextures(),
+          },
+          { width, height }
+        );
+
+        // Replace the default .vams extension with .cpp
+        const filename = createDefaultProjectFilename('vams-code').replace('.vams', '.cpp');
+        
+        // Create a blob and trigger download
+        const blob = new Blob([code], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        toast.success('C++ code exported successfully');
+      } catch (error) {
+        console.error(error);
+        toast.error('Failed to export C++ code');
+      }
+      setShowExportMenu(false);
+      return;
+    }
+
     toast.info(`${type.toUpperCase()} export coming soon`);
     setShowExportMenu(false);
   };
@@ -70,17 +119,37 @@ export default function ProjectActions() {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
+
     if (!file) return;
 
     try {
       const projectData = await parseProjectFromFile(file);
       const patch = toStorePatchFromProject(projectData);
+
       useVamsStore.setState(
         {
           ...patch,
         },
         false
       );
+
+      const stateAfter = useVamsStore.getState();
+      const knownIds = new Set(stateAfter.getAllTextures().map((t) => t.id));
+      let detached = 0;
+
+      const cleaned = stateAfter.objects.map((o) => {
+        if (o.texture && !knownIds.has(o.texture.textureId)) {
+          detached++;
+          return { ...o, texture: null };
+        }
+        return o;
+      });
+
+      if (detached > 0) {
+        useVamsStore.setState({ objects: cleaned });
+        toast.message('Some textures could not be loaded and were detached.');
+      }
+
       clearHistory();
       toast.success(`Project loaded: ${file.name}`);
     } catch (error) {
@@ -104,7 +173,6 @@ export default function ProjectActions() {
       <button className="icon-btn" onClick={handleLoad} title="Load Project">
         <FolderOpen size={16} />
       </button>
-
       <div className="dropdown-container" ref={exportMenuRef}>
         <button
           className="icon-btn"
@@ -117,9 +185,6 @@ export default function ProjectActions() {
         {showExportMenu && (
           <div className="dropdown-menu">
             <div className="menu-header">Export As</div>
-            <button className="menu-item" onClick={() => handleExport('html')}>
-              <Code size={14} /> Standalone HTML
-            </button>
             <button className="menu-item" onClick={() => handleExport('cpp')}>
               <Code size={14} /> C++ Code
             </button>
