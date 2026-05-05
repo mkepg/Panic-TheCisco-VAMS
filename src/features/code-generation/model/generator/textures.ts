@@ -44,6 +44,12 @@ export function generateTextureInitBody(
   const lines: string[] = [];
   lines.push('    // --- Texture setup ---');
   lines.push('    glEnable(GL_TEXTURE_2D);');
+  // Texture replaces the fragment color outright instead of modulating it
+  // with the per-vertex color. Without this, smooth-shaded vertex colors
+  // (e.g. red/green/blue corners on a textured quad) bleed across the
+  // sampled image, which doesn't match how the VAMS canvas renders
+  // textured meshes (PixiJS samples the texture without vertex tinting).
+  lines.push('    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);');
   lines.push('');
   lines.push('    // OpenGL expects the 0.0 Y-coordinate to be at the bottom, but images store it at the top');
   lines.push('    stbi_set_flip_vertically_on_load(true);');

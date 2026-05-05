@@ -1,14 +1,14 @@
 import type { SceneNode, Vertex } from '@/core/types/scene';
+import type { UV } from '@/core/types/textures';
 import { sanitizeName, getGlPrimitive } from './utils';
-
-/* ------------------------------------------------------------------ */
-/*  Helpers shared by VERTEX_ARRAY and VBO emission                   */
-/* ------------------------------------------------------------------ */
-
 function isPrimitive(o: SceneNode): boolean {
   return o.type !== 'GROUP' && o.type !== 'TEXT';
 }
-
+// True when the object has a texture AND a UV per vertex — the gate the
+// renderer uses to actually emit texture-mapping calls.
+function hasTexture(o: SceneNode): boolean {
+  return !!(o.texture && o.uvs && o.uvs.length === o.vertices.length);
+}
 function bufferUsageMacro(o: SceneNode): string {
   switch (o.bufferUsage) {
     case 'DYNAMIC': return 'GL_DYNAMIC_DRAW';
@@ -17,72 +17,62 @@ function bufferUsageMacro(o: SceneNode): string {
     default:        return 'GL_STATIC_DRAW';
   }
 }
-
-/**
- * Returns either { uniqueVerts, indices } when indexed drawing is requested
- * (deduplicating vertices that share both position and color), or null when
- * indexed drawing is off.
- */
-function deduplicate(o: SceneNode): { uniqueVerts: Vertex[]; indices: number[] } | null {
+function deduplicate(
+  o: SceneNode,
+): { uniqueVerts: Vertex[]; uniqueUvs: UV[] | null; indices: number[] } | null {
   if (!o.useIndexed) return null;
+  const textured = hasTexture(o);
   const uniqueVerts: Vertex[] = [];
+  const uniqueUvs: UV[] = [];
   const indices: number[] = [];
   const keyToIndex = new Map<string, number>();
-  for (const v of o.vertices) {
-    const key = `${v.x.toFixed(6)}|${v.y.toFixed(6)}|${v.color}`;
+  for (let i = 0; i < o.vertices.length; i++) {
+    const v = o.vertices[i];
+    const uv = textured ? o.uvs![i] : null;
+    // UV is part of the dedup key when present — two corners at the same (x,y)
+    // with the same color but different UVs are genuinely different vertices.
+    const key = uv
+      ? `${v.x.toFixed(6)}|${v.y.toFixed(6)}|${v.color}|${uv.u.toFixed(6)}|${uv.v.toFixed(6)}`
+      : `${v.x.toFixed(6)}|${v.y.toFixed(6)}|${v.color}`;
     let idx = keyToIndex.get(key);
     if (idx === undefined) {
       idx = uniqueVerts.length;
       uniqueVerts.push(v);
+      if (uv) uniqueUvs.push(uv);
       keyToIndex.set(key, idx);
     }
     indices.push(idx);
   }
-  return { uniqueVerts, indices };
+  return { uniqueVerts, uniqueUvs: textured ? uniqueUvs : null, indices };
 }
-
 function effectiveVerts(o: SceneNode): Vertex[] {
   return deduplicate(o)?.uniqueVerts ?? o.vertices;
 }
-
-/* ------------------------------------------------------------------ */
-/*  Update-frame predicates                                           */
-/* ------------------------------------------------------------------ */
-
-/** True when this object's buffer needs to be re-touched every frame. */
+// UVs aligned to whatever effectiveVerts returns (deduped or raw).
+function effectiveUvs(o: SceneNode): UV[] | null {
+  if (!hasTexture(o)) return null;
+  return deduplicate(o)?.uniqueUvs ?? o.uvs!;
+}
 function needsPerFrameUpdate(o: SceneNode): boolean {
   if (!isPrimitive(o)) return false;
   if (o.renderingMode !== 'VBO') return false;
   return o.bufferUsage === 'DYNAMIC' || o.bufferUsage === 'STREAM';
 }
-
-/** True when *any* visible object in the scene needs an update_buffers() body. */
 export function sceneNeedsBufferUpdates(allObjects: SceneNode[]): boolean {
   return allObjects.some(needsPerFrameUpdate);
 }
-
-/* ------------------------------------------------------------------ */
-/*  Globals: vertex arrays, color arrays, index arrays, VBO handles   */
-/* ------------------------------------------------------------------ */
-
 export function generateBufferGlobals(allObjects: SceneNode[]): string {
   const arrays: string[] = [];
   const handles: string[] = [];
-
   for (const o of allObjects) {
     if (!isPrimitive(o)) continue;
     const mode = o.renderingMode ?? 'IMMEDIATE';
     if (mode === 'IMMEDIATE') continue;
-
     const safe = sanitizeName(o.name);
     const verts = effectiveVerts(o);
     if (verts.length === 0) continue;
-
-    // Position array
     const posStr = verts.map(v => `${v.x.toFixed(4)}f, ${v.y.toFixed(4)}f`).join(', ');
     arrays.push(`GLfloat verts_${safe}[] = { ${posStr} };`);
-
-    // Color array (always emit — keeps glColorPointer wiring obvious)
     const colorStr = verts
       .map(v => {
         const r = (parseInt(v.color.slice(1, 3), 16) / 255).toFixed(2);
@@ -92,33 +82,30 @@ export function generateBufferGlobals(allObjects: SceneNode[]): string {
       })
       .join(', ');
     arrays.push(`GLfloat colors_${safe}[] = { ${colorStr} };`);
-
-    // Indices (only when useIndexed)
+    const uvsForObj = effectiveUvs(o);
+    if (uvsForObj) {
+      const uvStr = uvsForObj
+        .map((uv) => `${uv.u.toFixed(4)}f, ${uv.v.toFixed(4)}f`)
+        .join(', ');
+      arrays.push(`GLfloat uvs_${safe}[] = { ${uvStr} };`);
+    }
     const dedup = deduplicate(o);
     if (dedup) {
       arrays.push(`GLuint indices_${safe}[] = { ${dedup.indices.join(', ')} };`);
     }
-
-    // VBO handles
     if (mode === 'VBO') {
       handles.push(`GLuint vbo_${safe} = 0;`);
       handles.push(`GLuint cbo_${safe} = 0;`);
+      if (uvsForObj) handles.push(`GLuint uvbo_${safe} = 0;`);
       if (dedup) handles.push(`GLuint ebo_${safe} = 0;`);
     }
   }
-
   if (arrays.length === 0 && handles.length === 0) return '';
-
   let out = `// --- Buffer Data ---\n`;
   if (arrays.length > 0) out += arrays.join('\n') + '\n';
   if (handles.length > 0) out += '\n// --- VBO Handles ---\n' + handles.join('\n') + '\n';
   return out + '\n';
 }
-
-/* ------------------------------------------------------------------ */
-/*  init() body: VBO uploads                                          */
-/* ------------------------------------------------------------------ */
-
 export function generateInitBody(allObjects: SceneNode[]): string {
   const lines: string[] = [];
   for (const o of allObjects) {
@@ -126,11 +113,9 @@ export function generateInitBody(allObjects: SceneNode[]): string {
     if (o.renderingMode !== 'VBO') continue;
     const verts = effectiveVerts(o);
     if (verts.length === 0) continue;
-
     const safe = sanitizeName(o.name);
     const usage = bufferUsageMacro(o);
     const dedup = deduplicate(o);
-
     lines.push(`    // ${o.name} — upload to GPU`);
     lines.push(`    glGenBuffers(1, &vbo_${safe});`);
     lines.push(`    glBindBuffer(GL_ARRAY_BUFFER, vbo_${safe});`);
@@ -138,6 +123,11 @@ export function generateInitBody(allObjects: SceneNode[]): string {
     lines.push(`    glGenBuffers(1, &cbo_${safe});`);
     lines.push(`    glBindBuffer(GL_ARRAY_BUFFER, cbo_${safe});`);
     lines.push(`    glBufferData(GL_ARRAY_BUFFER, sizeof(colors_${safe}), colors_${safe}, ${usage});`);
+    if (effectiveUvs(o)) {
+      lines.push(`    glGenBuffers(1, &uvbo_${safe});`);
+      lines.push(`    glBindBuffer(GL_ARRAY_BUFFER, uvbo_${safe});`);
+      lines.push(`    glBufferData(GL_ARRAY_BUFFER, sizeof(uvs_${safe}), uvs_${safe}, ${usage});`);
+    }
     if (dedup) {
       lines.push(`    glGenBuffers(1, &ebo_${safe});`);
       lines.push(`    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_${safe});`);
@@ -145,39 +135,18 @@ export function generateInitBody(allObjects: SceneNode[]): string {
     }
     lines.push('');
   }
-
   if (lines.length === 0) {
-    return '    // No GPU buffers to upload\n';
+    return '    // No VBO primitives to initialize\n';
   }
   return lines.join('\n') + '\n';
 }
-
-/* ------------------------------------------------------------------ */
-/*  update_buffers() body: per-frame re-uploads / mapped writes        */
-/*                                                                    */
-/*  Three structurally distinct paths, driven by the per-object       */
-/*  bufferUsage and updateMethod fields:                              */
-/*                                                                    */
-/*    VBO + DYNAMIC + BUFFER_SUB_DATA → glBufferSubData               */
-/*    VBO + DYNAMIC + MAP_BUFFER      → glMapBuffer / glUnmapBuffer   */
-/*    VBO + STREAM                    → glBufferData (full re-upload) */
-/*                                                                    */
-/*  STATIC objects don't appear here — that's the whole point of the  */
-/*  hint, and the diff between this body being empty/absent vs.       */
-/*  populated is exactly the lesson.                                  */
-/* ------------------------------------------------------------------ */
-
 export function generateUpdateBuffersBody(allObjects: SceneNode[]): string {
   const lines: string[] = [];
-
   for (const o of allObjects) {
     if (!needsPerFrameUpdate(o)) continue;
-
     const safe = sanitizeName(o.name);
     if (effectiveVerts(o).length === 0) continue;
-
     if (o.bufferUsage === 'STREAM') {
-      // STREAM → orphan + re-upload the whole buffer each frame.
       const usage = bufferUsageMacro(o);
       lines.push(`    // ${o.name} — re-upload every frame (GL_STREAM_DRAW)`);
       lines.push(`    glBindBuffer(GL_ARRAY_BUFFER, vbo_${safe});`);
@@ -186,7 +155,6 @@ export function generateUpdateBuffersBody(allObjects: SceneNode[]): string {
       lines.push('');
       continue;
     }
-
     // DYNAMIC: branch on updateMethod
     const method = o.updateMethod ?? 'BUFFER_SUB_DATA';
     if (method === 'MAP_BUFFER') {
@@ -210,20 +178,12 @@ export function generateUpdateBuffersBody(allObjects: SceneNode[]): string {
       lines.push('');
     }
   }
-
   if (lines.length === 0) {
     // The function was emitted but had nothing to do. This shouldn't normally
-    // happen because we gate the emission on `sceneNeedsBufferUpdates`, but
-    // keep a friendly stub just in case so the program still compiles cleanly.
     return '    // No DYNAMIC or STREAM buffers to refresh\n';
   }
   return lines.join('\n') + '\n';
 }
-
-/* ------------------------------------------------------------------ */
-/*  Per-object draw bodies for VERTEX_ARRAY and VBO                    */
-/* ------------------------------------------------------------------ */
-
 function transformPrelude(o: SceneNode): string {
   const safe = sanitizeName(o.name);
   let out = '';
@@ -234,62 +194,80 @@ function transformPrelude(o: SceneNode): string {
   out += `    glScalef(state_${safe}.scaleX, state_${safe}.scaleY, 1.0f);\n`;
   return out;
 }
-
 function shadingLine(o: SceneNode): string {
   return `    glShadeModel(${o.shading === 'FLAT' ? 'GL_FLAT' : 'GL_SMOOTH'});\n`;
 }
-
 export function generateVertexArrayDrawBody(o: SceneNode): string {
   const safe = sanitizeName(o.name);
   const verts = effectiveVerts(o);
   const dedup = deduplicate(o);
+  const textured = hasTexture(o);
   const prim = getGlPrimitive(o.type as Exclude<SceneNode['type'], 'GROUP' | 'TEXT'>);
-
   let out = transformPrelude(o);
   out += shadingLine(o);
   out += `\n    // Bind client-side arrays\n`;
   out += `    glEnableClientState(GL_VERTEX_ARRAY);\n`;
   out += `    glEnableClientState(GL_COLOR_ARRAY);\n`;
+  if (textured) {
+    out += `    glEnableClientState(GL_TEXTURE_COORD_ARRAY);\n`;
+    out += `    glBindTexture(GL_TEXTURE_2D, tex_${safe});\n`;
+  }
   out += `    glVertexPointer(2, GL_FLOAT, 0, verts_${safe});\n`;
-  out += `    glColorPointer(3, GL_FLOAT, 0, colors_${safe});\n\n`;
-
+  out += `    glColorPointer(3, GL_FLOAT, 0, colors_${safe});\n`;
+  if (textured) {
+    out += `    glTexCoordPointer(2, GL_FLOAT, 0, uvs_${safe});\n`;
+  }
+  out += `\n`;
   if (dedup) {
     out += `    glDrawElements(${prim}, ${dedup.indices.length}, GL_UNSIGNED_INT, indices_${safe});\n`;
   } else {
     out += `    glDrawArrays(${prim}, 0, ${verts.length});\n`;
   }
-
-  out += `\n    glDisableClientState(GL_COLOR_ARRAY);\n`;
+  if (textured) {
+    out += `\n    glDisableClientState(GL_TEXTURE_COORD_ARRAY);\n`;
+    out += `    glDisableClientState(GL_COLOR_ARRAY);\n`;
+  } else {
+    out += `\n    glDisableClientState(GL_COLOR_ARRAY);\n`;
+  }
   out += `    glDisableClientState(GL_VERTEX_ARRAY);\n`;
   out += `    glPopMatrix();\n`;
   return out;
 }
-
 export function generateVBODrawBody(o: SceneNode): string {
   const safe = sanitizeName(o.name);
   const verts = effectiveVerts(o);
   const dedup = deduplicate(o);
+  const textured = hasTexture(o);
   const prim = getGlPrimitive(o.type as Exclude<SceneNode['type'], 'GROUP' | 'TEXT'>);
-
   let out = transformPrelude(o);
   out += shadingLine(o);
   out += `\n    // Bind GPU buffers\n`;
   out += `    glEnableClientState(GL_VERTEX_ARRAY);\n`;
-  out += `    glEnableClientState(GL_COLOR_ARRAY);\n\n`;
-  out += `    glBindBuffer(GL_ARRAY_BUFFER, vbo_${safe});\n`;
+  out += `    glEnableClientState(GL_COLOR_ARRAY);\n`;
+  if (textured) {
+    out += `    glEnableClientState(GL_TEXTURE_COORD_ARRAY);\n`;
+    out += `    glBindTexture(GL_TEXTURE_2D, tex_${safe});\n`;
+  }
+  out += `\n    glBindBuffer(GL_ARRAY_BUFFER, vbo_${safe});\n`;
   out += `    glVertexPointer(2, GL_FLOAT, 0, 0);\n\n`;
   out += `    glBindBuffer(GL_ARRAY_BUFFER, cbo_${safe});\n`;
-  out += `    glColorPointer(3, GL_FLOAT, 0, 0);\n\n`;
-
+  out += `    glColorPointer(3, GL_FLOAT, 0, 0);\n`;
+  if (textured) {
+    out += `\n    glBindBuffer(GL_ARRAY_BUFFER, uvbo_${safe});\n`;
+    out += `    glTexCoordPointer(2, GL_FLOAT, 0, 0);\n`;
+  }
+  out += `\n`;
   if (dedup) {
     out += `    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_${safe});\n`;
     out += `    glDrawElements(${prim}, ${dedup.indices.length}, GL_UNSIGNED_INT, 0);\n`;
   } else {
     out += `    glDrawArrays(${prim}, 0, ${verts.length});\n`;
   }
-
   out += `\n    glBindBuffer(GL_ARRAY_BUFFER, 0);\n`;
   if (dedup) out += `    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);\n`;
+  if (textured) {
+    out += `    glDisableClientState(GL_TEXTURE_COORD_ARRAY);\n`;
+  }
   out += `    glDisableClientState(GL_COLOR_ARRAY);\n`;
   out += `    glDisableClientState(GL_VERTEX_ARRAY);\n`;
   out += `    glPopMatrix();\n`;

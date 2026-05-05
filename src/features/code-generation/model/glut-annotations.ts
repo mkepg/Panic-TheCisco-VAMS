@@ -3,12 +3,12 @@ export interface CodeAnnotation {
   title: string;
   description: string;
 }
-
-/**
- * Hover annotations for the GLUT boilerplate shown in the Pipeline section
- * when the scene is empty. Patterns match the trimmed line content.
- */
 export const GLUT_BOILERPLATE_ANNOTATIONS: CodeAnnotation[] = [
+  {
+    pattern: /^#include\s+<GL\/glew\.h>/,
+    title: '#include <GL/glew.h>',
+    description: 'Loads modern-OpenGL entry points (VBOs, glMapBuffer, etc.) at runtime. Must come BEFORE freeglut.h.',
+  },
   {
     pattern: /^#include\s+<GL\/freeglut\.h>/,
     title: '#include <GL/freeglut.h>',
@@ -58,6 +58,11 @@ export const GLUT_BOILERPLATE_ANNOTATIONS: CodeAnnotation[] = [
     pattern: /glutCreateWindow/,
     title: 'glutCreateWindow',
     description: 'Opens the operating-system window with the given title.',
+  },
+  {
+    pattern: /glewInit\s*\(\s*\)/,
+    title: 'glewInit',
+    description: 'Resolves modern-GL function pointers (glGenBuffers, glBufferData, glMapBuffer, ...) against the driver. Must run AFTER a window/context exists and BEFORE any VBO call.',
   },
   {
     pattern: /glClearColor/,

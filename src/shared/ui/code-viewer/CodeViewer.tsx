@@ -119,9 +119,11 @@ const CodeViewer = memo(function CodeViewer({
     let inDrawBlock = false;
     let inConfigBlock = false;
     
-    // Added 'tex' to both regexes to catch texture globals and init blocks
-    const targetRegex = new RegExp(`\\b(draw|state|verts|colors|indices|vbo|cbo|ebo|tex)_${highlightTarget}\\b`);
-    const configOpRegex = new RegExp(`\\b(vbo|cbo|ebo|verts|colors|indices|tex)_${highlightTarget}\\b`);
+    // Per-object identifier prefixes emitted by the code generator.
+    // Keep these in sync with generator/buffers.ts and generator/textures.ts.
+    // `uvs_*` is the per-vertex UV array, `uvbo_*` its VBO handle (textured VBO mode).
+    const targetRegex = new RegExp(`\\b(draw|state|verts|colors|indices|uvs|vbo|cbo|ebo|uvbo|tex)_${highlightTarget}\\b`);
+    const configOpRegex = new RegExp(`\\b(vbo|cbo|ebo|uvbo|verts|colors|indices|uvs|tex)_${highlightTarget}\\b`);
     
     lines.forEach((line, index) => {
       const trimmed = line.trim();
