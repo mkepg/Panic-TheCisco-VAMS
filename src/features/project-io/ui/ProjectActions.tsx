@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Download, Save, FolderOpen, Code, FileJson, Package } from 'lucide-react';
+import { Download, Save, FolderOpen, Code, FileJson } from 'lucide-react';
 import { toast } from 'sonner';
 import { useVamsStore } from '@/core/store';
 import {
@@ -9,7 +9,6 @@ import {
   parseProjectFromFile,
   toStorePatchFromProject,
 } from '@/entities/project/model/project-io';
-// Import the code generator
 import { generateCodeFromState } from '@/features/code-generation/model/generate-from-state';
 
 export default function ProjectActions() {
@@ -48,9 +47,8 @@ export default function ProjectActions() {
     }
   };
 
-  const handleExport = (type: 'cpp' | 'json' | 'scaffold') => {
+  const handleExport = (type: 'cpp' | 'json') => {
     const state = useVamsStore.getState();
-
     if (type === 'json') {
       saveProjectToDownload();
       setShowExportMenu(false);
@@ -59,7 +57,6 @@ export default function ProjectActions() {
 
     if (type === 'cpp') {
       try {
-        // Attempt to get the actual canvas size to match the viewport, default to 800x600
         let width = 800;
         let height = 600;
         const el = document.querySelector('.canvas-wrapper');
@@ -67,8 +64,6 @@ export default function ProjectActions() {
           width = Math.floor(el.clientWidth);
           height = Math.floor(el.clientHeight);
         }
-
-        // Generate the code using the current store state
         const code = generateCodeFromState(
           {
             objects: state.objects,
@@ -79,11 +74,7 @@ export default function ProjectActions() {
           },
           { width, height }
         );
-
-        // Replace the default .vams extension with .cpp
         const filename = createDefaultProjectFilename('vams-code').replace('.vams', '.cpp');
-        
-        // Create a blob and trigger download
         const blob = new Blob([code], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -91,7 +82,6 @@ export default function ProjectActions() {
         a.download = filename;
         a.click();
         URL.revokeObjectURL(url);
-
         toast.success('C++ code exported successfully');
       } catch (error) {
         console.error(error);
@@ -100,9 +90,6 @@ export default function ProjectActions() {
       setShowExportMenu(false);
       return;
     }
-
-    toast.info(`${type.toUpperCase()} export coming soon`);
-    setShowExportMenu(false);
   };
 
   const handleLoad = () => {
@@ -119,24 +106,19 @@ export default function ProjectActions() {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
-
     if (!file) return;
-
     try {
       const projectData = await parseProjectFromFile(file);
       const patch = toStorePatchFromProject(projectData);
-
       useVamsStore.setState(
         {
           ...patch,
         },
         false
       );
-
       const stateAfter = useVamsStore.getState();
       const knownIds = new Set(stateAfter.getAllTextures().map((t) => t.id));
       let detached = 0;
-
       const cleaned = stateAfter.objects.map((o) => {
         if (o.texture && !knownIds.has(o.texture.textureId)) {
           detached++;
@@ -144,12 +126,10 @@ export default function ProjectActions() {
         }
         return o;
       });
-
       if (detached > 0) {
         useVamsStore.setState({ objects: cleaned });
         toast.message('Some textures could not be loaded and were detached.');
       }
-
       clearHistory();
       toast.success(`Project loaded: ${file.name}`);
     } catch (error) {
@@ -181,7 +161,6 @@ export default function ProjectActions() {
         >
           <Download size={16} />
         </button>
-
         {showExportMenu && (
           <div className="dropdown-menu">
             <div className="menu-header">Export As</div>
@@ -190,9 +169,6 @@ export default function ProjectActions() {
             </button>
             <button className="menu-item" onClick={() => handleExport('json')}>
               <FileJson size={14} /> JSON Scene Data
-            </button>
-            <button className="menu-item" onClick={() => handleExport('scaffold')}>
-              <Package size={14} /> C++ Project Scaffold
             </button>
           </div>
         )}
